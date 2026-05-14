@@ -1,0 +1,397 @@
+// ═══════════════════════════════════════════════
+// Gary's Life — Main Game Engine
+// State machine, render loop, ties everything
+// ═══════════════════════════════════════════════
+
+import * as THREE from 'three';
+import { Economy, BIRDS, RARITY_COLORS } from './economy.js';
+import { AudioSystem } from './audio.js';
+import { SkySystem } from './skybox.js';
+import { ParticleSystem } from './particles.js';
+import { Player } from './player.js';
+import { BirdSystem } from './birds.js';
+import { WeaponSystem } from './weapons.js';
+import { WorldSystem } from './world.js';
+import { HUD } from './hud.js';
+import { UI } from './ui.js';
+
+// ─── Game States ─────────────────────────────
+const STATE = {
+  TITLE: 'TITLE',
+  MORNING: 'MORNING',
+  HUNTING: 'HUNTING',
+  RESULTS: 'RESULTS',
+  SHOP: 'SHOP',
+  SLEEP: 'SLEEP',
+  WIN: 'WIN'
+};
+
+class Game {
+  constructor() {
+    this.state = STATE.TITLE;
+    this.canvas = document.getElementById('game-canvas');
+
+    // ─── Three.js Setup ────────────────────
+    this.renderer = new THREE.WebGLRenderer({
+      canvas: this.canvas,
+      antialias: true,
+      powerPreference: 'high-performance'
+    });
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.1;
+
+    this.scene = new THREE.Scene();
+    this.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 600);
+    this.camera.position.set(0, 1.6, 0);
+
+    // ─── Systems ───────────────────────────
+    this.economy = new Economy();
+    this.audio = new AudioSystem();
+    this.sky = new SkySystem(this.scene);
+    this.particles = new ParticleSystem(this.scene);
+    this.player = new Player(this.camera, this.canvas);
+    this.birds = new BirdSystem(this.scene);
+    this.weapons = new WeaponSystem(this.camera, this.scene);
+    this.world = new WorldSystem(this.scene);
+    this.hud = new HUD();
+    this.ui = new UI(this.economy, this.audio);
+
+    // ─── Hunt state ────────────────────────
+    this.huntTimer = 60;
+    this.huntBag = [];
+    this.spawnTimer = 0;
+    this.spawnInterval = 3; // seconds between spawns
+    this.maxActiveBirds = 4;
+    this.winShown = false;
+
+    // ─── Clock ─────────────────────────────
+    this.clock = new THREE.Clock();
+
+    // ─── Events ────────────────────────────
+    window.addEventListener('resize', () => this._onResize());
+    this.canvas.addEventListener('mousedown', (e) => this._onMouseDown(e));
+    document.addEventListener('keydown', (e) => this._onKeyDown(e));
+
+    // ─── UI Callbacks ──────────────────────
+    this.ui.onStartGame = () => this._startGame();
+    this.ui.onStartHunt = () => this._startHunt();
+    this.ui.onGoToShop = () => this._goToShop();
+    this.ui.onSkipToSleep = () => this._goToSleep();
+    this.ui.onSleep = () => this._goToSleep();
+    this.ui.onContinueAfterWin = () => {
+      this.winShown = true;
+      this._showMorning();
+    };
+    this.ui.onRestart = () => {
+      this.economy.reset();
+      this.winShown = false;
+      this._showMorning();
+    };
+
+    // ─── Initial state ─────────────────────
+    this.ui.showScreen('title');
+    this.sky.setPreset('backyard');
+
+    // Start render loop
+    this._animate();
+  }
+
+  // ─── State Transitions ───────────────────────
+
+  _startGame() {
+    this.audio.init();
+    this._showMorning();
+  }
+
+  _showMorning() {
+    this.state = STATE.MORNING;
+    this.player.unlock();
+    this.hud.hide();
+    this.ui.showMorning();
+
+    // Load world preview
+    const locKey = this.economy.currentLocation;
+    this.world.load(locKey);
+    this.sky.setPreset(locKey);
+    this.player.reset();
+    this.birds.clear();
+    this.particles.clear();
+  }
+
+  _startHunt() {
+    this.state = STATE.HUNTING;
+    this.ui.hideAll();
+    this.hud.show();
+
+    const locKey = this.economy.currentLocation;
+    const locData = this.economy.getLocation();
+    const weaponData = this.economy.getWeapon();
+
+    // Setup world
+    this.world.load(locKey);
+    this.sky.setPreset(locKey);
+    this.birds.setAreaSize(locData.areaSize);
+    this.player.setBounds(locData.areaSize);
+    this.player.reset();
+    this.maxActiveBirds = locData.maxBirds;
+
+    // Equip weapon
+    this.weapons.equipWeapon(this.economy.currentWeapon, weaponData);
+
+    // Reset hunt
+    this.huntTimer = 60;
+    this.huntBag = [];
+    this.spawnTimer = 0;
+    this.birds.clear();
+    this.particles.clear();
+    this.hud.clearKillFeed();
+
+    // HUD initial values
+    this.hud.setDay(this.economy.day);
+    this.hud.setLocation(locData.name);
+    this.hud.setMoney(this.economy.money);
+    this.hud.setAmmo(weaponData.ammo, weaponData.ammo);
+    this.hud.setWeaponName(weaponData.name);
+    this.hud.setTimer(60);
+    this.hud.setCrosshairForWeapon(weaponData);
+
+    // Build weapon slot bar
+    this._buildWeaponSlots();
+
+    // Weapon slot click handler
+    this.hud.onWeaponSlotClick = (key) => this._switchWeapon(key);
+
+    // Lock pointer
+    this.player.lock();
+
+    // Start ambient audio
+    this.audio.startAmbience();
+
+    // Spawn initial birds
+    for (let i = 0; i < 2; i++) {
+      const birdKey = this.economy.spawnRandomBird();
+      this.birds.spawn(birdKey);
+    }
+  }
+
+  _endHunt() {
+    this.state = STATE.RESULTS;
+    this.player.unlock();
+    this.hud.hide();
+    this.audio.stopAmbience();
+
+    // Show results — the UI will handle adding money
+    this.ui.showResults(this.huntBag);
+  }
+
+  _goToShop() {
+    this.state = STATE.SHOP;
+    this.ui.showShop();
+  }
+
+  _goToSleep() {
+    this.state = STATE.SLEEP;
+
+    // Check for win condition
+    if (this.economy.hasWon() && !this.winShown) {
+      this.economy.save();
+      this.ui.showWin();
+      this.state = STATE.WIN;
+      return;
+    }
+
+    this.ui.showSleep(() => {
+      this._showMorning();
+    });
+  }
+
+  // ─── Input ─────────────────────────────────
+
+  _onMouseDown(e) {
+    if (this.state !== STATE.HUNTING) return;
+    if (e.button !== 0) return; // left click only
+
+    if (!this.player.isLocked) {
+      this.player.lock();
+      return;
+    }
+
+    // Try to shoot
+    const raycasters = this.weapons.shoot();
+    if (!raycasters) {
+      // Empty / reloading
+      this.audio.playEmptyClick();
+      return;
+    }
+
+    // Fire sound
+    const weaponData2 = this.economy.getWeapon();
+    this.audio.playGunshot(weaponData2.isShotgun ? 'shotgun' : 'rifle');
+
+    // Muzzle flash
+    const barrelPos = this.weapons.getBarrelWorldPos();
+    const dir = this.player.getForwardDirection();
+    this.particles.spawnMuzzleFlash(barrelPos, dir);
+
+    // Check hits
+    for (const rc of raycasters) {
+      const hit = this.birds.raycastHit(rc);
+      if (hit) {
+        const { bird, point } = hit;
+        const birdData = bird.data;
+
+        // Feather burst at hit position
+        this.particles.spawnFeatherBurst(point, birdData.bodyColor, birdData.wingColor);
+        this.audio.playBirdHit();
+
+        // Kill the bird
+        this.birds.kill(bird);
+
+        // Add to bag
+        const fluctuation = 0.85 + Math.random() * 0.3;
+        const value = Math.round(birdData.value * fluctuation);
+        this.huntBag.push(bird.birdKey);
+        this.economy.totalBirdsKilled++;
+
+        // HUD feedback
+        const rarityColor = RARITY_COLORS[birdData.rarity] || '#aaa';
+        this.hud.addKill(birdData.name, value, rarityColor);
+        this.hud.showMoneyPopup(value);
+        this.hud.showHitFlash();
+
+        break; // One hit per shot (even for shotgun pellets hitting same bird)
+      }
+    }
+
+    // Startle nearby birds
+    this.birds.startleNear(this.camera.position, 20);
+
+    // Update ammo display
+    this.hud.setAmmo(this.weapons.ammo, this.weapons.maxAmmo);
+  }
+
+  // ─── Resize ────────────────────────────────
+
+  _onResize() {
+    this.camera.aspect = window.innerWidth / window.innerHeight;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+
+  // ─── Main Loop ─────────────────────────────
+
+  _animate() {
+    requestAnimationFrame(() => this._animate());
+    const dt = Math.min(this.clock.getDelta(), 0.05); // cap dt
+
+    if (this.state === STATE.HUNTING) {
+      this._updateHunt(dt);
+    }
+
+    // Always update visual systems
+    this.sky.update(dt);
+    this.particles.update(dt);
+
+    // Render
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  _updateHunt(dt) {
+    // Timer
+    this.huntTimer -= dt;
+    this.hud.setTimer(this.huntTimer);
+
+    if (this.huntTimer <= 0) {
+      this._endHunt();
+      return;
+    }
+
+    // Player movement
+    this.player.update(dt);
+
+    // Weapon update
+    this.weapons.update(dt, this.player.isMoving());
+
+    // Reload indicator
+    const reloadProgress = this.weapons.getReloadProgress();
+    if (reloadProgress >= 0) {
+      this.hud.showReloading(true);
+      this.hud.setReloadProgress(reloadProgress);
+      if (reloadProgress >= 0.99) {
+        this.audio.playReload();
+      }
+    } else {
+      this.hud.showReloading(false);
+    }
+
+    // Update ammo display continuously
+    this.hud.setAmmo(this.weapons.ammo, this.weapons.maxAmmo);
+
+    // Bird updates
+    this.birds.update(dt);
+
+    // Spawn new birds
+    this.spawnTimer += dt;
+    if (this.spawnTimer >= this.spawnInterval && this.birds.getLivingCount() < this.maxActiveBirds) {
+      this.spawnTimer = 0;
+      const birdKey = this.economy.spawnRandomBird();
+      this.birds.spawn(birdKey);
+      this.spawnInterval = 2 + Math.random() * 3; // randomize next spawn
+    }
+
+    // Keyboard reload (R key)
+    // Already handled via natural ammo depletion auto-reload
+  }
+
+  // ─── Weapon Switching ─────────────────────────
+
+  _buildWeaponSlots() {
+    const ownedKeys = this.economy.getOwnedWeaponKeys();
+    const ownedInfo = ownedKeys.map(key => ({
+      key,
+      name: this.economy.weapons[key].name
+    }));
+    this.hud.buildWeaponSlots(ownedInfo, this.economy.currentWeapon);
+  }
+
+  _switchWeapon(weaponKey) {
+    if (this.state !== STATE.HUNTING) return;
+    if (weaponKey === this.economy.currentWeapon) return;
+    if (!this.economy.weapons[weaponKey] || !this.economy.weapons[weaponKey].owned) return;
+
+    this.economy.selectWeapon(weaponKey);
+    const weaponData = this.economy.getWeapon();
+    this.weapons.equipWeapon(weaponKey, weaponData);
+    this.hud.setWeaponName(weaponData.name);
+    this.hud.setAmmo(this.weapons.ammo, this.weapons.maxAmmo);
+    this.hud.setCrosshairForWeapon(weaponData);
+    this._buildWeaponSlots();
+    this.audio.playReload();
+  }
+
+  _onKeyDown(e) {
+    if (this.state !== STATE.HUNTING) return;
+
+    // Number keys 1-9 for weapon switching
+    const num = parseInt(e.key);
+    if (num >= 1 && num <= 9) {
+      const ownedKeys = this.economy.getOwnedWeaponKeys();
+      const idx = num - 1;
+      if (idx < ownedKeys.length) {
+        this._switchWeapon(ownedKeys[idx]);
+      }
+    }
+
+    // R for manual reload
+    if (e.code === 'KeyR') {
+      this.weapons.startReload();
+    }
+  }
+}
+
+// ─── Start ─────────────────────────────────────
+const game = new Game();

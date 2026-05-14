@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gary's Life — Bird Hunting Tycoon</title>
+  <meta name="description" content="An FPS bird hunting game where you start as a kid with grandpa's old rifle, hunting birds to make money and upgrade your gear.">
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Special+Elite&display=swap" rel="stylesheet">
+</head>
+<body>
+  <canvas id="game-canvas"></canvas>
+
+  <!-- Crosshair (dynamically sized) -->
+  <div id="crosshair" class="hidden">
+    <!-- Inner crosshair -->
+    <svg id="crosshair-inner" width="32" height="32" viewBox="0 0 32 32">
+      <circle cx="16" cy="16" r="2" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="1.5"/>
+      <line x1="16" y1="4" x2="16" y2="12" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="16" y1="20" x2="16" y2="28" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="4" y1="16" x2="12" y2="16" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="20" y1="16" x2="28" y2="16" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <!-- Spread ring (visible for shotguns) -->
+    <div id="crosshair-spread" class="crosshair-spread hidden"></div>
+  </div>
+
+  <!-- HUD Overlay -->
+  <div id="hud" class="hidden">
+    <div id="hud-top-left">
+      <div id="hud-day">Day <span id="day-num">1</span></div>
+      <div id="hud-location"></div>
+    </div>
+    <div id="hud-top-center">
+      <div id="hud-timer">60</div>
+      <div id="hud-timer-label">seconds left</div>
+    </div>
+    <div id="hud-top-right">
+      <div id="hud-money">$<span id="money-display">0</span></div>
+    </div>
+    <div id="hud-bottom-right">
+      <div id="hud-ammo"><span id="ammo-current">1</span> / <span id="ammo-max">1</span></div>
+      <div id="hud-weapon-name">Grandpa's Old Rifle</div>
+    </div>
+    <div id="hud-bottom-left">
+      <div id="kill-feed"></div>
+    </div>
+    <div id="weapon-slots"></div>
+    <div id="money-popup-container"></div>
+  </div>
+
+  <!-- Title Screen -->
+  <div id="screen-title" class="screen">
+    <div class="title-content">
+      <h1 class="title-text">Gary's Life</h1>
+      <p class="title-subtitle">The Make Believe Life of Gary Savage's Imagination</p>
+      <button id="btn-start" class="btn btn-primary">Start Game</button>
+      <p class="title-hint">Hunt birds. Make money. Get rich.</p>
+    </div>
+  </div>
+
+  <!-- Morning Screen -->
+  <div id="screen-morning" class="screen hidden">
+    <div class="panel morning-panel">
+      <h2 class="panel-title">Good Morning, Gary!</h2>
+      <div id="morning-day" class="morning-day">Day 1</div>
+      <div class="morning-stats">
+        <div class="stat-card">
+          <div class="stat-label">Wallet</div>
+          <div class="stat-value" id="morning-money">$0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Weapon</div>
+          <div class="stat-value" id="morning-weapon">Grandpa's Old Rifle</div>
+        </div>
+      </div>
+      <div class="location-select">
+        <h3>Choose Hunting Spot</h3>
+        <div id="location-list" class="location-grid"></div>
+      </div>
+      <button id="btn-hunt" class="btn btn-primary">Go Hunting!</button>
+    </div>
+  </div>
+
+  <!-- Results Screen -->
+  <div id="screen-results" class="screen hidden">
+    <div class="panel results-panel">
+      <h2 class="panel-title">Hunt Complete!</h2>
+      <div id="results-summary" class="results-summary"></div>
+      <div class="results-total">
+        <span>Total Earned:</span>
+        <span id="results-total-money" class="results-money">$0</span>
+      </div>
+      <button id="btn-to-shop" class="btn btn-primary">Visit Shop</button>
+      <button id="btn-skip-shop" class="btn btn-secondary">Skip to Sleep</button>
+    </div>
+  </div>
+
+  <!-- Shop Screen -->
+  <div id="screen-shop" class="screen hidden">
+    <div class="panel shop-panel">
+      <h2 class="panel-title">Gary's Shop</h2>
+      <div id="shop-money" class="shop-money">$0</div>
+      <div class="shop-sections">
+        <div class="shop-section">
+          <h3>Weapons</h3>
+          <div id="shop-weapons" class="shop-grid"></div>
+        </div>
+        <div class="shop-section">
+          <h3>Hunting Locations</h3>
+          <div id="shop-locations" class="shop-grid"></div>
+        </div>
+      </div>
+      <button id="btn-sleep" class="btn btn-primary">Go to Sleep</button>
+    </div>
+  </div>
+
+  <!-- Sleep Screen -->
+  <div id="screen-sleep" class="screen hidden">
+    <div class="sleep-content">
+      <div id="sleep-text" class="sleep-text">Day 1 Complete</div>
+      <div class="sleep-zzz">z z z</div>
+    </div>
+  </div>
+
+  <!-- Win Screen -->
+  <div id="screen-win" class="screen hidden">
+    <div class="panel win-panel">
+      <h2 class="win-title">YOU DID IT!</h2>
+      <p class="win-subtitle">Gary saved up enough to buy his dream car!</p>
+      <div class="win-stats">
+        <div class="stat-card"><div class="stat-label">Total Money</div><div class="stat-value" id="win-money">$5000</div></div>
+        <div class="stat-card"><div class="stat-label">Days Played</div><div class="stat-value" id="win-days">1</div></div>
+        <div class="stat-card"><div class="stat-label">Birds Hunted</div><div class="stat-value" id="win-birds">0</div></div>
+      </div>
+      <button id="btn-continue" class="btn btn-primary">Keep Playing</button>
+      <button id="btn-restart" class="btn btn-secondary">New Game</button>
+    </div>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
