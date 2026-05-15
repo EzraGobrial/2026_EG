@@ -219,15 +219,20 @@ export const WEAPONS = {
 
 export class Economy {
   constructor() {
+    this.saveKey = 'garys_life_save';
     this.money = 0;
     this.day = 1;
     this.totalBirdsKilled = 0;
     this.currentWeapon = 'old_rifle';
     this.currentLocation = 'backyard';
-    this.huntBag = []; // birds killed this hunt
+    this.huntBag = [];
     this.weapons = JSON.parse(JSON.stringify(WEAPONS));
     this.locations = JSON.parse(JSON.stringify(LOCATIONS));
     this.load();
+  }
+
+  setSaveKey(key) {
+    this.saveKey = key;
   }
 
   save() {
@@ -246,11 +251,11 @@ export class Economy {
     for (const [k, l] of Object.entries(this.locations)) {
       data.locationUnlocked[k] = l.unlocked;
     }
-    localStorage.setItem('garys_life_save', JSON.stringify(data));
+    localStorage.setItem(this.saveKey, JSON.stringify(data));
   }
 
   load() {
-    const raw = localStorage.getItem('garys_life_save');
+    const raw = localStorage.getItem(this.saveKey);
     if (!raw) return;
     try {
       const data = JSON.parse(raw);
@@ -275,7 +280,7 @@ export class Economy {
   }
 
   reset() {
-    localStorage.removeItem('garys_life_save');
+    localStorage.removeItem(this.saveKey);
     this.money = 0;
     this.day = 1;
     this.totalBirdsKilled = 0;

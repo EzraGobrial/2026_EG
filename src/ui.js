@@ -12,6 +12,8 @@ export class UI {
 
     // Screen elements
     this.screens = {
+      login: document.getElementById('screen-login'),
+      signup: document.getElementById('screen-signup'),
       title: document.getElementById('screen-title'),
       morning: document.getElementById('screen-morning'),
       results: document.getElementById('screen-results'),
@@ -28,8 +30,12 @@ export class UI {
     this.onSleep = null;
     this.onContinueAfterWin = null;
     this.onRestart = null;
+    this.onLogin = null;
+    this.onSignup = null;
+    this.onLogout = null;
 
     this._bindButtons();
+    this._bindAuth();
   }
 
   _bindButtons() {
@@ -69,12 +75,76 @@ export class UI {
     });
   }
 
+  _bindAuth() {
+    // Switch links
+    document.getElementById('link-to-signup').addEventListener('click', (e) => {
+      e.preventDefault();
+      this._clearAuthErrors();
+      this.showScreen('signup');
+    });
+
+    document.getElementById('link-to-login').addEventListener('click', (e) => {
+      e.preventDefault();
+      this._clearAuthErrors();
+      this.showScreen('login');
+    });
+
+    // Login
+    document.getElementById('btn-login').addEventListener('click', () => {
+      const username = document.getElementById('login-username').value;
+      const password = document.getElementById('login-password').value;
+      if (this.onLogin) this.onLogin(username, password);
+    });
+
+    // Signup
+    document.getElementById('btn-signup').addEventListener('click', () => {
+      const username = document.getElementById('signup-username').value;
+      const password = document.getElementById('signup-password').value;
+      const confirm = document.getElementById('signup-confirm').value;
+      if (this.onSignup) this.onSignup(username, password, confirm);
+    });
+
+    // Enter key
+    document.getElementById('login-password').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('btn-login').click();
+    });
+    document.getElementById('signup-confirm').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('btn-signup').click();
+    });
+
+    // Logout
+    document.getElementById('btn-logout').addEventListener('click', () => {
+      if (this.onLogout) this.onLogout();
+    });
+  }
+
+  showLoginError(msg) {
+    const el = document.getElementById('login-error');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+  }
+
+  showSignupError(msg) {
+    const el = document.getElementById('signup-error');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+  }
+
+  _clearAuthErrors() {
+    document.getElementById('login-error').classList.add('hidden');
+    document.getElementById('signup-error').classList.add('hidden');
+  }
+
+  showTitle(displayName) {
+    const welcome = document.getElementById('title-welcome');
+    welcome.textContent = `Welcome back, ${displayName}!`;
+    this.showScreen('title');
+  }
+
   showScreen(name) {
-    // Hide all screens
-    for (const [key, el] of Object.entries(this.screens)) {
+    for (const el of Object.values(this.screens)) {
       el.classList.add('hidden');
     }
-    // Show requested
     if (this.screens[name]) {
       this.screens[name].classList.remove('hidden');
     }

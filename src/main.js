@@ -14,9 +14,11 @@ import { WeaponSystem } from './weapons.js';
 import { WorldSystem } from './world.js';
 import { HUD } from './hud.js';
 import { UI } from './ui.js';
+import { Auth } from './auth.js';
 
 // ─── Game States ─────────────────────────────
 const STATE = {
+  AUTH: 'AUTH',
   TITLE: 'TITLE',
   MORNING: 'MORNING',
   HUNTING: 'HUNTING',
@@ -49,6 +51,7 @@ class Game {
     this.camera.position.set(0, 1.6, 0);
 
     // ─── Systems ───────────────────────────
+    this.auth = new Auth();
     this.economy = new Economy();
     this.audio = new AudioSystem();
     this.sky = new SkySystem(this.scene);
@@ -64,7 +67,7 @@ class Game {
     this.huntTimer = 60;
     this.huntBag = [];
     this.spawnTimer = 0;
-    this.spawnInterval = 3; // seconds between spawns
+    this.spawnInterval = 3;
     this.maxActiveBirds = 4;
     this.winShown = false;
 
@@ -75,6 +78,11 @@ class Game {
     window.addEventListener('resize', () => this._onResize());
     this.canvas.addEventListener('mousedown', (e) => this._onMouseDown(e));
     document.addEventListener('keydown', (e) => this._onKeyDown(e));
+
+    // ─── Auth Callbacks ────────────────────
+    this.ui.onLogin = (u, p) => this._handleLogin(u, p);
+    this.ui.onSignup = (u, p, c) => this._handleSignup(u, p, c);
+    this.ui.onLogout = () => this._handleLogout();
 
     // ─── UI Callbacks ──────────────────────
     this.ui.onStartGame = () => this._startGame();
@@ -93,11 +101,54 @@ class Game {
     };
 
     // ─── Initial state ─────────────────────
-    this.ui.showScreen('title');
     this.sky.setPreset('backyard');
+
+    if (this.auth.isLoggedIn()) {
+      this.economy.setSaveKey(this.auth.getSaveKey());
+      this.economy.load();
+      this.ui.showTitle(this.auth.getDisplayName());
+      this.state = STATE.TITLE;
+    } else {
+      this.ui.showScreen('login');
+      this.state = STATE.AUTH;
+    }
 
     // Start render loop
     this._animate();
+  }
+
+  // ─── Auth Handlers ───────────────────────────
+
+  _handleLogin(username, password) {
+    const result = this.auth.login(username, password);
+    if (result.success) {
+      this.economy.setSaveKey(this.auth.getSaveKey());
+      this.economy.load();
+      this.ui.showTitle(this.auth.getDisplayName());
+      this.state = STATE.TITLE;
+    } else {
+      this.ui.showLoginError(result.error);
+    }
+  }
+
+  _handleSignup(username, password, confirm) {
+    const result = this.auth.signup(username, password, confirm);
+    if (result.success) {
+      this.economy.setSaveKey(this.auth.getSaveKey());
+      this.ui.showTitle(this.auth.getDisplayName());
+      this.state = STATE.TITLE;
+    } else {
+      this.ui.showSignupError(result.error);
+    }
+  }
+
+  _handleLogout() {
+    this.auth.logout();
+    this.economy = new Economy();
+    this.ui.economy = this.economy;
+    this.winShown = false;
+    this.ui.showScreen('login');
+    this.state = STATE.AUTH;
   }
 
   // ─── State Transitions ───────────────────────
