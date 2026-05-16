@@ -10,7 +10,6 @@ const SESSION_KEY = 'garys_life_session';
 export class Auth {
   constructor() {
     this.currentUser = null;
-    this._loadSession();
   }
 
   _getUsers() {
@@ -23,18 +22,6 @@ export class Auth {
 
   _saveUsers(users) {
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
-  }
-
-  _loadSession() {
-    const session = localStorage.getItem(SESSION_KEY);
-    if (session) {
-      const users = this._getUsers();
-      if (users[session]) {
-        this.currentUser = session;
-      } else {
-        localStorage.removeItem(SESSION_KEY);
-      }
-    }
   }
 
   signup(username, password, confirmPassword) {
@@ -67,7 +54,6 @@ export class Auth {
 
     this._saveUsers(users);
     this.currentUser = userLower;
-    localStorage.setItem(SESSION_KEY, userLower);
     return { success: true };
   }
 
@@ -89,13 +75,11 @@ export class Auth {
     }
 
     this.currentUser = userLower;
-    localStorage.setItem(SESSION_KEY, userLower);
     return { success: true };
   }
 
   logout() {
     this.currentUser = null;
-    localStorage.removeItem(SESSION_KEY);
   }
 
   isLoggedIn() {

@@ -102,16 +102,8 @@ class Game {
 
     // ─── Initial state ─────────────────────
     this.sky.setPreset('backyard');
-
-    if (this.auth.isLoggedIn()) {
-      this.economy.setSaveKey(this.auth.getSaveKey());
-      this.economy.load();
-      this.ui.showTitle(this.auth.getDisplayName());
-      this.state = STATE.TITLE;
-    } else {
-      this.ui.showScreen('login');
-      this.state = STATE.AUTH;
-    }
+    this.ui.showScreen('login');
+    this.state = STATE.AUTH;
 
     // Start render loop
     this._animate();
