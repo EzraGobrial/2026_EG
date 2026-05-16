@@ -709,6 +709,126 @@ body {
   text-align: center;
 }
 
+/* ─── Results + Leaderboard Layout ──────────── */
+
+.results-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  max-width: 960px;
+  width: 95%;
+  max-height: 90vh;
+}
+
+.results-layout .results-panel {
+  flex: 1;
+  min-width: 0;
+}
+
+.results-layout .leaderboard-panel {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ─── Leaderboard Panel ────────────────────── */
+
+.leaderboard-panel {
+  text-align: center;
+}
+
+.leaderboard-columns {
+  display: flex;
+  gap: 0;
+}
+
+.leaderboard-col {
+  flex: 1;
+  min-width: 0;
+}
+
+.leaderboard-col-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--accent-gold);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.leaderboard-divider {
+  width: 1px;
+  background: var(--border-color);
+  margin: 0 12px;
+  align-self: stretch;
+}
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lb-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-card);
+  transition: background 0.2s ease;
+}
+
+.lb-entry.lb-you {
+  background: rgba(212, 168, 83, 0.15);
+  border: 1px solid rgba(212, 168, 83, 0.25);
+}
+
+.lb-rank {
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--text-muted);
+  width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.lb-entry:nth-child(1) .lb-rank { color: #f0c556; }
+.lb-entry:nth-child(2) .lb-rank { color: #c0c0c0; }
+.lb-entry:nth-child(3) .lb-rank { color: #cd7f32; }
+
+.lb-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lb-money {
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--accent-gold);
+  flex-shrink: 0;
+}
+
+.lb-empty {
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 16px 0;
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .results-layout {
+    flex-direction: column;
+  }
+}
+
 /* ═══════════════════════════════════════════════
    Shop Screen
    ═══════════════════════════════════════════════ */

@@ -3,7 +3,7 @@
 // Menu screens: title, morning, results, shop, sleep, win
 // ═══════════════════════════════════════════════
 
-import { BIRDS, RARITY_COLORS, LOCATIONS, WEAPONS } from './economy.js';
+import { Economy, BIRDS, RARITY_COLORS, LOCATIONS, WEAPONS } from './economy.js';
 
 export class UI {
   constructor(economy, audio) {
@@ -203,7 +203,7 @@ export class UI {
 
   // ─── Results Screen ─────────────────────────
 
-  showResults(huntBag) {
+  showResults(huntBag, displayName) {
     const summary = document.getElementById('results-summary');
     summary.innerHTML = '';
 
@@ -240,13 +240,64 @@ export class UI {
 
     document.getElementById('results-total-money').textContent = `$${total}`;
     this.economy.money += total;
+    this.economy.totalMoneyEarned += total;
     this.economy.huntBag = [];
+
+    // Update leaderboard
+    if (displayName) {
+      this.economy.updateLeaderboard(displayName);
+    }
+
+    // Render leaderboard
+    this._renderLeaderboard(displayName);
 
     this.showScreen('results');
 
     if (total > 0) {
       this.audio.playCashRegister();
     }
+  }
+
+  _renderLeaderboard(currentUser) {
+    const { byCurrentMoney, byTotalEarned } = Economy.getLeaderboard();
+
+    const totalEl = document.getElementById('lb-total-earned');
+    const currentEl = document.getElementById('lb-current-money');
+
+    totalEl.innerHTML = '';
+    currentEl.innerHTML = '';
+
+    if (byTotalEarned.length === 0) {
+      totalEl.innerHTML = '<div class="lb-empty">No players yet</div>';
+      currentEl.innerHTML = '<div class="lb-empty">No players yet</div>';
+      return;
+    }
+
+    // Total earned column
+    byTotalEarned.forEach((entry, i) => {
+      const isYou = currentUser && entry.name.toLowerCase() === currentUser.toLowerCase();
+      const div = document.createElement('div');
+      div.className = `lb-entry${isYou ? ' lb-you' : ''}`;
+      div.innerHTML = `
+        <span class="lb-rank">${i + 1}</span>
+        <span class="lb-name">${entry.name}${isYou ? ' (you)' : ''}</span>
+        <span class="lb-money">$${entry.totalEarned.toLocaleString()}</span>
+      `;
+      totalEl.appendChild(div);
+    });
+
+    // Current money column
+    byCurrentMoney.forEach((entry, i) => {
+      const isYou = currentUser && entry.name.toLowerCase() === currentUser.toLowerCase();
+      const div = document.createElement('div');
+      div.className = `lb-entry${isYou ? ' lb-you' : ''}`;
+      div.innerHTML = `
+        <span class="lb-rank">${i + 1}</span>
+        <span class="lb-name">${entry.name}${isYou ? ' (you)' : ''}</span>
+        <span class="lb-money">$${entry.currentMoney.toLocaleString()}</span>
+      `;
+      currentEl.appendChild(div);
+    });
   }
 
   // ─── Shop Screen ────────────────────────────

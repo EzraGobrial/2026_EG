@@ -122,15 +122,34 @@
 
   <!-- Results Screen -->
   <div id="screen-results" class="screen hidden">
-    <div class="panel results-panel">
-      <h2 class="panel-title">Hunt Complete!</h2>
-      <div id="results-summary" class="results-summary"></div>
-      <div class="results-total">
-        <span>Total Earned:</span>
-        <span id="results-total-money" class="results-money">$0</span>
+    <div class="results-layout">
+      <!-- Hunt Results (left side) -->
+      <div class="panel results-panel">
+        <h2 class="panel-title">Hunt Complete!</h2>
+        <div id="results-summary" class="results-summary"></div>
+        <div class="results-total">
+          <span>Total Earned:</span>
+          <span id="results-total-money" class="results-money">$0</span>
+        </div>
+        <button id="btn-to-shop" class="btn btn-primary">Visit Shop</button>
+        <button id="btn-skip-shop" class="btn btn-secondary">Skip to Sleep</button>
       </div>
-      <button id="btn-to-shop" class="btn btn-primary">Visit Shop</button>
-      <button id="btn-skip-shop" class="btn btn-secondary">Skip to Sleep</button>
+
+      <!-- Leaderboard (right side) -->
+      <div class="panel leaderboard-panel">
+        <h2 class="panel-title">Leaderboard</h2>
+        <div class="leaderboard-columns">
+          <div class="leaderboard-col">
+            <h3 class="leaderboard-col-title">Total Earned</h3>
+            <div id="lb-total-earned" class="leaderboard-list"></div>
+          </div>
+          <div class="leaderboard-divider"></div>
+          <div class="leaderboard-col">
+            <h3 class="leaderboard-col-title">Current Money</h3>
+            <div id="lb-current-money" class="leaderboard-list"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 

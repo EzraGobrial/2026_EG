@@ -223,6 +223,7 @@ export class Economy {
     this.money = 0;
     this.day = 1;
     this.totalBirdsKilled = 0;
+    this.totalMoneyEarned = 0;
     this.currentWeapon = 'old_rifle';
     this.currentLocation = 'backyard';
     this.huntBag = [];
@@ -240,6 +241,7 @@ export class Economy {
       money: this.money,
       day: this.day,
       totalBirdsKilled: this.totalBirdsKilled,
+      totalMoneyEarned: this.totalMoneyEarned,
       currentWeapon: this.currentWeapon,
       currentLocation: this.currentLocation,
       weaponOwned: {},
@@ -262,6 +264,7 @@ export class Economy {
       this.money = data.money || 0;
       this.day = data.day || 1;
       this.totalBirdsKilled = data.totalBirdsKilled || 0;
+      this.totalMoneyEarned = data.totalMoneyEarned || 0;
       this.currentWeapon = data.currentWeapon || 'old_rifle';
       this.currentLocation = data.currentLocation || 'backyard';
       if (data.weaponOwned) {
@@ -284,11 +287,51 @@ export class Economy {
     this.money = 0;
     this.day = 1;
     this.totalBirdsKilled = 0;
+    this.totalMoneyEarned = 0;
     this.currentWeapon = 'old_rifle';
     this.currentLocation = 'backyard';
     this.weapons = JSON.parse(JSON.stringify(WEAPONS));
     this.locations = JSON.parse(JSON.stringify(LOCATIONS));
     this.huntBag = [];
+  }
+
+  /**
+   * Update the shared leaderboard with current user's stats
+   */
+  updateLeaderboard(displayName) {
+    try {
+      const lb = JSON.parse(localStorage.getItem('garys_life_leaderboard') || '{}');
+      lb[displayName] = {
+        currentMoney: this.money,
+        totalEarned: this.totalMoneyEarned,
+        day: this.day,
+        updatedAt: Date.now()
+      };
+      localStorage.setItem('garys_life_leaderboard', JSON.stringify(lb));
+    } catch (e) {
+      console.warn('Failed to update leaderboard:', e);
+    }
+  }
+
+  /**
+   * Get leaderboard data sorted for display
+   */
+  static getLeaderboard() {
+    try {
+      const lb = JSON.parse(localStorage.getItem('garys_life_leaderboard') || '{}');
+      const entries = Object.entries(lb).map(([name, data]) => ({
+        name,
+        currentMoney: data.currentMoney || 0,
+        totalEarned: data.totalEarned || 0,
+        day: data.day || 1
+      }));
+      return {
+        byCurrentMoney: [...entries].sort((a, b) => b.currentMoney - a.currentMoney),
+        byTotalEarned: [...entries].sort((a, b) => b.totalEarned - a.totalEarned)
+      };
+    } catch {
+      return { byCurrentMoney: [], byTotalEarned: [] };
+    }
   }
 
   getWeapon() {

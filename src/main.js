@@ -236,7 +236,7 @@ class Game {
     this.audio.stopAmbience();
 
     // Show results — the UI will handle adding money
-    this.ui.showResults(this.huntBag);
+    this.ui.showResults(this.huntBag, this.auth.getDisplayName());
   }
 
   _goToShop() {
