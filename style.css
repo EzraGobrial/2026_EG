@@ -301,6 +301,59 @@ body {
   100% { transform: translateY(-60px); opacity: 0; }
 }
 
+.money-popup.combo-boosted {
+  font-size: 32px;
+  color: #5aff5a;
+  text-shadow: 2px 2px 8px rgba(0,0,0,0.9), 0 0 12px rgba(90,255,90,0.3);
+}
+
+/* ─── Combo Display ─────────────────────────── */
+
+.combo-display {
+  position: fixed;
+  top: 25%;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+  z-index: 150;
+}
+
+.combo-count {
+  font-family: var(--font-display);
+  font-size: 28px;
+  color: var(--accent-gold-bright);
+  text-shadow: 2px 2px 6px rgba(0,0,0,0.9), 0 0 20px rgba(240,197,86,0.4);
+  letter-spacing: 3px;
+}
+
+.combo-mult {
+  font-family: var(--font-display);
+  font-size: 48px;
+  color: #5aff5a;
+  text-shadow: 2px 2px 8px rgba(0,0,0,0.9), 0 0 24px rgba(90,255,90,0.4);
+  line-height: 1;
+}
+
+.combo-pop {
+  animation: combo-pop-in 0.25s ease-out;
+}
+
+@keyframes combo-pop-in {
+  0% { transform: translateX(-50%) scale(1.5); opacity: 0.5; }
+  100% { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
+.combo-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: #5aff5a;
+  background: rgba(90,255,90,0.15);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+}
+
 /* ═══════════════════════════════════════════════
    Screens (Overlays)
    ═══════════════════════════════════════════════ */

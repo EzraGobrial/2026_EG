@@ -71,6 +71,14 @@ class Game {
     this.maxActiveBirds = 4;
     this.winShown = false;
 
+    // Combo system
+    this.comboCount = 0;
+    this.comboTimer = 0;
+    this.comboTimeout = 3; // seconds to keep combo alive
+
+    // Double-pump: per-weapon ammo tracking
+    this.weaponAmmo = {};
+
     // ─── Clock ─────────────────────────────
     this.clock = new THREE.Clock();
 
@@ -208,6 +216,11 @@ class Game {
     // Weapon slot click handler
     this.hud.onWeaponSlotClick = (key) => this._switchWeapon(key);
 
+    // Reset combo and double-pump state
+    this.comboCount = 0;
+    this.comboTimer = 0;
+    this.weaponAmmo = {};
+
     // Lock pointer
     this.player.lock();
 
@@ -252,6 +265,16 @@ class Game {
     });
   }
 
+  // ─── Combo System ───────────────────────────
+
+  _getComboMultiplier() {
+    if (this.comboCount <= 1) return 1;
+    if (this.comboCount === 2) return 1.5;
+    if (this.comboCount === 3) return 2;
+    if (this.comboCount === 4) return 2.5;
+    return Math.min(3 + (this.comboCount - 5) * 0.5, 5); // caps at 5x
+  }
+
   // ─── Input ─────────────────────────────────
 
   _onMouseDown(e) {
@@ -281,9 +304,11 @@ class Game {
     this.particles.spawnMuzzleFlash(barrelPos, dir);
 
     // Check hits
+    let hitSomething = false;
     for (const rc of raycasters) {
       const hit = this.birds.raycastHit(rc);
       if (hit) {
+        hitSomething = true;
         const { bird, point } = hit;
         const birdData = bird.data;
 
@@ -294,20 +319,39 @@ class Game {
         // Kill the bird
         this.birds.kill(bird);
 
-        // Add to bag
-        const fluctuation = 0.85 + Math.random() * 0.3;
-        const value = Math.round(birdData.value * fluctuation);
-        this.huntBag.push(bird.birdKey);
+        // Combo system — increase combo on hit
+        this.comboCount++;
+        this.comboTimer = this.comboTimeout;
+        const comboMultiplier = this._getComboMultiplier();
+
+        // Add to bag with combo info
+        this.huntBag.push({ key: bird.birdKey, combo: comboMultiplier });
         this.economy.totalBirdsKilled++;
 
-        // HUD feedback
+        // HUD feedback with combo
         const rarityColor = RARITY_COLORS[birdData.rarity] || '#aaa';
-        this.hud.addKill(birdData.name, value, rarityColor);
-        this.hud.showMoneyPopup(value);
+        const fluctuation = 0.85 + Math.random() * 0.3;
+        const value = Math.round(birdData.value * fluctuation);
+        this.hud.addKill(birdData.name, value, rarityColor, this.comboCount, comboMultiplier);
+        this.hud.showMoneyPopup(value, comboMultiplier);
         this.hud.showHitFlash();
+        this.hud.showCombo(this.comboCount, comboMultiplier);
 
-        break; // One hit per shot (even for shotgun pellets hitting same bird)
+        break; // One hit per shot
       }
+    }
+
+    // No reload on hit — only reload on miss
+    if (hitSomething) {
+      // Refund the bullet (skip reload)
+      this.weapons.ammo = Math.min(this.weapons.ammo + 1, this.weapons.maxAmmo);
+      this.weapons.isReloading = false;
+      this.weapons.canShoot = true;
+    } else {
+      // Missed — reset combo
+      this.comboCount = 0;
+      this.comboTimer = 0;
+      this.hud.hideCombo();
     }
 
     // Startle nearby birds
@@ -315,6 +359,9 @@ class Game {
 
     // Update ammo display
     this.hud.setAmmo(this.weapons.ammo, this.weapons.maxAmmo);
+
+    // Save current weapon ammo for double-pump
+    this.weaponAmmo[this.economy.currentWeapon] = this.weapons.ammo;
   }
 
   // ─── Resize ────────────────────────────────
@@ -351,6 +398,16 @@ class Game {
     if (this.huntTimer <= 0) {
       this._endHunt();
       return;
+    }
+
+    // Combo timer decay
+    if (this.comboTimer > 0) {
+      this.comboTimer -= dt;
+      if (this.comboTimer <= 0) {
+        this.comboCount = 0;
+        this.comboTimer = 0;
+        this.hud.hideCombo();
+      }
     }
 
     // Player movement
@@ -406,9 +463,23 @@ class Game {
     if (weaponKey === this.economy.currentWeapon) return;
     if (!this.economy.weapons[weaponKey] || !this.economy.weapons[weaponKey].owned) return;
 
+    // Save current weapon's ammo before switching
+    this.weaponAmmo[this.economy.currentWeapon] = this.weapons.ammo;
+
     this.economy.selectWeapon(weaponKey);
     const weaponData = this.economy.getWeapon();
     this.weapons.equipWeapon(weaponKey, weaponData);
+
+    // Double-pump: restore saved ammo or full ammo (no reload penalty)
+    if (this.weaponAmmo[weaponKey] !== undefined) {
+      this.weapons.ammo = this.weaponAmmo[weaponKey];
+    } else {
+      this.weapons.ammo = weaponData.ammo;
+    }
+    this.weapons.isReloading = false;
+    this.weapons.canShoot = true;
+    this.weapons.fireCooldown = 0.15; // tiny swap delay
+
     this.hud.setWeaponName(weaponData.name);
     this.hud.setAmmo(this.weapons.ammo, this.weapons.maxAmmo);
     this.hud.setCrosshairForWeapon(weaponData);

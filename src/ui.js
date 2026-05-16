@@ -210,10 +210,13 @@ export class UI {
     let total = 0;
     const counts = {};
 
-    for (const key of huntBag) {
+    for (const entry of huntBag) {
+      const key = typeof entry === 'string' ? entry : entry.key;
+      const combo = typeof entry === 'string' ? 1 : (entry.combo || 1);
       if (!counts[key]) counts[key] = { count: 0, totalValue: 0 };
       const fluctuation = 0.85 + Math.random() * 0.3;
-      const value = Math.round(BIRDS[key].value * fluctuation);
+      const baseValue = Math.round(BIRDS[key].value * fluctuation);
+      const value = Math.round(baseValue * combo);
       counts[key].count++;
       counts[key].totalValue += value;
       total += value;

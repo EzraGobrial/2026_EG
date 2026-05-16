@@ -22,7 +22,13 @@ export class HUD {
     this.weaponSlotsEl = document.getElementById('weapon-slots');
 
     this.killEntries = [];
-    this.onWeaponSlotClick = null; // callback set by main.js
+    this.onWeaponSlotClick = null;
+
+    // Combo display
+    this.comboEl = document.createElement('div');
+    this.comboEl.id = 'combo-display';
+    this.comboEl.className = 'combo-display hidden';
+    document.body.appendChild(this.comboEl);
   }
 
   show() {
@@ -122,14 +128,17 @@ export class HUD {
   /**
    * Add a kill to the feed
    */
-  addKill(birdName, value, color) {
+  addKill(birdName, value, color, comboCount, comboMultiplier) {
     const entry = document.createElement('div');
     entry.className = 'kill-entry';
-    entry.innerHTML = `<span style="color:${color}">${birdName}</span> — $${value}`;
+    let text = `<span style="color:${color}">${birdName}</span> — $${value}`;
+    if (comboCount > 1) {
+      text += ` <span class="combo-tag">x${comboMultiplier} COMBO</span>`;
+    }
+    entry.innerHTML = text;
     this.killFeed.appendChild(entry);
     this.killEntries.push(entry);
 
-    // Remove old entries after 4 seconds
     setTimeout(() => {
       entry.classList.add('fade-out');
       setTimeout(() => {
@@ -139,7 +148,6 @@ export class HUD {
       }, 500);
     }, 4000);
 
-    // Keep max 5 visible
     while (this.killEntries.length > 5) {
       const old = this.killEntries.shift();
       if (old.parentNode) old.parentNode.removeChild(old);
@@ -149,10 +157,16 @@ export class HUD {
   /**
    * Floating +$X popup at screen position
    */
-  showMoneyPopup(value) {
+  showMoneyPopup(value, comboMultiplier) {
+    const boostedValue = comboMultiplier > 1 ? Math.round(value * comboMultiplier) : value;
     const popup = document.createElement('div');
     popup.className = 'money-popup';
-    popup.textContent = `+$${value}`;
+    if (comboMultiplier > 1) {
+      popup.textContent = `+$${boostedValue}`;
+      popup.classList.add('combo-boosted');
+    } else {
+      popup.textContent = `+$${value}`;
+    }
     popup.style.left = `${window.innerWidth / 2 + (Math.random() - 0.5) * 80}px`;
     popup.style.top = `${window.innerHeight / 2 - 30 + (Math.random() - 0.5) * 40}px`;
     this.moneyPopupContainer.appendChild(popup);
@@ -172,6 +186,26 @@ export class HUD {
     setTimeout(() => {
       if (flash.parentNode) flash.parentNode.removeChild(flash);
     }, 150);
+  }
+
+  showCombo(count, multiplier) {
+    if (count < 2) {
+      this.hideCombo();
+      return;
+    }
+    this.comboEl.classList.remove('hidden');
+    this.comboEl.innerHTML = `
+      <div class="combo-count">${count} HIT COMBO</div>
+      <div class="combo-mult">x${multiplier}</div>
+    `;
+    // Pop animation
+    this.comboEl.classList.remove('combo-pop');
+    void this.comboEl.offsetWidth; // force reflow
+    this.comboEl.classList.add('combo-pop');
+  }
+
+  hideCombo() {
+    this.comboEl.classList.add('hidden');
   }
 
   /**
