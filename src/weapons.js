@@ -280,16 +280,7 @@ export class WeaponSystem {
         rc.ray.direction.add(s).normalize();
         casters.push(rc);
       }
-      // Auto-reload if out of ammo
-      if (this.ammo <= 0) {
-        this.startReload();
-      }
       return casters;
-    }
-
-    // Auto-reload if out of ammo
-    if (this.ammo <= 0) {
-      this.startReload();
     }
 
     return [this.raycaster];

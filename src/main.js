@@ -352,6 +352,10 @@ class Game {
       this.comboCount = 0;
       this.comboTimer = 0;
       this.hud.hideCombo();
+      // Start reload if out of ammo
+      if (this.weapons.ammo <= 0) {
+        this.weapons.startReload();
+      }
     }
 
     // Startle nearby birds
@@ -463,19 +467,12 @@ class Game {
     if (weaponKey === this.economy.currentWeapon) return;
     if (!this.economy.weapons[weaponKey] || !this.economy.weapons[weaponKey].owned) return;
 
-    // Save current weapon's ammo before switching
-    this.weaponAmmo[this.economy.currentWeapon] = this.weapons.ammo;
-
     this.economy.selectWeapon(weaponKey);
     const weaponData = this.economy.getWeapon();
     this.weapons.equipWeapon(weaponKey, weaponData);
 
-    // Double-pump: restore saved ammo or full ammo (no reload penalty)
-    if (this.weaponAmmo[weaponKey] !== undefined) {
-      this.weapons.ammo = this.weaponAmmo[weaponKey];
-    } else {
-      this.weapons.ammo = weaponData.ammo;
-    }
+    // Double-pump: always full ammo, no reload, ready to fire
+    this.weapons.ammo = weaponData.ammo;
     this.weapons.isReloading = false;
     this.weapons.canShoot = true;
     this.weapons.fireCooldown = 0.15; // tiny swap delay
