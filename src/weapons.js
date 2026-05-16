@@ -243,12 +243,9 @@ export class WeaponSystem {
    * Try to fire. Returns raycaster if successful, null if not.
    */
   shoot() {
-    if (!this.canShoot || this.isReloading || this.ammo <= 0 || this.fireCooldown > 0) {
+    if (!this.canShoot || this.isReloading) {
       return null;
     }
-
-    this.ammo--;
-    this.fireCooldown = this.weaponData.fireRate;
 
     // Recoil kick
     this.recoilAmount = 1.0;

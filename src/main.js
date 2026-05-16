@@ -341,19 +341,15 @@ class Game {
       }
     }
 
-    // No reload on hit — only reload on miss
+    // Hit = keep shooting (ammo untouched). Miss = lose a bullet.
     if (hitSomething) {
-      // Refund the bullet and reset cooldown — ready to fire again immediately
-      this.weapons.ammo = Math.min(this.weapons.ammo + 1, this.weapons.maxAmmo);
-      this.weapons.isReloading = false;
-      this.weapons.canShoot = true;
-      this.weapons.fireCooldown = 0;
+      // Nothing to do — ammo stays full, gun stays ready
     } else {
-      // Missed — reset combo
+      // Missed — reset combo, lose ammo
       this.comboCount = 0;
       this.comboTimer = 0;
       this.hud.hideCombo();
-      // Start reload if out of ammo
+      this.weapons.ammo--;
       if (this.weapons.ammo <= 0) {
         this.weapons.startReload();
       }
@@ -364,9 +360,6 @@ class Game {
 
     // Update ammo display
     this.hud.setAmmo(this.weapons.ammo, this.weapons.maxAmmo);
-
-    // Save current weapon ammo for double-pump
-    this.weaponAmmo[this.economy.currentWeapon] = this.weapons.ammo;
   }
 
   // ─── Resize ────────────────────────────────
