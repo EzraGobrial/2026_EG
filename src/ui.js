@@ -18,6 +18,7 @@ export class UI {
       morning: document.getElementById('screen-morning'),
       results: document.getElementById('screen-results'),
       shop: document.getElementById('screen-shop'),
+      locker: document.getElementById('screen-locker'),
       sleep: document.getElementById('screen-sleep'),
       win: document.getElementById('screen-win')
     };
@@ -26,6 +27,8 @@ export class UI {
     this.onStartGame = null;
     this.onStartHunt = null;
     this.onGoToShop = null;
+    this.onGoToLocker = null;
+    this.onLockerBack = null;
     this.onSkipToSleep = null;
     this.onSleep = null;
     this.onContinueAfterWin = null;
@@ -36,6 +39,7 @@ export class UI {
 
     this._bindButtons();
     this._bindAuth();
+    this._bindLocker();
   }
 
   _bindButtons() {
@@ -52,6 +56,11 @@ export class UI {
     document.getElementById('btn-to-shop').addEventListener('click', () => {
       this.audio.playUIClick();
       if (this.onGoToShop) this.onGoToShop();
+    });
+
+    document.getElementById('btn-to-locker').addEventListener('click', () => {
+      this.audio.playUIClick();
+      if (this.onGoToLocker) this.onGoToLocker();
     });
 
     document.getElementById('btn-skip-shop').addEventListener('click', () => {
@@ -283,7 +292,7 @@ export class UI {
       div.className = `lb-entry${isYou ? ' lb-you' : ''}`;
       div.innerHTML = `
         <span class="lb-rank">${i + 1}</span>
-        <span class="lb-name">${entry.name}${isYou ? ' (you)' : ''}</span>
+        <span class="lb-name">${entry.name}${entry.tag ? ' <span class="og-badge">OG</span>' : ''}${isYou ? ' (you)' : ''}</span>
         <span class="lb-money">$${entry.totalEarned.toLocaleString()}</span>
       `;
       totalEl.appendChild(div);
@@ -296,7 +305,7 @@ export class UI {
       div.className = `lb-entry${isYou ? ' lb-you' : ''}`;
       div.innerHTML = `
         <span class="lb-rank">${i + 1}</span>
-        <span class="lb-name">${entry.name}${isYou ? ' (you)' : ''}</span>
+        <span class="lb-name">${entry.name}${entry.tag ? ' <span class="og-badge">OG</span>' : ''}${isYou ? ' (you)' : ''}</span>
         <span class="lb-money">$${entry.currentMoney.toLocaleString()}</span>
       `;
       currentEl.appendChild(div);
@@ -423,5 +432,73 @@ export class UI {
     document.getElementById('win-days').textContent = eco.day;
     document.getElementById('win-birds').textContent = eco.totalBirdsKilled;
     this.showScreen('win');
+  }
+
+  // ─── Locker Screen ─────────────────────────
+
+  _bindLocker() {
+    // Tab switching
+    document.querySelectorAll('.locker-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.locker-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        this._renderLockerTab(tab.dataset.tab);
+      });
+    });
+
+    // Back button
+    document.getElementById('btn-locker-back').addEventListener('click', () => {
+      this.audio.playUIClick();
+      if (this.onLockerBack) this.onLockerBack();
+    });
+  }
+
+  showLocker() {
+    // Reset to tags tab
+    document.querySelectorAll('.locker-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector('.locker-tab[data-tab="tags"]').classList.add('active');
+    this._renderLockerTab('tags');
+    this.showScreen('locker');
+  }
+
+  _renderLockerTab(tab) {
+    const content = document.getElementById('locker-content');
+    const eco = this.economy;
+
+    if (tab === 'tags') {
+      content.innerHTML = '';
+      const grid = document.createElement('div');
+      grid.className = 'locker-items';
+
+      // OG Tag
+      if (eco.inventory && eco.inventory.tags && eco.inventory.tags.includes('og')) {
+        const isEquipped = eco.equipped && eco.equipped.tag === 'og';
+        const item = document.createElement('div');
+        item.className = `locker-item${isEquipped ? ' equipped' : ''}`;
+        item.innerHTML = `
+          <div class="locker-item-icon">⭐</div>
+          <div class="locker-item-name">OG Tag</div>
+          <div class="locker-item-desc">Played in the first 30 days</div>
+          <button class="btn ${isEquipped ? 'btn-secondary' : 'btn-primary'}">${isEquipped ? 'Unequip' : 'Equip'}</button>
+        `;
+        item.querySelector('.btn').addEventListener('click', () => {
+          if (isEquipped) {
+            eco.equipped.tag = null;
+          } else {
+            eco.equipped.tag = 'og';
+          }
+          eco.save();
+          this._renderLockerTab('tags');
+        });
+        grid.appendChild(item);
+      } else {
+        content.innerHTML = '<div class="locker-coming-soon">No tags earned yet</div>';
+        return;
+      }
+
+      content.appendChild(grid);
+    } else {
+      content.innerHTML = `<div class="locker-coming-soon">Coming Soon</div>`;
+    }
   }
 }

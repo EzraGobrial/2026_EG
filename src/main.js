@@ -24,6 +24,7 @@ const STATE = {
   HUNTING: 'HUNTING',
   RESULTS: 'RESULTS',
   SHOP: 'SHOP',
+  LOCKER: 'LOCKER',
   SLEEP: 'SLEEP',
   WIN: 'WIN'
 };
@@ -96,6 +97,14 @@ class Game {
     this.ui.onStartGame = () => this._startGame();
     this.ui.onStartHunt = () => this._startHunt();
     this.ui.onGoToShop = () => this._goToShop();
+    this.ui.onGoToLocker = () => {
+      this.ui.showLocker();
+      this.state = STATE.LOCKER;
+    };
+    this.ui.onLockerBack = () => {
+      this.ui.showScreen('results');
+      this.state = STATE.RESULTS;
+    };
     this.ui.onSkipToSleep = () => this._goToSleep();
     this.ui.onSleep = () => this._goToSleep();
     this.ui.onContinueAfterWin = () => {
@@ -125,6 +134,7 @@ class Game {
       this.economy.setSaveKey(this.auth.getSaveKey());
       this.economy.setDisplayName(this.auth.getDisplayName());
       this.economy.load();
+      this._grantOGTag();
       this.economy.updateLeaderboard(this.auth.getDisplayName());
       this.ui.showTitle(this.auth.getDisplayName());
       this.state = STATE.TITLE;
@@ -138,11 +148,22 @@ class Game {
     if (result.success) {
       this.economy.setSaveKey(this.auth.getSaveKey());
       this.economy.setDisplayName(this.auth.getDisplayName());
+      this._grantOGTag();
       this.economy.updateLeaderboard(this.auth.getDisplayName());
       this.ui.showTitle(this.auth.getDisplayName());
       this.state = STATE.TITLE;
     } else {
       this.ui.showSignupError(result.error);
+    }
+  }
+
+  _grantOGTag() {
+    // For testing: give OG tag to everyone who logs in
+    // TODO: Later, check if within first 30 days of game launch
+    if (!this.economy.inventory) this.economy.inventory = { tags: [] };
+    if (!this.economy.inventory.tags.includes('og')) {
+      this.economy.inventory.tags.push('og');
+      this.economy.save();
     }
   }
 

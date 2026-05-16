@@ -227,6 +227,8 @@ export class Economy {
     this.currentWeapon = 'old_rifle';
     this.currentLocation = 'backyard';
     this.huntBag = [];
+    this.inventory = { tags: [] };
+    this.equipped = { tag: null };
     this.weapons = JSON.parse(JSON.stringify(WEAPONS));
     this.locations = JSON.parse(JSON.stringify(LOCATIONS));
     this.load();
@@ -248,6 +250,8 @@ export class Economy {
       totalMoneyEarned: this.totalMoneyEarned,
       currentWeapon: this.currentWeapon,
       currentLocation: this.currentLocation,
+      inventory: this.inventory,
+      equipped: this.equipped,
       weaponOwned: {},
       locationUnlocked: {}
     };
@@ -278,6 +282,8 @@ export class Economy {
       }
       this.currentWeapon = data.currentWeapon || 'old_rifle';
       this.currentLocation = data.currentLocation || 'backyard';
+      this.inventory = data.inventory || { tags: [] };
+      this.equipped = data.equipped || { tag: null };
       if (data.weaponOwned) {
         for (const [k, v] of Object.entries(data.weaponOwned)) {
           if (this.weapons[k]) this.weapons[k].owned = v;
@@ -316,6 +322,7 @@ export class Economy {
         currentMoney: this.money,
         totalEarned: this.totalMoneyEarned,
         day: this.day,
+        tag: this.equipped && this.equipped.tag ? this.equipped.tag : null,
         updatedAt: Date.now()
       };
       localStorage.setItem('garys_life_leaderboard', JSON.stringify(lb));
@@ -334,7 +341,8 @@ export class Economy {
         name,
         currentMoney: data.currentMoney || 0,
         totalEarned: data.totalEarned || 0,
-        day: data.day || 1
+        day: data.day || 1,
+        tag: data.tag || null
       }));
       return {
         byCurrentMoney: [...entries].sort((a, b) => b.currentMoney - a.currentMoney),
