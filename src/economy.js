@@ -273,6 +273,9 @@ export class Economy {
       this.day = data.day || 1;
       this.totalBirdsKilled = data.totalBirdsKilled || 0;
       this.totalMoneyEarned = data.totalMoneyEarned || 0;
+      if (this.totalMoneyEarned < this.money) {
+        this.totalMoneyEarned = this.money;
+      }
       this.currentWeapon = data.currentWeapon || 'old_rifle';
       this.currentLocation = data.currentLocation || 'backyard';
       if (data.weaponOwned) {
