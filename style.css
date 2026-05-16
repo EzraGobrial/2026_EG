@@ -762,6 +762,10 @@ body {
   text-align: center;
 }
 
+.results-panel .btn {
+  margin-top: 10px;
+}
+
 /* ─── Results + Leaderboard Layout ──────────── */
 
 .results-layout {
