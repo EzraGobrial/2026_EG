@@ -343,10 +343,11 @@ class Game {
 
     // No reload on hit — only reload on miss
     if (hitSomething) {
-      // Refund the bullet (skip reload)
+      // Refund the bullet and reset cooldown — ready to fire again immediately
       this.weapons.ammo = Math.min(this.weapons.ammo + 1, this.weapons.maxAmmo);
       this.weapons.isReloading = false;
       this.weapons.canShoot = true;
+      this.weapons.fireCooldown = 0;
     } else {
       // Missed — reset combo
       this.comboCount = 0;
@@ -475,7 +476,7 @@ class Game {
     this.weapons.ammo = weaponData.ammo;
     this.weapons.isReloading = false;
     this.weapons.canShoot = true;
-    this.weapons.fireCooldown = 0.15; // tiny swap delay
+    this.weapons.fireCooldown = 0; // instant ready — double pump
 
     this.hud.setWeaponName(weaponData.name);
     this.hud.setAmmo(this.weapons.ammo, this.weapons.maxAmmo);
