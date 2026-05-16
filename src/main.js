@@ -123,7 +123,9 @@ class Game {
     const result = this.auth.login(username, password);
     if (result.success) {
       this.economy.setSaveKey(this.auth.getSaveKey());
+      this.economy.setDisplayName(this.auth.getDisplayName());
       this.economy.load();
+      this.economy.updateLeaderboard(this.auth.getDisplayName());
       this.ui.showTitle(this.auth.getDisplayName());
       this.state = STATE.TITLE;
     } else {
@@ -135,6 +137,8 @@ class Game {
     const result = this.auth.signup(username, password, confirm);
     if (result.success) {
       this.economy.setSaveKey(this.auth.getSaveKey());
+      this.economy.setDisplayName(this.auth.getDisplayName());
+      this.economy.updateLeaderboard(this.auth.getDisplayName());
       this.ui.showTitle(this.auth.getDisplayName());
       this.state = STATE.TITLE;
     } else {

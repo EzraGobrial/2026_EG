@@ -236,6 +236,10 @@ export class Economy {
     this.saveKey = key;
   }
 
+  setDisplayName(name) {
+    this.displayName = name;
+  }
+
   save() {
     const data = {
       money: this.money,
@@ -254,6 +258,10 @@ export class Economy {
       data.locationUnlocked[k] = l.unlocked;
     }
     localStorage.setItem(this.saveKey, JSON.stringify(data));
+    // Auto-update leaderboard on every save
+    if (this.displayName) {
+      this.updateLeaderboard(this.displayName);
+    }
   }
 
   load() {
