@@ -15,12 +15,12 @@ export const STORY_PHASES = {
 
 // Dialogue lines triggered by Z position on the trail (player moves in -Z direction)
 export const TRAIL_DIALOGUE = [
-  { z:   0, text: "Come on Biscuit. It's not that far." },
+  { z:   0, text: "Come on Bunny. It's not that far." },
   { z: -20, text: "I know, I know — I forgot the ammo. We're not hunting today. Just walking." },
   { z: -40, text: "Mr. Crane said Lucky Lake is just past the old fence line. 'Everything works out there,' he told me." },
   { z: -58, text: "How'd you even get shot, huh? You were just in the backyard." },
   { z: -76, text: "I'm sorry I didn't find out who did it. Dad would've known what to do." },
-  { z: -95, text: "Biscuit... I think this is it. This is where the lake's supposed to be." },
+  { z: -95, text: "Bunny... I think this is it. This is where the lake's supposed to be." },
   { z:-112, text: "There's no lake. Of course there's no lake. Come on, let's go home." },
   { z:-124, text: "...Wait. What's that over there?" },
 ];

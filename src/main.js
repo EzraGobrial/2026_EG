@@ -241,7 +241,7 @@ class Game {
 
     // Build trail
     this.trailWorld = new TrailWorld(this.scene, this.renderer);
-    const { gary, biscuit } = this.trailWorld.spawnCharacters();
+    const { gary, bunny } = this.trailWorld.spawnCharacters();
 
     // Position camera behind Gary (third-person)
     this.camera.position.set(0, 2.8, 4);
@@ -253,7 +253,7 @@ class Game {
     this.player.lock();
 
     // Show first dialogue
-    this.ui.showSpeechBubble('Come on Biscuit. It\'s not that far.');
+    this.ui.showSpeechBubble('Come on Bunny. It\'s not that far.');
     this.speechTimer = 3;
   }
 
@@ -288,13 +288,13 @@ class Game {
     // Clamp to corridor
     this.trailWorld.clampPlayer(gary.position);
 
-    // Biscuit follows Gary
-    if (this.trailWorld.biscuit) {
-      const followDir = gary.position.clone().sub(this.trailWorld.biscuit.position);
+    // Bunny follows Gary
+    if (this.trailWorld.bunny) {
+      const followDir = gary.position.clone().sub(this.trailWorld.bunny.position);
       if (followDir.length() > 2) {
         followDir.normalize().multiplyScalar(speed * 0.85);
-        this.trailWorld.biscuit.position.add(followDir);
-        this.trailWorld.biscuit.rotation.y = gary.rotation.y;
+        this.trailWorld.bunny.position.add(followDir);
+        this.trailWorld.bunny.rotation.y = gary.rotation.y;
       }
     }
 

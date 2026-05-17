@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════
 // Gary's Life — Trail World
 // High-quality forest trail for Lucky Lake quest
-// Third-person camera, Biscuit cat, invisible walls
+// Third-person camera, Bunny cat, invisible walls
 // ═══════════════════════════════════════════════
 
 import * as THREE from 'three';
@@ -68,9 +68,9 @@ function buildRock(x, y, z, s = 1) {
   return mesh;
 }
 
-// ─── Biscuit Cat ─────────────────────────────
+// ─── Bunny Cat ─────────────────────────────
 
-function buildBiscuit() {
+function buildBunny() {
   const g = new THREE.Group();
   const fur = makeMat(0xc8a060, 0.85); // warm orange tabby
   const darkFur = makeMat(0x7a5030, 0.85);
@@ -402,16 +402,16 @@ export class TrailWorld {
     return g;
   }
 
-  // ─── Gary + Biscuit ──────────────────────────
+  // ─── Gary + Bunny ──────────────────────────
 
   spawnCharacters() {
     this.gary   = buildGary();
-    this.biscuit = buildBiscuit();
+    this.bunny = buildBunny();
     this.gary.position.set(0, 0, 0);
-    this.biscuit.position.set(0, 0, 1.8); // behind Gary
+    this.bunny.position.set(0, 0, 1.8); // behind Gary
     this.objects.add(this.gary);
-    this.objects.add(this.biscuit);
-    return { gary: this.gary, biscuit: this.biscuit };
+    this.objects.add(this.bunny);
+    return { gary: this.gary, bunny: this.bunny };
   }
 
   // ─── Animate Characters ───────────────────
@@ -428,10 +428,10 @@ export class TrailWorld {
     if (this.gary.leftLeg)  this.gary.leftLeg.rotation.x  = -swing;
     if (this.gary.rightLeg) this.gary.rightLeg.rotation.x  = swing;
 
-    // Biscuit: limping bob (hurt leg, slightly uneven)
-    if (this.biscuit) {
-      this.biscuit.position.y = isMoving ? Math.abs(Math.sin(t*5)) * 0.04 : 0;
-      this.biscuit.rotation.z = isMoving ? Math.sin(t*5) * 0.04 : 0;
+    // Bunny: limping bob (hurt leg, slightly uneven)
+    if (this.bunny) {
+      this.bunny.position.y = isMoving ? Math.abs(Math.sin(t*5)) * 0.04 : 0;
+      this.bunny.rotation.z = isMoving ? Math.sin(t*5) * 0.04 : 0;
     }
   }
 
