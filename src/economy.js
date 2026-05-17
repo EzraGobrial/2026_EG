@@ -1,7 +1,11 @@
 // ═══════════════════════════════════════════════
 // Gary's Life — Economy System
 // Bird data, weapon data, location data, wallet
+// Persistence via Firebase Firestore
 // ═══════════════════════════════════════════════
+
+import { doc, setDoc, getDoc, collection, getDocs } from 'firebase/firestore';
+import { db } from './firebase.js';
 
 export const BIRDS = {
   sparrow: {
@@ -219,7 +223,7 @@ export const WEAPONS = {
 
 export class Economy {
   constructor() {
-    this.saveKey = 'garys_life_save';
+    this.uid = null;
     this.money = 0;
     this.day = 1;
     this.totalBirdsKilled = 0;
@@ -231,11 +235,10 @@ export class Economy {
     this.equipped = { tag: null };
     this.weapons = JSON.parse(JSON.stringify(WEAPONS));
     this.locations = JSON.parse(JSON.stringify(LOCATIONS));
-    this.load();
   }
 
-  setSaveKey(key) {
-    this.saveKey = key;
+  setUid(uid) {
+    this.uid = uid;
   }
 
   setDisplayName(name) {
@@ -243,6 +246,7 @@ export class Economy {
   }
 
   save() {
+    if (!this.uid) return;
     const data = {
       money: this.money,
       day: this.day,
@@ -261,18 +265,20 @@ export class Economy {
     for (const [k, l] of Object.entries(this.locations)) {
       data.locationUnlocked[k] = l.unlocked;
     }
-    localStorage.setItem(this.saveKey, JSON.stringify(data));
+    // Fire-and-forget write to Firestore
+    setDoc(doc(db, 'saves', this.uid), data).catch(e => console.warn('Save failed:', e));
     // Auto-update leaderboard on every save
     if (this.displayName) {
       this.updateLeaderboard(this.displayName);
     }
   }
 
-  load() {
-    const raw = localStorage.getItem(this.saveKey);
-    if (!raw) return;
+  async load() {
+    if (!this.uid) return;
     try {
-      const data = JSON.parse(raw);
+      const snap = await getDoc(doc(db, 'saves', this.uid));
+      if (!snap.exists()) return;
+      const data = snap.data();
       this.money = data.money || 0;
       this.day = data.day || 1;
       this.totalBirdsKilled = data.totalBirdsKilled || 0;
@@ -300,7 +306,6 @@ export class Economy {
   }
 
   reset() {
-    localStorage.removeItem(this.saveKey);
     this.money = 0;
     this.day = 1;
     this.totalBirdsKilled = 0;
@@ -310,45 +315,50 @@ export class Economy {
     this.weapons = JSON.parse(JSON.stringify(WEAPONS));
     this.locations = JSON.parse(JSON.stringify(LOCATIONS));
     this.huntBag = [];
+    this.inventory = { tags: [] };
+    this.equipped = { tag: null };
+    this.save();
   }
 
   /**
    * Update the shared leaderboard with current user's stats
    */
   updateLeaderboard(displayName) {
-    try {
-      const lb = JSON.parse(localStorage.getItem('garys_life_leaderboard') || '{}');
-      lb[displayName] = {
-        currentMoney: this.money,
-        totalEarned: this.totalMoneyEarned,
-        day: this.day,
-        tag: this.equipped && this.equipped.tag ? this.equipped.tag : null,
-        updatedAt: Date.now()
-      };
-      localStorage.setItem('garys_life_leaderboard', JSON.stringify(lb));
-    } catch (e) {
-      console.warn('Failed to update leaderboard:', e);
-    }
+    if (!this.uid) return;
+    const data = {
+      name: displayName,
+      currentMoney: this.money,
+      totalEarned: this.totalMoneyEarned,
+      day: this.day,
+      tag: this.equipped && this.equipped.tag ? this.equipped.tag : null,
+      updatedAt: Date.now()
+    };
+    setDoc(doc(db, 'leaderboard', this.uid), data).catch(e => console.warn('Leaderboard update failed:', e));
   }
 
   /**
    * Get leaderboard data sorted for display
    */
-  static getLeaderboard() {
+  static async getLeaderboard() {
     try {
-      const lb = JSON.parse(localStorage.getItem('garys_life_leaderboard') || '{}');
-      const entries = Object.entries(lb).map(([name, data]) => ({
-        name,
-        currentMoney: data.currentMoney || 0,
-        totalEarned: data.totalEarned || 0,
-        day: data.day || 1,
-        tag: data.tag || null
-      }));
+      const snap = await getDocs(collection(db, 'leaderboard'));
+      const entries = [];
+      snap.forEach(d => {
+        const data = d.data();
+        entries.push({
+          name: data.name || 'Unknown',
+          currentMoney: data.currentMoney || 0,
+          totalEarned: data.totalEarned || 0,
+          day: data.day || 1,
+          tag: data.tag || null
+        });
+      });
       return {
         byCurrentMoney: [...entries].sort((a, b) => b.currentMoney - a.currentMoney),
         byTotalEarned: [...entries].sort((a, b) => b.totalEarned - a.totalEarned)
       };
-    } catch {
+    } catch (e) {
+      console.warn('Failed to read leaderboard:', e);
       return { byCurrentMoney: [], byTotalEarned: [] };
     }
   }

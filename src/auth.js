@@ -1,109 +1,85 @@
 // ═══════════════════════════════════════════════
-// Gary's Life — Auth System
-// Username/password auth with localStorage
-// Per-user game saves
+// Gary's Life — Auth System (Firebase)
+// Username/password auth with Firebase Auth
 // ═══════════════════════════════════════════════
 
-const USERS_KEY = 'garys_life_users';
-const SESSION_KEY = 'garys_life_session';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
+import { auth } from './firebase.js';
+
+// We convert usernames to fake emails: username@garyslife.app
+function usernameToEmail(username) {
+  return `${username.toLowerCase().replace(/\s+/g, '')}@garyslife.app`;
+}
 
 export class Auth {
   constructor() {
-    this.currentUser = null;
+    this.user = null;
   }
 
-  _getUsers() {
-    try {
-      return JSON.parse(localStorage.getItem(USERS_KEY)) || {};
-    } catch {
-      return {};
-    }
-  }
-
-  _saveUsers(users) {
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-  }
-
-  signup(username, password, confirmPassword) {
+  async signup(username, password, confirmPassword) {
     username = username.trim();
     if (!username || username.length < 2) {
       return { success: false, error: 'Username must be at least 2 characters' };
     }
-    if (!password || password.length < 3) {
-      return { success: false, error: 'Password must be at least 3 characters' };
+    if (username.length > 20) {
+      return { success: false, error: 'Username must be 20 characters or less' };
+    }
+    if (!password || password.length < 6) {
+      return { success: false, error: 'Password must be at least 6 characters' };
     }
     if (password !== confirmPassword) {
       return { success: false, error: 'Passwords do not match' };
     }
-    if (username.length > 20) {
-      return { success: false, error: 'Username must be 20 characters or less' };
+
+    const email = usernameToEmail(username);
+
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(cred.user, { displayName: username });
+      this.user = cred.user;
+      return { success: true };
+    } catch (e) {
+      if (e.code === 'auth/email-already-in-use') {
+        return { success: false, error: 'Username already taken' };
+      }
+      return { success: false, error: e.message };
     }
-
-    const users = this._getUsers();
-    const userLower = username.toLowerCase();
-
-    if (users[userLower]) {
-      return { success: false, error: 'Username already taken' };
-    }
-
-    users[userLower] = {
-      username: username,
-      password: this._simpleHash(password),
-      createdAt: Date.now()
-    };
-
-    this._saveUsers(users);
-    this.currentUser = userLower;
-    return { success: true };
   }
 
-  login(username, password) {
+  async login(username, password) {
     username = username.trim();
     if (!username || !password) {
       return { success: false, error: 'Please enter username and password' };
     }
 
-    const users = this._getUsers();
-    const userLower = username.toLowerCase();
-    const user = users[userLower];
+    const email = usernameToEmail(username);
 
-    if (!user) {
-      return { success: false, error: 'User not found' };
+    try {
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      this.user = cred.user;
+      return { success: true };
+    } catch (e) {
+      if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
+        return { success: false, error: 'Invalid username or password' };
+      }
+      return { success: false, error: e.message };
     }
-    if (user.password !== this._simpleHash(password)) {
-      return { success: false, error: 'Wrong password' };
-    }
-
-    this.currentUser = userLower;
-    return { success: true };
   }
 
-  logout() {
-    this.currentUser = null;
+  async logout() {
+    await signOut(auth);
+    this.user = null;
   }
 
   isLoggedIn() {
-    return this.currentUser !== null;
+    return this.user !== null;
   }
 
   getDisplayName() {
-    if (!this.currentUser) return 'Guest';
-    const users = this._getUsers();
-    return users[this.currentUser]?.username || this.currentUser;
+    return this.user?.displayName || 'Player';
   }
 
-  getSaveKey() {
-    if (!this.currentUser) return 'garys_life_save';
-    return `garys_life_save_${this.currentUser}`;
-  }
-
-  _simpleHash(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return hash.toString(36);
+  getUid() {
+    return this.user?.uid || null;
   }
 }

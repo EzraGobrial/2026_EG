@@ -128,12 +128,12 @@ class Game {
 
   // ─── Auth Handlers ───────────────────────────
 
-  _handleLogin(username, password) {
-    const result = this.auth.login(username, password);
+  async _handleLogin(username, password) {
+    const result = await this.auth.login(username, password);
     if (result.success) {
-      this.economy.setSaveKey(this.auth.getSaveKey());
+      this.economy.setUid(this.auth.getUid());
       this.economy.setDisplayName(this.auth.getDisplayName());
-      this.economy.load();
+      await this.economy.load();
       this._grantOGTag();
       this.economy.updateLeaderboard(this.auth.getDisplayName());
       this.ui.showTitle(this.auth.getDisplayName());
@@ -143,10 +143,10 @@ class Game {
     }
   }
 
-  _handleSignup(username, password, confirm) {
-    const result = this.auth.signup(username, password, confirm);
+  async _handleSignup(username, password, confirm) {
+    const result = await this.auth.signup(username, password, confirm);
     if (result.success) {
-      this.economy.setSaveKey(this.auth.getSaveKey());
+      this.economy.setUid(this.auth.getUid());
       this.economy.setDisplayName(this.auth.getDisplayName());
       this._grantOGTag();
       this.economy.updateLeaderboard(this.auth.getDisplayName());
@@ -167,8 +167,8 @@ class Game {
     }
   }
 
-  _handleLogout() {
-    this.auth.logout();
+  async _handleLogout() {
+    await this.auth.logout();
     this.economy = new Economy();
     this.ui.economy = this.economy;
     this.winShown = false;

@@ -260,7 +260,7 @@ export class UI {
       this.economy.updateLeaderboard(displayName);
     }
 
-    // Render leaderboard
+    // Render leaderboard (async from Firestore)
     this._renderLeaderboard(displayName);
 
     this.showScreen('results');
@@ -270,11 +270,14 @@ export class UI {
     }
   }
 
-  _renderLeaderboard(currentUser) {
-    const { byCurrentMoney, byTotalEarned } = Economy.getLeaderboard();
-
+  async _renderLeaderboard(currentUser) {
     const totalEl = document.getElementById('lb-total-earned');
     const currentEl = document.getElementById('lb-current-money');
+
+    totalEl.innerHTML = '<div class="lb-empty">Loading...</div>';
+    currentEl.innerHTML = '<div class="lb-empty">Loading...</div>';
+
+    const { byCurrentMoney, byTotalEarned } = await Economy.getLeaderboard();
 
     totalEl.innerHTML = '';
     currentEl.innerHTML = '';
