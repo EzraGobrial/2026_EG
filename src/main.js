@@ -15,18 +15,25 @@ import { WorldSystem } from './world.js';
 import { HUD } from './hud.js';
 import { UI } from './ui.js';
 import { Auth } from './auth.js';
+import { Story } from './story.js';
+import { TrailWorld } from './trail_world.js';
+import { ShedInterior } from './shed.js';
+import { BikeController } from './bike.js';
 
 // ─── Game States ─────────────────────────────
 const STATE = {
-  AUTH: 'AUTH',
-  TITLE: 'TITLE',
-  MORNING: 'MORNING',
-  HUNTING: 'HUNTING',
-  RESULTS: 'RESULTS',
-  SHOP: 'SHOP',
-  LOCKER: 'LOCKER',
-  SLEEP: 'SLEEP',
-  WIN: 'WIN'
+  AUTH:       'AUTH',
+  TITLE:      'TITLE',
+  MORNING:    'MORNING',
+  HUNTING:    'HUNTING',
+  RESULTS:    'RESULTS',
+  SHOP:       'SHOP',
+  LOCKER:     'LOCKER',
+  SLEEP:      'SLEEP',
+  WIN:        'WIN',
+  TRAIL_WALK: 'TRAIL_WALK',
+  SHED:       'SHED',
+  BIKE_RIDE:  'BIKE_RIDE'
 };
 
 class Game {
@@ -54,6 +61,7 @@ class Game {
     // ─── Systems ───────────────────────────
     this.auth = new Auth();
     this.economy = new Economy();
+    this.story = new Story();
     this.audio = new AudioSystem();
     this.sky = new SkySystem(this.scene);
     this.particles = new ParticleSystem(this.scene);
@@ -63,6 +71,15 @@ class Game {
     this.world = new WorldSystem(this.scene);
     this.hud = new HUD();
     this.ui = new UI(this.economy, this.audio);
+    this.ui._storyRef = this.story; // give UI access to story for quest shop
+
+    // Story-specific active systems (null when inactive)
+    this.trailWorld = null;
+    this.shedInterior = null;
+    this.bikeController = null;
+
+    // Speech bubble timing
+    this.speechTimer = 0;
 
     // ─── Hunt state ────────────────────────
     this.huntTimer = 60;
@@ -95,7 +112,14 @@ class Game {
 
     // ─── UI Callbacks ──────────────────────
     this.ui.onStartGame = () => this._startGame();
-    this.ui.onStartHunt = () => this._startHunt();
+    this.ui.onStartHunt = () => {
+      // If story quest is bought and it's morning, start trail walk instead
+      if (this.story.getPhase() === 'bought' || this.story.getPhase() === 'walking') {
+        this._startTrailWalk();
+      } else {
+        this._startHunt();
+      }
+    };
     this.ui.onGoToShop = () => this._goToShop();
     this.ui.onGoToLocker = () => {
       this.ui.showLocker();
@@ -134,6 +158,8 @@ class Game {
       this.economy.setUid(this.auth.getUid());
       this.economy.setDisplayName(this.auth.getDisplayName());
       await this.economy.load();
+      // Restore story state from cloud save
+      if (this.economy.story) this.story.deserialize(this.economy.story);
       this._grantOGTag();
       this.economy.updateLeaderboard(this.auth.getDisplayName());
       this.ui.showTitle(this.auth.getDisplayName());
@@ -196,6 +222,193 @@ class Game {
     this.player.reset();
     this.birds.clear();
     this.particles.clear();
+  }
+
+  // ─── Story: Trail Walk ─────────────────────────
+
+  _startTrailWalk() {
+    this.story.startWalking();
+    this.state = STATE.TRAIL_WALK;
+    this.ui.hideAll();
+    this.hud.hide();
+    this.player.unlock();
+    this.audio.stopAmbience();
+
+    // Clear existing world
+    this.world.clear && this.world.clear();
+    this.birds.clear();
+    this.particles.clear();
+
+    // Build trail
+    this.trailWorld = new TrailWorld(this.scene, this.renderer);
+    const { gary, biscuit } = this.trailWorld.spawnCharacters();
+
+    // Position camera behind Gary (third-person)
+    this.camera.position.set(0, 2.8, 4);
+    this.camera.lookAt(0, 1.2, 0);
+
+    // Player can still use WASD — we'll drive Gary's position
+    this.player.reset();
+    this.player.moveSpeed = 10; // running speed
+    this.player.lock();
+
+    // Show first dialogue
+    this.ui.showSpeechBubble('Come on Biscuit. It\'s not that far.');
+    this.speechTimer = 3;
+  }
+
+  _updateTrailWalk(dt) {
+    if (!this.trailWorld) return;
+
+    // Use player keys to move Gary
+    const keys = this.player.keys;
+    const speed = 10 * dt;
+    const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
+    fwd.y = 0; fwd.normalize();
+    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion);
+    right.y = 0; right.normalize();
+
+    const gary = this.trailWorld.gary;
+    if (!gary) return;
+
+    const move = new THREE.Vector3();
+    if (keys.forward)  move.add(fwd);
+    if (keys.backward) move.sub(fwd);
+    if (keys.left)     move.sub(right);
+    if (keys.right)    move.add(right);
+
+    const isMoving = move.lengthSq() > 0;
+    if (isMoving) {
+      move.normalize().multiplyScalar(speed);
+      gary.position.add(move);
+      // Face movement direction
+      gary.rotation.y = Math.atan2(move.x, move.z);
+    }
+
+    // Clamp to corridor
+    this.trailWorld.clampPlayer(gary.position);
+
+    // Biscuit follows Gary
+    if (this.trailWorld.biscuit) {
+      const followDir = gary.position.clone().sub(this.trailWorld.biscuit.position);
+      if (followDir.length() > 2) {
+        followDir.normalize().multiplyScalar(speed * 0.85);
+        this.trailWorld.biscuit.position.add(followDir);
+        this.trailWorld.biscuit.rotation.y = gary.rotation.y;
+      }
+    }
+
+    // Third-person camera follows Gary
+    const behind = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0,1,0), gary.rotation.y);
+    const camTarget = gary.position.clone().add(behind.multiplyScalar(4)).add(new THREE.Vector3(0, 3, 0));
+    this.camera.position.lerp(camTarget, 0.1);
+    this.camera.lookAt(gary.position.clone().add(new THREE.Vector3(0, 1.2, 0)));
+
+    // Animate characters
+    this.trailWorld.animateCharacters(this.clock.elapsedTime, isMoving);
+
+    // Check dialogue triggers
+    const line = this.story.checkDialogue(gary.position.z);
+    if (line) {
+      this.ui.showSpeechBubble(line);
+    }
+
+    // Check shed trigger
+    if (this.trailWorld.checkShedTrigger(gary.position.z)) {
+      this._startShed();
+    }
+  }
+
+  // ─── Story: Shed ──────────────────────────────
+
+  _startShed() {
+    this.story.shedFound();
+    this.state = STATE.SHED;
+    this.player.unlock();
+
+    // Remove trail world, keep scene
+    if (this.trailWorld) { this.trailWorld.dispose(); this.trailWorld = null; }
+
+    // Build shed interior
+    this.shedInterior = new ShedInterior(this.scene);
+    this.shedInterior.onXPGrant = (xp, label) => {
+      const flash = this.story.addXP(xp);
+      this.hud.showXPBar(this.story.getXPFraction());
+      if (flash) {
+        if (flash.text) {
+          this.ui.showSpeechBubble(flash.text);
+        } else {
+          // Final reveal
+          this._doGrandpaReveal();
+        }
+      }
+    };
+    this.shedInterior.onComplete = () => this._startBikeRide();
+
+    // Place camera inside shed
+    this.camera.position.set(0, 1.4, 1.8);
+    this.camera.lookAt(0, 1, 0);
+    this.player.lock();
+
+    // Show inspect hint
+    this.ui.showSpeechBubble('You open the shed door. Inside, under a tarp... something.');
+    this.ui.showInspectHint(true);
+  }
+
+  _updateShed(dt) {
+    if (!this.shedInterior) return;
+
+    // Simple first-person movement inside shed
+    this.player.update(dt);
+    this.player.position.y = 1.4;
+    // Clamp inside shed bounds
+    this.player.position.x = Math.max(-2, Math.min(2, this.player.position.x));
+    this.player.position.z = Math.max(-2, Math.min(2, this.player.position.z));
+
+    // Check for nearby interactable
+    const near = this.shedInterior.getNearestInteractable(this.player.position);
+    if (near) {
+      this.ui.setInspectLabel(near.label);
+    } else {
+      this.ui.setInspectLabel('');
+    }
+  }
+
+  _doGrandpaReveal() {
+    this.story.completeQuest();
+    this.economy.inventory = this.economy.inventory || { tags: [] };
+    // Grant gun
+    if (this.economy.weapons['grandpas_rifle']) {
+      this.economy.weapons['grandpas_rifle'].owned = true;
+    }
+    this.economy.save();
+    this.ui.showRevealCutscene(() => {
+      // After reveal, continue to bike ride
+      this._startBikeRide();
+    });
+  }
+
+  // ─── Story: Bike Ride ─────────────────────────
+
+  _startBikeRide() {
+    this.story.startRiding();
+    this.state = STATE.BIKE_RIDE;
+    if (this.shedInterior) { this.shedInterior.dispose(); this.shedInterior = null; }
+    this.ui.showInspectHint(false);
+    this.ui.showSpeechBubble('The engine turns over. Time to get home.');
+
+    this.bikeController = new BikeController(this.scene, this.camera);
+    this.bikeController.onArriveHome = () => {
+      if (this.bikeController) { this.bikeController.dispose(); this.bikeController = null; }
+      this.story.startAssembling();
+      this.economy.story = this.story.serialize();
+      this.economy.save();
+      this._goToSleep();
+    };
+  }
+
+  _updateBikeRide(dt) {
+    if (this.bikeController) this.bikeController.update(dt);
   }
 
   _startHunt() {
@@ -341,8 +554,22 @@ class Game {
         this.particles.spawnFeatherBurst(point, birdData.bodyColor, birdData.wingColor);
         this.audio.playBirdHit();
 
-        // Kill the bird
+    // Kill the bird
         this.birds.kill(bird);
+
+        // Story XP for bird kills
+        if (this.story.getPhase() === 'assembling') {
+          const flash = this.story.addXP(5);
+          this.hud.showXPBar(this.story.getXPFraction());
+          if (flash) {
+            if (flash.text) {
+              this.ui.showSpeechBubble(flash.text);
+            } else {
+              this._doGrandpaReveal();
+            }
+          }
+          this.economy.story = this.story.serialize();
+        }
 
         // Combo system — increase combo on hit
         this.comboCount++;
@@ -370,13 +597,16 @@ class Game {
     if (hitSomething) {
       // Nothing to do — ammo stays full, gun stays ready
     } else {
-      // Missed — reset combo, lose ammo
+      // Missed — reset combo, lose ammo (unless grandpas_rifle: no reload)
       this.comboCount = 0;
       this.comboTimer = 0;
       this.hud.hideCombo();
-      this.weapons.ammo--;
-      if (this.weapons.ammo <= 0) {
-        this.weapons.startReload();
+      const wd = this.economy.getWeapon();
+      if (!wd.noReload) {
+        this.weapons.ammo--;
+        if (this.weapons.ammo <= 0) {
+          this.weapons.startReload();
+        }
       }
     }
 
@@ -403,6 +633,12 @@ class Game {
 
     if (this.state === STATE.HUNTING) {
       this._updateHunt(dt);
+    } else if (this.state === STATE.TRAIL_WALK) {
+      this._updateTrailWalk(dt);
+    } else if (this.state === STATE.SHED) {
+      this._updateShed(dt);
+    } else if (this.state === STATE.BIKE_RIDE) {
+      this._updateBikeRide(dt);
     }
 
     // Always update visual systems
@@ -504,6 +740,27 @@ class Game {
   }
 
   _onKeyDown(e) {
+    // I key — inspect in shed
+    if (e.code === 'KeyI' && this.state === STATE.SHED && this.shedInterior) {
+      const near = this.shedInterior.getNearestInteractable(this.player.position);
+      if (near) {
+        const result = this.shedInterior.triggerAction(near.action);
+        if (result) {
+          if (result.text) this.ui.showSpeechBubble(result.text);
+          if (result.xp > 0) {
+            const flash = this.story.addXP(result.xp);
+            this.hud.showXPBar(this.story.getXPFraction());
+            if (flash) {
+              if (flash.text) setTimeout(() => this.ui.showSpeechBubble(flash.text), 1500);
+              else setTimeout(() => this._doGrandpaReveal(), 1500);
+            }
+            this.economy.story = this.story.serialize();
+          }
+        }
+      }
+      return;
+    }
+
     if (this.state !== STATE.HUNTING) return;
 
     // Number keys 1-9 for weapon switching
@@ -516,9 +773,10 @@ class Game {
       }
     }
 
-    // R for manual reload
+    // R for manual reload (skip if noReload weapon)
     if (e.code === 'KeyR') {
-      this.weapons.startReload();
+      const wd = this.economy.getWeapon();
+      if (!wd.noReload) this.weapons.startReload();
     }
   }
 }

@@ -1228,3 +1228,158 @@ body {
   border-radius: 2px;
   transition: width 50ms linear;
 }
+
+/* ═══════════════════════════════════════════════
+   Story UI — Speech Bubble, Inspect, XP, Reveal
+   ═══════════════════════════════════════════════ */
+
+/* Speech Bubble */
+#speech-bubble {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 8, 5, 0.88);
+  border: 1.5px solid rgba(212, 168, 83, 0.5);
+  border-radius: 12px;
+  padding: 14px 22px;
+  max-width: 600px;
+  width: 90%;
+  font-family: var(--font-body);
+  color: var(--text-primary);
+  font-size: 1.05rem;
+  line-height: 1.55;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 4px 32px rgba(0,0,0,0.6);
+  z-index: 900;
+  animation: bubbleFadeIn 0.35s ease;
+  pointer-events: none;
+}
+
+#speech-bubble .speech-name {
+  font-family: var(--font-display);
+  color: var(--accent-gold);
+  font-size: 0.82rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+@keyframes bubbleFadeIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* Inspect Prompt */
+#inspect-hint {
+  position: fixed;
+  bottom: 180px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 901;
+  pointer-events: none;
+  animation: bubbleFadeIn 0.2s ease;
+}
+
+#inspect-label {
+  display: inline-block;
+  background: rgba(212, 168, 83, 0.15);
+  border: 1.5px solid rgba(212, 168, 83, 0.6);
+  color: var(--accent-gold-bright);
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  font-weight: 600;
+  padding: 7px 18px;
+  border-radius: 8px;
+  letter-spacing: 0.05em;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 0 16px rgba(212, 168, 83, 0.3);
+}
+
+/* Story XP Bar (inside HUD) */
+#story-xp-bar {
+  position: absolute;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 260px;
+  text-align: center;
+}
+
+#story-xp-bar .xp-label {
+  font-family: var(--font-display);
+  color: var(--accent-gold);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  margin-bottom: 5px;
+  text-shadow: 0 0 8px rgba(212,168,83,0.6);
+}
+
+.xp-track {
+  width: 100%;
+  height: 8px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+  border: 1px solid rgba(212,168,83,0.3);
+  overflow: hidden;
+}
+
+#story-xp-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #d4a853, #f0c556);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+  box-shadow: 0 0 10px rgba(212,168,83,0.5);
+}
+
+/* Square crosshair for grandpas_rifle */
+.crosshair-spread.crosshair-square {
+  border-radius: 0 !important;
+  border-width: 2px;
+  box-shadow: 0 0 8px rgba(212, 168, 83, 0.6), inset 0 0 8px rgba(212, 168, 83, 0.1);
+  border-color: rgba(212, 168, 83, 0.9);
+}
+
+/* Grandpa Reveal Overlay */
+#reveal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.92);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+#reveal-overlay.hidden {
+  display: none;
+}
+
+#reveal-lines {
+  max-width: 560px;
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.reveal-line {
+  font-family: var(--font-display);
+  color: var(--text-primary);
+  font-size: 1.35rem;
+  line-height: 2;
+  opacity: 0;
+  animation: revealFadeIn 0.8s ease forwards;
+}
+
+.reveal-line.gold {
+  color: var(--accent-gold-bright);
+  font-size: 1.6rem;
+  text-shadow: 0 0 24px rgba(240,197,86,0.6);
+}
+
+@keyframes revealFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

@@ -326,6 +326,9 @@ export class UI {
     weaponGrid.innerHTML = '';
 
     for (const [key, weapon] of Object.entries(eco.weapons)) {
+      // Hide the legendary gun from the shop (quest-only reward)
+      if (weapon.isLegendary) continue;
+
       const item = document.createElement('div');
       item.className = 'shop-item';
 
@@ -410,8 +413,85 @@ export class UI {
       locGrid.appendChild(item);
     }
 
+    // ── Story Quest Section ────────────────────
+    this._renderQuestShop();
+
     this.showScreen('shop');
   }
+
+  _renderQuestShop() {
+    // Find or create quest section
+    let questSection = document.getElementById('shop-quests-section');
+    if (!questSection) {
+      const shopScreen = document.getElementById('screen-shop');
+      questSection = document.createElement('div');
+      questSection.id = 'shop-quests-section';
+      questSection.innerHTML = '<h3 class="shop-section-title" style="margin-top:24px">📖 Story Quests</h3>';
+      const grid = document.createElement('div');
+      grid.id = 'shop-quests';
+      grid.className = 'shop-grid';
+      questSection.appendChild(grid);
+      // Insert before the back button
+      const backBtn = shopScreen.querySelector('.btn-secondary');
+      if (backBtn) shopScreen.insertBefore(questSection, backBtn);
+      else shopScreen.appendChild(questSection);
+    }
+
+    const grid = document.getElementById('shop-quests');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    const eco   = this.economy;
+    const story = this._storyRef; // set by main.js
+
+    const QUEST_COST = 50;
+    const phase = story ? story.getPhase() : 'locked';
+
+    const item = document.createElement('div');
+    item.className = 'shop-item quest-item';
+
+    if (phase !== 'locked') {
+      item.classList.add('owned');
+      const phaseLabels = {
+        bought:      'UNLOCKED — Start next morning',
+        walking:     'IN PROGRESS — Trail Walk',
+        shed_found:  'IN PROGRESS — The Shed',
+        riding:      'IN PROGRESS — Riding Home',
+        assembling:  'IN PROGRESS — Assembling the rifle',
+        complete:    '✓ COMPLETE'
+      };
+      item.innerHTML = `
+        <div class="shop-item-name" style="color:var(--accent-gold)">🗺 The Lucky Lake</div>
+        <div class="shop-item-desc">A walk into the woods with your injured cat. Something strange waits at the end of the trail.</div>
+        <div class="shop-item-price">${phaseLabels[phase] || 'ACTIVE'}</div>
+      `;
+    } else if (eco.money < QUEST_COST) {
+      item.classList.add('cant-afford');
+      item.innerHTML = `
+        <div class="shop-item-name">🗺 The Lucky Lake</div>
+        <div class="shop-item-desc">A walk into the woods with your injured cat. Something strange waits at the end of the trail.</div>
+        <div class="shop-item-price">$${QUEST_COST}</div>
+      `;
+    } else {
+      item.innerHTML = `
+        <div class="shop-item-name">🗺 The Lucky Lake</div>
+        <div class="shop-item-desc">A walk into the woods with your injured cat. Something strange waits at the end of the trail.</div>
+        <div class="shop-item-price">$${QUEST_COST}</div>
+      `;
+      item.addEventListener('click', () => {
+        this.audio.playUIClick();
+        if (eco.money >= QUEST_COST && story && story.buyQuest()) {
+          eco.money -= QUEST_COST;
+          eco.save();
+          this.audio.playCashRegister();
+          this._renderQuestShop();
+        }
+      });
+    }
+
+    grid.appendChild(item);
+  }
+
 
   // ─── Sleep Screen ───────────────────────────
 
@@ -503,5 +583,96 @@ export class UI {
     } else {
       content.innerHTML = `<div class="locker-coming-soon">Coming Soon</div>`;
     }
+  }
+
+  // ─── Story UI Methods ────────────────────────
+
+  /**
+   * Show a speech bubble at the bottom of the screen.
+   * Auto-hides after `duration` ms (default 4s).
+   */
+  showSpeechBubble(text, duration = 4500) {
+    const bubble = document.getElementById('speech-bubble');
+    const textEl = document.getElementById('speech-text');
+    if (!bubble || !textEl) return;
+
+    textEl.textContent = text;
+    bubble.classList.remove('hidden');
+    bubble.style.animation = 'none';
+    void bubble.offsetWidth; // force reflow
+    bubble.style.animation = '';
+
+    clearTimeout(this._speechTimer);
+    this._speechTimer = setTimeout(() => {
+      bubble.classList.add('hidden');
+    }, duration);
+  }
+
+  /**
+   * Show/hide the [I] inspect hint. Optionally set specific label text.
+   */
+  showInspectHint(visible) {
+    const el = document.getElementById('inspect-hint');
+    if (!el) return;
+    if (visible) el.classList.remove('hidden');
+    else el.classList.add('hidden');
+  }
+
+  setInspectLabel(text) {
+    const el = document.getElementById('inspect-label');
+    if (!el) return;
+    const hint = document.getElementById('inspect-hint');
+    if (!hint) return;
+    if (text) {
+      el.textContent = text;
+      hint.classList.remove('hidden');
+    } else {
+      hint.classList.add('hidden');
+    }
+  }
+
+  /**
+   * Show the grandpa reveal cutscene with staggered lines,
+   * then call onDone when the player clicks Continue.
+   */
+  showRevealCutscene(onDone) {
+    const overlay = document.getElementById('reveal-overlay');
+    const linesEl = document.getElementById('reveal-lines');
+    const btn     = document.getElementById('reveal-continue');
+    if (!overlay || !linesEl || !btn) { if (onDone) onDone(); return; }
+
+    const LINES = [
+      { text: 'You dip a rag in water from your canteen.', gold: false },
+      { text: 'You wipe the dust off the receiver — slowly.', gold: false },
+      { text: 'Under the grime: an engraved brass plate.', gold: false },
+      { text: 'A name.', gold: false },
+      { text: 'Your great-grandfather\'s name.', gold: true },
+      { text: 'He disappeared when he was sixteen.', gold: false },
+      { text: 'Nobody ever found out what happened.', gold: false },
+      { text: 'This gun has been sitting in that shed ever since.', gold: false },
+      { text: 'It\'s yours now.', gold: true },
+    ];
+
+    linesEl.innerHTML = '';
+    overlay.classList.remove('hidden');
+    btn.classList.add('hidden');
+
+    LINES.forEach((l, i) => {
+      const div = document.createElement('div');
+      div.className = 'reveal-line' + (l.gold ? ' gold' : '');
+      div.textContent = l.text;
+      div.style.animationDelay = `${i * 0.75}s`;
+      linesEl.appendChild(div);
+    });
+
+    // Show button after all lines played
+    setTimeout(() => {
+      btn.classList.remove('hidden');
+    }, LINES.length * 750 + 500);
+
+    btn.onclick = () => {
+      overlay.classList.add('hidden');
+      if (onDone) onDone();
+    };
   }
 }

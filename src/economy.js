@@ -218,6 +218,21 @@ export const WEAPONS = {
     spread: 0.035,
     isShotgun: false,
     owned: false
+  },
+  grandpas_rifle: {
+    name: "Great-Grandfather's Rifle",
+    cost: 0,
+    description: 'A rifle from another era. Immaculate. Infinite ammo. Never needs reloading.',
+    fireRate: 0.6,
+    accuracy: 0.96,
+    ammo: Infinity,
+    reloadTime: 0,
+    spread: 0.065,
+    isShotgun: true,
+    crosshairShape: 'square',
+    noReload: true,
+    isLegendary: true,
+    owned: false
   }
 };
 
@@ -233,6 +248,7 @@ export class Economy {
     this.huntBag = [];
     this.inventory = { tags: [] };
     this.equipped = { tag: null };
+    this.story = null; // serialized story state
     this.weapons = JSON.parse(JSON.stringify(WEAPONS));
     this.locations = JSON.parse(JSON.stringify(LOCATIONS));
   }
@@ -256,6 +272,7 @@ export class Economy {
       currentLocation: this.currentLocation,
       inventory: this.inventory,
       equipped: this.equipped,
+      story: this.story || null,
       weaponOwned: {},
       locationUnlocked: {}
     };
@@ -290,6 +307,7 @@ export class Economy {
       this.currentLocation = data.currentLocation || 'backyard';
       this.inventory = data.inventory || { tags: [] };
       this.equipped = data.equipped || { tag: null };
+      this.story = data.story || null;
       if (data.weaponOwned) {
         for (const [k, v] of Object.entries(data.weaponOwned)) {
           if (this.weapons[k]) this.weapons[k].owned = v;

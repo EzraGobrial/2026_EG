@@ -78,14 +78,19 @@ export class HUD {
    */
   setCrosshairForWeapon(weaponData) {
     if (weaponData.isShotgun) {
-      // Show spread ring — size based on spread value
-      // spread 0.12 = 120px ring, 0.10 = 100px, etc.
       const ringSize = Math.round(weaponData.spread * 1000);
-      this.crosshairSpread.style.width = ringSize + 'px';
+      this.crosshairSpread.style.width  = ringSize + 'px';
       this.crosshairSpread.style.height = ringSize + 'px';
       this.crosshairSpread.classList.remove('hidden');
+      // Square crosshair for legendary gun
+      if (weaponData.crosshairShape === 'square') {
+        this.crosshairSpread.classList.add('crosshair-square');
+      } else {
+        this.crosshairSpread.classList.remove('crosshair-square');
+      }
     } else {
       this.crosshairSpread.classList.add('hidden');
+      this.crosshairSpread.classList.remove('crosshair-square');
     }
   }
 
@@ -239,5 +244,22 @@ export class HUD {
     if (fill) {
       fill.style.width = `${progress * 100}%`;
     }
+  }
+
+  /**
+   * Show/update the story assembly XP bar.
+   * fraction = 0.0 to 1.0
+   */
+  showXPBar(fraction) {
+    const bar  = document.getElementById('story-xp-bar');
+    const fill = document.getElementById('story-xp-fill');
+    if (!bar || !fill) return;
+    bar.classList.remove('hidden');
+    fill.style.width = `${Math.min(fraction * 100, 100)}%`;
+  }
+
+  hideXPBar() {
+    const bar = document.getElementById('story-xp-bar');
+    if (bar) bar.classList.add('hidden');
   }
 }
