@@ -121,6 +121,9 @@ class Game {
     // Double-pump: per-weapon ammo tracking
     this.weaponAmmo = {};
 
+    // Admin cheat
+    this._cheatBuffer = '';
+
     // ─── Clock ─────────────────────────────
     this.clock = new THREE.Clock();
 
@@ -821,6 +824,23 @@ class Game {
     if (e.code === 'KeyR') {
       const wd = this.economy.getWeapon();
       if (!wd.noReload) this.weapons.startReload();
+    }
+
+    // Admin cheat: type qwerty in backyard within the first 5 seconds
+    if (this.economy.currentLocation === 'backyard' && this.huntTimer > 55) {
+      const letter = e.key.toLowerCase();
+      if ('qwerty'.startsWith(this._cheatBuffer + letter)) {
+        this._cheatBuffer += letter;
+        if (this._cheatBuffer === 'qwerty') {
+          this.economy.money += 500;
+          this.economy.save();
+          this.hud.setMoney(this.economy.money);
+          this.hud.addKillFeedEntry('+$500', '#d4a853');
+          this._cheatBuffer = '';
+        }
+      } else {
+        this._cheatBuffer = '';
+      }
     }
   }
 }
