@@ -476,6 +476,7 @@ class Game {
     this.birds.clear();
     this.particles.clear();
     this.hud.clearKillFeed();
+    this._cheatBuffer = '';
 
     // HUD initial values
     this.hud.setDay(this.economy.day);
@@ -826,20 +827,26 @@ class Game {
       if (!wd.noReload) this.weapons.startReload();
     }
 
-    // Admin cheat: type qwerty in backyard within the first 5 seconds
+    // Admin cheat: type qwerty in backyard within the first 15 seconds
     // Ignore held-down key repeats so movement keys don't reset the buffer
-    if (!e.repeat && this.economy.currentLocation === 'backyard' && this.huntTimer > 55) {
+    if (!e.repeat && this.economy.currentLocation === 'backyard' && this.huntTimer > 45) {
       const letter = e.key.toLowerCase();
-      if (letter.length === 1 && 'qwerty'.startsWith(this._cheatBuffer + letter)) {
-        this._cheatBuffer += letter;
-        if (this._cheatBuffer === 'qwerty') {
-          this.economy.money += 500;
-          this.economy.save();
-          this.hud.setMoney(this.economy.money);
-          this._cheatBuffer = '';
+      // Only process single printable characters (ignore Shift, Control, etc.)
+      if (letter.length === 1 && letter >= 'a' && letter <= 'z') {
+        const target = 'qwerty';
+        if (target[this._cheatBuffer.length] === letter) {
+          this._cheatBuffer += letter;
+          if (this._cheatBuffer === target) {
+            this.economy.money += 500;
+            this.economy.save();
+            this.hud.setMoney(this.economy.money);
+            this.hud.showMoneyPopup(500, 1);
+            this._cheatBuffer = '';
+          }
+        } else {
+          // Wrong letter, restart
+          this._cheatBuffer = letter === target[0] ? letter : '';
         }
-      } else if (letter.length === 1) {
-        this._cheatBuffer = '';
       }
     }
   }
