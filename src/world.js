@@ -7,8 +7,13 @@ import * as THREE from 'three';
 
 // ─── Shared Helpers ──────────────────────────
 
-function createTree(x, z, scale = 1, treeType = 'oak') {
+function createTree(x, z, scale = 1, treeType = 'oak', obstacles = null) {
   const tree = new THREE.Group();
+  
+  if (obstacles) {
+    const trunkR = (0.08 + 0.04) * scale;
+    obstacles.push({ type: 'circle', x, z, r: trunkR * 1.5 });
+  }
 
   // Trunk
   const trunkH = (1.5 + Math.random() * 1.0) * scale;
@@ -105,8 +110,54 @@ function createGrassPlane(size, color = 0x3a7a3a) {
   return plane;
 }
 
-function createRock(x, y, z, scale = 1) {
+export function createInstancedGrass(areaSize, count, baseColor = 0x3a7a3a) {
+  const geo = new THREE.PlaneGeometry(0.12, 0.45);
+  geo.translate(0, 0.225, 0); // Origin at bottom
+  
+  const mat = new THREE.MeshStandardMaterial({
+    color: baseColor,
+    roughness: 0.9,
+    side: THREE.DoubleSide
+  });
+
+  const mesh = new THREE.InstancedMesh(geo, mat, count);
+  mesh.castShadow = false; // Disable cast for performance
+  mesh.receiveShadow = true;
+
+  const dummy = new THREE.Object3D();
+  const color = new THREE.Color();
+  
+  for (let i = 0; i < count; i++) {
+    const x = (Math.random() - 0.5) * areaSize;
+    const z = (Math.random() - 0.5) * areaSize;
+    const y = Math.sin(x * 0.3) * Math.cos(z * 0.3) * 0.15;
+    
+    dummy.position.set(x, y, z);
+    dummy.rotation.y = Math.random() * Math.PI;
+    dummy.rotation.x = (Math.random() - 0.5) * 0.4;
+    dummy.rotation.z = (Math.random() - 0.5) * 0.4;
+    
+    const scale = 0.5 + Math.random() * 1.0;
+    dummy.scale.set(scale, scale, scale);
+    dummy.updateMatrix();
+    mesh.setMatrixAt(i, dummy.matrix);
+    
+    color.setHex(baseColor);
+    color.offsetHSL((Math.random() - 0.5) * 0.05, (Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.15);
+    mesh.setColorAt(i, color);
+  }
+  
+  mesh.instanceMatrix.needsUpdate = true;
+  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  return mesh;
+}
+
+function createRock(x, y, z, scale = 1, obstacles = null) {
   const geo = new THREE.DodecahedronGeometry(0.3 * scale, 1);
+  
+  if (obstacles) {
+    obstacles.push({ type: 'circle', x, z, r: 0.3 * scale });
+  }
   // Deform vertices for natural look
   const posAttr = geo.attributes.position;
   for (let i = 0; i < posAttr.count; i++) {
@@ -132,8 +183,24 @@ function createRock(x, y, z, scale = 1) {
 
 // ─── House Builder ───────────────────────────
 
-function createHouse(x, z, rotY = 0, options = {}) {
+function createHouse(x, z, rotY = 0, options = {}, obstacles = null) {
   const house = new THREE.Group();
+
+  if (obstacles) {
+    const width = options.width || 6;
+    const depth = options.depth || 5;
+    // Calculate AABB for house considering rotation (simplified for 90-degree increments)
+    const isRotated = Math.abs(rotY) > 0.1 && Math.abs(rotY) < 3.0; // checking if it's 90 or 270 deg
+    const w = isRotated ? depth : width;
+    const d = isRotated ? width : depth;
+    obstacles.push({
+      type: 'box',
+      minX: x - w / 2,
+      maxX: x + w / 2,
+      minZ: z - d / 2,
+      maxZ: z + d / 2
+    });
+  }
 
   const wallColor = options.wallColor || 0xccbb99;
   const roofColor = options.roofColor || 0x664433;
@@ -230,12 +297,16 @@ function createHouse(x, z, rotY = 0, options = {}) {
 
 // ─── Level Builders ──────────────────────────
 
-function buildBackyard(scene) {
+function buildBackyard(scene, obstacles) {
   const group = new THREE.Group();
 
   // Larger ground for neighborhood
   const grass = createGrassPlane(60, 0x4a8a35);
   group.add(grass);
+
+  // Instanced grass blades (balanced for Chromebook performance)
+  const blades = createInstancedGrass(40, 4000, 0x4a8a35);
+  group.add(blades);
 
   // Sidewalk ring around the yards
   const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0xbbbbaa, roughness: 0.85 });
@@ -253,6 +324,16 @@ function buildBackyard(scene) {
   const fenceMat = new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.85 });
   const fenceH = 1.2;
   const fenceSize = 14;
+
+  if (obstacles) {
+    const t = 0.5;
+    const h = fenceSize / 2;
+    obstacles.push({ type: 'box', minX: -h, maxX: h, minZ: -h - t, maxZ: -h + t });
+    obstacles.push({ type: 'box', minX: -h, maxX: h, minZ: h - t, maxZ: h + t });
+    obstacles.push({ type: 'box', minX: -h - t, maxX: -h + t, minZ: -h, maxZ: h });
+    obstacles.push({ type: 'box', minX: h - t, maxX: h + t, minZ: -h, maxZ: h });
+  }
+
   for (let side = 0; side < 4; side++) {
     for (let i = -fenceSize / 2; i < fenceSize / 2; i += 0.6) {
       const postGeo = new THREE.BoxGeometry(0.06, fenceH, 0.06);
@@ -306,7 +387,7 @@ function buildBackyard(scene) {
       depth: 4 + Math.random() * 1.5,
       wallH: 3 + Math.random() * 1,
       roofH: 1.5 + Math.random() * 1
-    }));
+    }, obstacles));
   }
 
   // Trees in neighboring yards
@@ -379,12 +460,16 @@ function darkMetalMat() {
   return new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.5, metalness: 0.5 });
 }
 
-function buildPark(scene) {
+function buildPark(scene, obstacles) {
   const group = new THREE.Group();
 
   // Ground
   const grass = createGrassPlane(60, 0x3d8535);
   group.add(grass);
+
+  // Instanced grass blades
+  const blades = createInstancedGrass(50, 3000, 0x3d8535);
+  group.add(blades);
 
   // Gravel path (winding)
   const pathMat = new THREE.MeshStandardMaterial({ color: 0xb0a888, roughness: 0.9 });
@@ -469,12 +554,16 @@ function buildPark(scene) {
   return group;
 }
 
-function buildForest(scene) {
+function buildForest(scene, obstacles) {
   const group = new THREE.Group();
 
   // Ground (darker forest floor)
   const grass = createGrassPlane(80, 0x2a4a22);
   group.add(grass);
+
+  // Instanced grass blades (sparse in forest)
+  const blades = createInstancedGrass(60, 2500, 0x2a4a22);
+  group.add(blades);
 
   // Dense forest floor details (leaf litter)
   const leafLitterMat = new THREE.MeshStandardMaterial({ color: 0x3a3520, roughness: 1.0 });
@@ -553,12 +642,16 @@ function buildForest(scene) {
   return group;
 }
 
-function buildLakeside(scene) {
+function buildLakeside(scene, obstacles) {
   const group = new THREE.Group();
 
   // Ground (one half grass, one half sandy)
   const grass = createGrassPlane(80, 0x4a7a35);
   group.add(grass);
+
+  // Instanced grass blades
+  const blades = createInstancedGrass(60, 3000, 0x4a7a35);
+  group.add(blades);
 
   // Lake water
   const waterGeo = new THREE.CircleGeometry(20, 32);
@@ -636,7 +729,7 @@ function buildLakeside(scene) {
   return group;
 }
 
-function buildMountain(scene) {
+function buildMountain(scene, obstacles) {
   const group = new THREE.Group();
 
   // Rocky ground
@@ -661,6 +754,10 @@ function buildMountain(scene) {
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   group.add(ground);
+
+  // Instanced grass blades (sparse dead grass)
+  const blades = createInstancedGrass(70, 2000, 0x5a5a50);
+  group.add(blades);
 
   // Grass patches on rocky ground
   const grassPatchMat = new THREE.MeshStandardMaterial({ color: 0x5a7a4a, roughness: 0.9 });
@@ -749,6 +846,7 @@ export class WorldSystem {
     this.scene = scene;
     this.currentWorld = null;
     this.currentKey = null;
+    this.obstacles = [];
   }
 
   load(locationKey) {
@@ -759,7 +857,8 @@ export class WorldSystem {
       return;
     }
     this.currentKey = locationKey;
-    this.currentWorld = builder(this.scene);
+    this.obstacles = [];
+    this.currentWorld = builder(this.scene, this.obstacles);
   }
 
   unload() {
@@ -773,6 +872,7 @@ export class WorldSystem {
       });
       this.currentWorld = null;
       this.currentKey = null;
+      this.obstacles = [];
     }
   }
 }

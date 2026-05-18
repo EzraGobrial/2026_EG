@@ -4,6 +4,11 @@
 // ═══════════════════════════════════════════════
 
 import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
 import { Economy, BIRDS, RARITY_COLORS } from './economy.js';
 import { AudioSystem } from './audio.js';
 import { SkySystem } from './skybox.js';
@@ -57,6 +62,25 @@ class Game {
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 600);
     this.camera.position.set(0, 1.6, 0);
+
+    // ─── Post-Processing ───────────────────
+    this.composer = new EffectComposer(this.renderer);
+    this.renderPass = new RenderPass(this.scene, this.camera);
+    this.composer.addPass(this.renderPass);
+
+    this.pmremGenerator = new THREE.PMREMGenerator(this.renderer);
+    this.pmremGenerator.compileEquirectangularShader();
+
+    this.bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      0.8,  // strength
+      0.5,  // radius
+      0.6   // threshold
+    );
+    this.composer.addPass(this.bloomPass);
+
+    this.outputPass = new OutputPass();
+    this.composer.addPass(this.outputPass);
 
     // ─── Systems ───────────────────────────
     this.auth = new Auth();
@@ -219,6 +243,12 @@ class Game {
     const locKey = this.economy.currentLocation;
     this.world.load(locKey);
     this.sky.setPreset(locKey);
+    
+    if (this.pmremGenerator && this.scene.background) {
+      this.scene.environment = this.pmremGenerator.fromScene(this.scene).texture;
+    }
+
+    this.player.setObstacles(this.world.obstacles);
     this.player.reset();
     this.birds.clear();
     this.particles.clear();
@@ -231,11 +261,11 @@ class Game {
     this.state = STATE.TRAIL_WALK;
     this.ui.hideAll();
     this.hud.hide();
-    this.player.unlock();
     this.audio.stopAmbience();
 
     // Clear existing world
     this.world.clear && this.world.clear();
+    this.world.unload();
     this.birds.clear();
     this.particles.clear();
 
@@ -243,78 +273,76 @@ class Game {
     this.trailWorld = new TrailWorld(this.scene, this.renderer);
     const { gary, bunny } = this.trailWorld.spawnCharacters();
 
-    // Position camera behind Gary (third-person)
-    this.camera.position.set(0, 2.8, 4);
-    this.camera.lookAt(0, 1.2, 0);
+    // Hide Gary model -- we ARE Gary in first person
+    if (this.trailWorld.gary) this.trailWorld.gary.visible = false;
 
-    // Player can still use WASD — we'll drive Gary's position
+    if (this.pmremGenerator && this.scene.background) {
+      this.scene.environment = this.pmremGenerator.fromScene(this.scene).texture;
+    }
+
+    // First-person: use normal player controller
     this.player.reset();
+    this.player.position.set(0, 1.6, 0);
     this.player.moveSpeed = 10; // running speed
+    this.player.setBounds(200); // large bounds, corridor walls handle clamping
+    this.player.setObstacles([]); // trail has its own clamping
+    this.camera.position.copy(this.player.position);
+
+    // Place Bunny slightly ahead and to the right
+    if (this.trailWorld.bunny) {
+      this.trailWorld.bunny.position.set(1.0, 0, -1.5);
+    }
+
+    // Request pointer lock so the player can move
     this.player.lock();
 
     // Show first dialogue
     this.ui.showSpeechBubble('Come on Bunny. It\'s not that far.');
     this.speechTimer = 3;
+    this._dialogueGlanceTimer = 0;
   }
 
   _updateTrailWalk(dt) {
     if (!this.trailWorld) return;
 
-    // Use player keys to move Gary
-    const keys = this.player.keys;
-    const speed = 10 * dt;
-    const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
-    fwd.y = 0; fwd.normalize();
-    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion);
-    right.y = 0; right.normalize();
+    // Normal first-person movement
+    this.player.update(dt);
 
-    const gary = this.trailWorld.gary;
-    if (!gary) return;
+    // Clamp player to trail corridor
+    this.trailWorld.clampPlayer(this.player.position);
+    this.camera.position.copy(this.player.position);
 
-    const move = new THREE.Vector3();
-    if (keys.forward)  move.add(fwd);
-    if (keys.backward) move.sub(fwd);
-    if (keys.left)     move.sub(right);
-    if (keys.right)    move.add(right);
+    const isMoving = this.player.isMoving();
+    const playerPos = this.player.position;
 
-    const isMoving = move.lengthSq() > 0;
-    if (isMoving) {
-      move.normalize().multiplyScalar(speed);
-      gary.position.add(move);
-      // Face movement direction
-      gary.rotation.y = Math.atan2(move.x, move.z);
-    }
-
-    // Clamp to corridor
-    this.trailWorld.clampPlayer(gary.position);
-
-    // Bunny follows Gary
+    // Bunny follows player, walking slightly ahead and to the right
     if (this.trailWorld.bunny) {
-      const followDir = gary.position.clone().sub(this.trailWorld.bunny.position);
-      if (followDir.length() > 2) {
-        followDir.normalize().multiplyScalar(speed * 0.85);
-        this.trailWorld.bunny.position.add(followDir);
-        this.trailWorld.bunny.rotation.y = gary.rotation.y;
-      }
+      const bunny = this.trailWorld.bunny;
+      const targetX = playerPos.x + 1.0;
+      const targetZ = playerPos.z - 1.5;
+      bunny.position.x += (targetX - bunny.position.x) * 3.0 * dt;
+      bunny.position.z += (targetZ - bunny.position.z) * 3.0 * dt;
+      // Face forward (down the trail)
+      bunny.rotation.y = Math.PI;
     }
 
-    // Third-person camera follows Gary
-    const behind = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0,1,0), gary.rotation.y);
-    const camTarget = gary.position.clone().add(behind.multiplyScalar(4)).add(new THREE.Vector3(0, 3, 0));
-    this.camera.position.lerp(camTarget, 0.1);
-    this.camera.lookAt(gary.position.clone().add(new THREE.Vector3(0, 1.2, 0)));
-
-    // Animate characters
+    // Animate Bunny (limping bob)
     this.trailWorld.animateCharacters(this.clock.elapsedTime, isMoving);
 
     // Check dialogue triggers
-    const line = this.story.checkDialogue(gary.position.z);
+    const line = this.story.checkDialogue(playerPos.z);
     if (line) {
       this.ui.showSpeechBubble(line);
+      this._dialogueGlanceTimer = 2.0; // glance at cat for 2 seconds
+    }
+
+    // During dialogue, gently tilt camera down toward Bunny
+    if (this._dialogueGlanceTimer > 0) {
+      this._dialogueGlanceTimer -= dt;
     }
 
     // Check shed trigger
-    if (this.trailWorld.checkShedTrigger(gary.position.z)) {
+    if (this.trailWorld.checkShedTrigger(playerPos.z)) {
       this._startShed();
     }
   }
@@ -423,8 +451,15 @@ class Game {
     // Setup world
     this.world.load(locKey);
     this.sky.setPreset(locKey);
+    
+    // Update PBR environment map
+    if (this.pmremGenerator && this.scene.background) {
+      this.scene.environment = this.pmremGenerator.fromScene(this.scene).texture;
+    }
+
     this.birds.setAreaSize(locData.areaSize);
     this.player.setBounds(locData.areaSize);
+    this.player.setObstacles(this.world.obstacles);
     this.player.reset();
     this.maxActiveBirds = locData.maxBirds;
 
@@ -541,6 +576,14 @@ class Game {
     const dir = this.player.getForwardDirection();
     this.particles.spawnMuzzleFlash(barrelPos, dir);
 
+    // Shell casing
+    const rightDir = new THREE.Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion);
+    const ejectPos = this.camera.position.clone()
+      .add(dir.clone().multiplyScalar(0.4))
+      .add(rightDir.clone().multiplyScalar(0.2))
+      .add(new THREE.Vector3(0, -0.2, 0));
+    this.particles.spawnShellCasing(ejectPos, rightDir);
+
     // Check hits
     let hitSomething = false;
     for (const rc of raycasters) {
@@ -623,6 +666,7 @@ class Game {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.composer.setSize(window.innerWidth, window.innerHeight);
   }
 
   // ─── Main Loop ─────────────────────────────
@@ -645,8 +689,8 @@ class Game {
     this.sky.update(dt);
     this.particles.update(dt);
 
-    // Render
-    this.renderer.render(this.scene, this.camera);
+    // Render with post-processing
+    this.composer.render();
   }
 
   _updateHunt(dt) {

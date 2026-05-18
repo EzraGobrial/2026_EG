@@ -136,6 +136,42 @@ export class ParticleSystem {
     });
   }
 
+  /**
+   * Shell casing ejection
+   */
+  spawnShellCasing(position, rightDir) {
+    const geo = new THREE.CylinderGeometry(0.008, 0.008, 0.03, 6);
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0xcca333,
+      metalness: 1.0,
+      roughness: 0.2
+    });
+    const shell = new THREE.Mesh(geo, mat);
+    shell.position.copy(position);
+
+    // Eject to the right and slightly up
+    const ejectVel = rightDir.clone().multiplyScalar(2.0 + Math.random() * 1.5);
+    ejectVel.y += 1.5 + Math.random() * 1.0;
+    
+    shell.userData = {
+      velocity: ejectVel,
+      rotSpeed: new THREE.Vector3(
+        (Math.random() - 0.5) * 20,
+        (Math.random() - 0.5) * 20,
+        (Math.random() - 0.5) * 20
+      )
+    };
+
+    this.scene.add(shell);
+
+    this.activeSystems.push({
+      type: 'shell',
+      shell,
+      age: 0,
+      maxAge: 2.0 // disappear after 2 seconds
+    });
+  }
+
   update(dt) {
     for (let i = this.activeSystems.length - 1; i >= 0; i--) {
       const sys = this.activeSystems[i];
@@ -189,6 +225,27 @@ export class ParticleSystem {
           p.material.opacity = Math.max(0, 0.3 * (1 - progress));
         }
       }
+
+      if (sys.type === 'shell') {
+        const s = sys.shell;
+        const v = s.userData.velocity;
+        v.y -= 9.8 * dt; // Gravity
+        
+        s.position.add(v.clone().multiplyScalar(dt));
+        
+        // Floor collision
+        if (s.position.y < 0.02) {
+          s.position.y = 0.02;
+          v.y *= -0.5; // Bounce
+          v.x *= 0.5;  // Friction
+          v.z *= 0.5;
+          s.userData.rotSpeed.multiplyScalar(0.5);
+        }
+
+        s.rotation.x += s.userData.rotSpeed.x * dt;
+        s.rotation.y += s.userData.rotSpeed.y * dt;
+        s.rotation.z += s.userData.rotSpeed.z * dt;
+      }
     }
   }
 
@@ -209,6 +266,11 @@ export class ParticleSystem {
         p.geometry.dispose();
         p.material.dispose();
       }
+    }
+    if (sys.type === 'shell') {
+      this.scene.remove(sys.shell);
+      sys.shell.geometry.dispose();
+      sys.shell.material.dispose();
     }
   }
 

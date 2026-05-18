@@ -21,6 +21,8 @@ export class Player {
     this.mouseSensitivity = 0.002;
     this.height = 1.6;
     this.boundsSize = 30; // will be set by world
+    this.obstacles = [];
+    this.radius = 0.4; // player collision radius
 
     // Input state
     this.keys = { forward: false, backward: false, left: false, right: false };
@@ -92,6 +94,30 @@ export class Player {
     this.boundsSize = size;
   }
 
+  setObstacles(obstacles) {
+    this.obstacles = obstacles || [];
+  }
+
+  _checkCollision(x, z) {
+    for (const obs of this.obstacles) {
+      if (obs.type === 'circle') {
+        const dx = x - obs.x;
+        const dz = z - obs.z;
+        const distSq = dx * dx + dz * dz;
+        const minD = this.radius + obs.r;
+        if (distSq < minD * minD) return true;
+      } else if (obs.type === 'box') {
+        // AABB vs Circle
+        const closestX = Math.max(obs.minX, Math.min(x, obs.maxX));
+        const closestZ = Math.max(obs.minZ, Math.min(z, obs.maxZ));
+        const dx = x - closestX;
+        const dz = z - closestZ;
+        if ((dx * dx + dz * dz) < (this.radius * this.radius)) return true;
+      }
+    }
+    return false;
+  }
+
   getForwardDirection() {
     const dir = new THREE.Vector3(0, 0, -1);
     dir.applyQuaternion(this.camera.quaternion);
@@ -131,7 +157,22 @@ export class Player {
     this.velocity.add(accel);
     this.velocity.multiplyScalar(0.85); // friction
 
-    this.position.add(this.velocity.clone().multiplyScalar(dt));
+    // Axis-separated collision resolution
+    const velDt = this.velocity.clone().multiplyScalar(dt);
+    
+    // Check X
+    if (!this._checkCollision(this.position.x + velDt.x, this.position.z)) {
+      this.position.x += velDt.x;
+    } else {
+      this.velocity.x = 0;
+    }
+
+    // Check Z
+    if (!this._checkCollision(this.position.x, this.position.z + velDt.z)) {
+      this.position.z += velDt.z;
+    } else {
+      this.velocity.z = 0;
+    }
 
     // Bound to play area
     const halfBounds = this.boundsSize * 0.45;

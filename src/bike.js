@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════
 // Gary's Life — Dirtbike Controller
-// Third-person vehicle for BIKE_RIDE state
+// First-person vehicle for BIKE_RIDE state
 // ═══════════════════════════════════════════════
 
 import * as THREE from 'three';
@@ -53,40 +53,8 @@ function buildBikeModel() {
   bars.rotation.z = Math.PI/2; bars.position.set(0.52, 1.02, 0); bars.castShadow = true;
   g.add(bars);
 
-  // Gary on bike (simple seated figure)
-  const skin = makeMat(0xd4956a, 0.8, 0);
-  const shirt = makeMat(0x2255aa, 0.85, 0);
-  const pants = makeMat(0x3a3028, 0.85, 0);
-
-  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.18, 0.30, 6, 8), shirt);
-  body.position.set(-0.12, 1.18, 0); body.rotation.z = -0.3; body.castShadow = true;
-  g.add(body);
-
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), skin);
-  head.position.set(0.22, 1.42, 0); head.castShadow = true;
-  g.add(head);
-
-  // Helmet tint
-  const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8),
-    new THREE.MeshStandardMaterial({ color: 0xaa0000, roughness: 0.3, metalness: 0.4 }));
-  helmet.position.set(0.22, 1.44, 0); g.add(helmet);
-  const visor = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.07, 0.22),
-    new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.1, metalness: 0.5, opacity: 0.7, transparent: true }));
-  visor.position.set(0.35, 1.42, 0); g.add(visor);
-
-  // Arms reaching forward
-  [-0.1, 0.1].forEach(zOff => {
-    const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.3, 4, 6), shirt);
-    arm.rotation.z = -1.1; arm.position.set(0.34, 1.25, zOff); arm.castShadow = true;
-    g.add(arm);
-  });
-
-  // Legs bent
-  [[-0.23, 0.55, -0.14], [-0.23, 0.55, 0.14]].forEach(([x,y,z]) => {
-    const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.32, 4, 6), pants);
-    leg.position.set(x, y, z); leg.rotation.z = 0.7; leg.castShadow = true;
-    g.add(leg);
-  });
+  // Remove Gary figure from the bike -- we ARE Gary in first person
+  // Keep only the bike itself visible (handlebars, frame, wheels)
 
   return g;
 }
@@ -237,23 +205,17 @@ export class BikeController {
     this.group.position.z += Math.cos(this.heading) * this.speed * dt;
     this.group.rotation.y  = this.heading;
 
-    // Third-person camera
-    const camOffset = new THREE.Vector3(
-      -Math.sin(this.heading) * 5,
-      3.2,
-       Math.cos(this.heading) * 5  // wait — follow from behind
+    // First-person camera: sit on the bike at handlebar height, look forward
+    const eyeHeight = 1.5;
+    const camPos = this.group.position.clone();
+    camPos.y += eyeHeight;
+    this.camera.position.lerp(camPos, 0.15);
+
+    // Look in the direction we're heading
+    const lookTarget = this.group.position.clone().add(
+      new THREE.Vector3(Math.sin(this.heading) * 10, eyeHeight - 0.3, Math.cos(this.heading) * 10)
     );
-    // Actually: behind means opposite of forward direction
-    camOffset.set(
-      -Math.sin(this.heading) * 5,
-      3.0,
-      -Math.cos(this.heading) * 5
-    );
-    this.camera.position.lerp(
-      this.group.position.clone().add(camOffset),
-      0.08
-    );
-    this.camera.lookAt(this.group.position.clone().add(new THREE.Vector3(0, 1, 0)));
+    this.camera.lookAt(lookTarget);
 
     // Check home arrival
     if (this.group.position.z >= this.homeZ) {

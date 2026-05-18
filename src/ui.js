@@ -426,7 +426,7 @@ export class UI {
       const shopScreen = document.getElementById('screen-shop');
       questSection = document.createElement('div');
       questSection.id = 'shop-quests-section';
-      questSection.innerHTML = '<h3 class="shop-section-title" style="margin-top:24px">📖 Story Quests</h3>';
+      questSection.innerHTML = '<h3 class="shop-section-title" style="margin-top:60px; padding-top:24px; border-top:1px solid rgba(255,255,255,0.1)">Story Quests</h3>';
       const grid = document.createElement('div');
       grid.id = 'shop-quests';
       grid.className = 'shop-grid';
@@ -458,23 +458,23 @@ export class UI {
         shed_found:  'IN PROGRESS — The Shed',
         riding:      'IN PROGRESS — Riding Home',
         assembling:  'IN PROGRESS — Assembling the rifle',
-        complete:    '✓ COMPLETE'
+        complete:    'COMPLETE'
       };
       item.innerHTML = `
-        <div class="shop-item-name" style="color:var(--accent-gold)">🗺 The Lucky Lake</div>
+        <div class="shop-item-name" style="color:var(--accent-gold)">The Lucky Lake</div>
         <div class="shop-item-desc">A walk into the woods with your injured cat. Something strange waits at the end of the trail.</div>
         <div class="shop-item-price">${phaseLabels[phase] || 'ACTIVE'}</div>
       `;
     } else if (eco.money < QUEST_COST) {
       item.classList.add('cant-afford');
       item.innerHTML = `
-        <div class="shop-item-name">🗺 The Lucky Lake</div>
+        <div class="shop-item-name">The Lucky Lake</div>
         <div class="shop-item-desc">A walk into the woods with your injured cat. Something strange waits at the end of the trail.</div>
         <div class="shop-item-price">$${QUEST_COST}</div>
       `;
     } else {
       item.innerHTML = `
-        <div class="shop-item-name">🗺 The Lucky Lake</div>
+        <div class="shop-item-name">The Lucky Lake</div>
         <div class="shop-item-desc">A walk into the woods with your injured cat. Something strange waits at the end of the trail.</div>
         <div class="shop-item-price">$${QUEST_COST}</div>
       `;
@@ -559,7 +559,7 @@ export class UI {
         const item = document.createElement('div');
         item.className = `locker-item${isEquipped ? ' equipped' : ''}`;
         item.innerHTML = `
-          <div class="locker-item-icon">⭐</div>
+          <div class="locker-item-icon">OG</div>
           <div class="locker-item-name">OG Tag</div>
           <div class="locker-item-desc">Played in the first 30 days</div>
           <button class="btn ${isEquipped ? 'btn-secondary' : 'btn-primary'}">${isEquipped ? 'Unequip' : 'Equip'}</button>
