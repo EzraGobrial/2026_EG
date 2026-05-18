@@ -825,6 +825,26 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  padding-right: 4px;
+}
+
+/* Scrollbar styling */
+.leaderboard-list::-webkit-scrollbar {
+  width: 5px;
+}
+.leaderboard-list::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.03);
+  border-radius: 4px;
+}
+.leaderboard-list::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.12);
+  border-radius: 4px;
+}
+.leaderboard-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.2);
 }
 
 .lb-entry {
@@ -838,8 +858,10 @@ body {
 }
 
 .lb-entry.lb-you {
-  background: rgba(212, 168, 83, 0.15);
-  border: 1px solid rgba(212, 168, 83, 0.25);
+  background: rgba(212, 168, 83, 0.2);
+  border: 1px solid rgba(212, 168, 83, 0.4);
+  box-shadow: 0 0 8px rgba(212, 168, 83, 0.15);
+  position: relative;
 }
 
 .lb-rank {

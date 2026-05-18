@@ -288,31 +288,39 @@ export class UI {
       return;
     }
 
-    // Total earned column
-    byTotalEarned.forEach((entry, i) => {
-      const isYou = currentUser && entry.name.toLowerCase() === currentUser.toLowerCase();
-      const div = document.createElement('div');
-      div.className = `lb-entry${isYou ? ' lb-you' : ''}`;
-      div.innerHTML = `
-        <span class="lb-rank">${i + 1}</span>
-        <span class="lb-name">${entry.name}${entry.tag ? ' <span class="og-badge">OG</span>' : ''}${isYou ? ' (you)' : ''}</span>
-        <span class="lb-money">$${entry.totalEarned.toLocaleString()}</span>
-      `;
-      totalEl.appendChild(div);
-    });
+    // Helper: build a scrollable leaderboard list and scroll to the current player
+    const buildList = (entries, container, valueKey) => {
+      let youIndex = -1;
 
-    // Current money column
-    byCurrentMoney.forEach((entry, i) => {
-      const isYou = currentUser && entry.name.toLowerCase() === currentUser.toLowerCase();
-      const div = document.createElement('div');
-      div.className = `lb-entry${isYou ? ' lb-you' : ''}`;
-      div.innerHTML = `
-        <span class="lb-rank">${i + 1}</span>
-        <span class="lb-name">${entry.name}${entry.tag ? ' <span class="og-badge">OG</span>' : ''}${isYou ? ' (you)' : ''}</span>
-        <span class="lb-money">$${entry.currentMoney.toLocaleString()}</span>
-      `;
-      currentEl.appendChild(div);
-    });
+      entries.forEach((entry, i) => {
+        const isYou = currentUser && entry.name.toLowerCase() === currentUser.toLowerCase();
+        if (isYou) youIndex = i;
+
+        const div = document.createElement('div');
+        div.className = `lb-entry${isYou ? ' lb-you' : ''}`;
+        if (isYou) div.id = `lb-you-${valueKey}`;
+        div.innerHTML = `
+          <span class="lb-rank">${i + 1}</span>
+          <span class="lb-name">${entry.name}${entry.tag ? ' <span class="og-badge">OG</span>' : ''}${isYou ? ' (you)' : ''}</span>
+          <span class="lb-money">$${entry[valueKey].toLocaleString()}</span>
+        `;
+        container.appendChild(div);
+      });
+
+      // Auto-scroll so the current player is centered
+      if (youIndex >= 0) {
+        requestAnimationFrame(() => {
+          const youEl = document.getElementById(`lb-you-${valueKey}`);
+          if (youEl && container.scrollHeight > container.clientHeight) {
+            const scrollTarget = youEl.offsetTop - container.clientHeight / 2 + youEl.offsetHeight / 2;
+            container.scrollTop = Math.max(0, scrollTarget);
+          }
+        });
+      }
+    };
+
+    buildList(byTotalEarned, totalEl, 'totalEarned');
+    buildList(byCurrentMoney, currentEl, 'currentMoney');
   }
 
   // ─── Shop Screen ────────────────────────────
