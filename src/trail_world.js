@@ -5,7 +5,7 @@
 // ═══════════════════════════════════════════════
 
 import * as THREE from 'three';
-import { createInstancedGrass } from './world.js';
+
 
 // ─── Materials ───────────────────────────────
 
@@ -282,14 +282,6 @@ export class TrailWorld {
 
     // ── Dirt Path ─────────────────────────────
     o.add(buildPath(TRAIL_LEN));
-
-    // ── Instanced Grass ───────────────────────
-    // We'll create several large patches of grass along the trail
-    for (let z = 0; z < TRAIL_LEN; z += 40) {
-      const blades = createInstancedGrass(45, 2000, 0x3d5228);
-      blades.position.set(0, 0, -z - 20);
-      o.add(blades);
-    }
 
     // ── Dense Forest on Both Sides ────────────
     const WALL_DIST = 5.5; // inner edge of tree wall

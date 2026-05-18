@@ -304,10 +304,6 @@ function buildBackyard(scene, obstacles) {
   const grass = createGrassPlane(60, 0x4a8a35);
   group.add(grass);
 
-  // Instanced grass blades (balanced for Chromebook performance)
-  const blades = createInstancedGrass(40, 4000, 0x4a8a35);
-  group.add(blades);
-
   // Sidewalk ring around the yards
   const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0xbbbbaa, roughness: 0.85 });
   for (let i = 0; i < 4; i++) {
@@ -467,10 +463,6 @@ function buildPark(scene, obstacles) {
   const grass = createGrassPlane(60, 0x3d8535);
   group.add(grass);
 
-  // Instanced grass blades
-  const blades = createInstancedGrass(50, 3000, 0x3d8535);
-  group.add(blades);
-
   // Gravel path (winding)
   const pathMat = new THREE.MeshStandardMaterial({ color: 0xb0a888, roughness: 0.9 });
   for (let i = -20; i < 20; i += 2) {
@@ -561,10 +553,6 @@ function buildForest(scene, obstacles) {
   const grass = createGrassPlane(80, 0x2a4a22);
   group.add(grass);
 
-  // Instanced grass blades (sparse in forest)
-  const blades = createInstancedGrass(60, 2500, 0x2a4a22);
-  group.add(blades);
-
   // Dense forest floor details (leaf litter)
   const leafLitterMat = new THREE.MeshStandardMaterial({ color: 0x3a3520, roughness: 1.0 });
   for (let i = 0; i < 30; i++) {
@@ -648,10 +636,6 @@ function buildLakeside(scene, obstacles) {
   // Ground (one half grass, one half sandy)
   const grass = createGrassPlane(80, 0x4a7a35);
   group.add(grass);
-
-  // Instanced grass blades
-  const blades = createInstancedGrass(60, 3000, 0x4a7a35);
-  group.add(blades);
 
   // Lake water
   const waterGeo = new THREE.CircleGeometry(20, 32);
@@ -754,10 +738,6 @@ function buildMountain(scene, obstacles) {
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   group.add(ground);
-
-  // Instanced grass blades (sparse dead grass)
-  const blades = createInstancedGrass(70, 2000, 0x5a5a50);
-  group.add(blades);
 
   // Grass patches on rocky ground
   const grassPatchMat = new THREE.MeshStandardMaterial({ color: 0x5a7a4a, roughness: 0.9 });
