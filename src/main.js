@@ -827,18 +827,18 @@ class Game {
     }
 
     // Admin cheat: type qwerty in backyard within the first 5 seconds
-    if (this.economy.currentLocation === 'backyard' && this.huntTimer > 55) {
+    // Ignore held-down key repeats so movement keys don't reset the buffer
+    if (!e.repeat && this.economy.currentLocation === 'backyard' && this.huntTimer > 55) {
       const letter = e.key.toLowerCase();
-      if ('qwerty'.startsWith(this._cheatBuffer + letter)) {
+      if (letter.length === 1 && 'qwerty'.startsWith(this._cheatBuffer + letter)) {
         this._cheatBuffer += letter;
         if (this._cheatBuffer === 'qwerty') {
           this.economy.money += 500;
           this.economy.save();
           this.hud.setMoney(this.economy.money);
-          this.hud.addKillFeedEntry('+$500', '#d4a853');
           this._cheatBuffer = '';
         }
-      } else {
+      } else if (letter.length === 1) {
         this._cheatBuffer = '';
       }
     }
