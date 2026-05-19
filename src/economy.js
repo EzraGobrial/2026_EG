@@ -8,6 +8,7 @@ import { doc, setDoc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from './firebase.js';
 
 export const BIRDS = {
+  // ─── Dimension 1: Earth ─────────────────────
   sparrow: {
     name: 'Sparrow', value: 2, speed: 1.8, size: 0.45,
     rarity: 'common', weight: 40,
@@ -84,6 +85,166 @@ export const BIRDS = {
     bodyColor: 0x6B4E1F, wingColor: 0x5a3d10, headColor: 0xD4A520,
     beakColor: 0x333333, bellyColor: 0x8B6914,
     flapSpeed: 3.5, flapAmplitude: 1.1
+  },
+
+  // ─── Dimension 2: Tropics ──────────────────
+  parrot: {
+    name: 'Parrot', value: 10, speed: 2.5, size: 0.45,
+    rarity: 'common', weight: 35,
+    bodyColor: 0x22AA22, wingColor: 0x1188DD, headColor: 0xDD2222,
+    beakColor: 0x333333, bellyColor: 0x44CC44,
+    flapSpeed: 8, flapAmplitude: 0.5
+  },
+  toucan: {
+    name: 'Toucan', value: 18, speed: 2.0, size: 0.5,
+    rarity: 'common', weight: 30,
+    bodyColor: 0x1a1a1a, wingColor: 0x111111, headColor: 0x1a1a1a,
+    beakColor: 0xFF8800, bellyColor: 0xFFDD00,
+    flapSpeed: 6, flapAmplitude: 0.55
+  },
+  flamingo: {
+    name: 'Flamingo', value: 30, speed: 1.8, size: 0.75,
+    rarity: 'uncommon', weight: 20,
+    bodyColor: 0xFF7799, wingColor: 0xFF5588, headColor: 0xFFAABB,
+    beakColor: 0x222222, bellyColor: 0xFF88AA,
+    flapSpeed: 4, flapAmplitude: 0.85
+  },
+  macaw: {
+    name: 'Macaw', value: 50, speed: 3.5, size: 0.55,
+    rarity: 'uncommon', weight: 15,
+    bodyColor: 0xDD2222, wingColor: 0x2266DD, headColor: 0xDD2222,
+    beakColor: 0x222222, bellyColor: 0xFFCC00,
+    flapSpeed: 9, flapAmplitude: 0.6
+  },
+  hornbill: {
+    name: 'Hornbill', value: 70, speed: 2.8, size: 0.6,
+    rarity: 'rare', weight: 10,
+    bodyColor: 0x1a1a1a, wingColor: 0x222222, headColor: 0x1a1a1a,
+    beakColor: 0xFFAA00, bellyColor: 0xeeeeee,
+    flapSpeed: 5, flapAmplitude: 0.7
+  },
+  quetzal: {
+    name: 'Quetzal', value: 100, speed: 3.8, size: 0.4,
+    rarity: 'rare', weight: 8,
+    bodyColor: 0x00AA55, wingColor: 0x008844, headColor: 0xDD2222,
+    beakColor: 0xCCAA00, bellyColor: 0x00CC66,
+    flapSpeed: 10, flapAmplitude: 0.65
+  },
+  harpy_eagle: {
+    name: 'Harpy Eagle', value: 160, speed: 3.5, size: 0.85,
+    rarity: 'epic', weight: 5,
+    bodyColor: 0x4a4a4a, wingColor: 0x333333, headColor: 0xcccccc,
+    beakColor: 0x333333, bellyColor: 0xdddddd,
+    flapSpeed: 4, flapAmplitude: 1.0
+  },
+  phoenix_bird: {
+    name: 'Bird of Paradise', value: 250, speed: 3.2, size: 0.5,
+    rarity: 'legendary', weight: 2,
+    bodyColor: 0xFF4400, wingColor: 0xDD2200, headColor: 0xFF6600,
+    beakColor: 0x333333, bellyColor: 0xFFAA00,
+    flapSpeed: 8, flapAmplitude: 0.7
+  },
+
+  // ─── Dimension 3: Arctic ───────────────────
+  snow_bunting: {
+    name: 'Snow Bunting', value: 20, speed: 2.8, size: 0.3,
+    rarity: 'common', weight: 35,
+    bodyColor: 0xeeeeee, wingColor: 0x1a1a1a, headColor: 0xeeeeee,
+    beakColor: 0xCCAA00, bellyColor: 0xffffff,
+    flapSpeed: 10, flapAmplitude: 0.5
+  },
+  ptarmigan: {
+    name: 'Ptarmigan', value: 35, speed: 2.2, size: 0.45,
+    rarity: 'common', weight: 30,
+    bodyColor: 0xddddee, wingColor: 0xccccdd, headColor: 0xddddee,
+    beakColor: 0x333333, bellyColor: 0xffffff,
+    flapSpeed: 7, flapAmplitude: 0.5
+  },
+  snowy_owl: {
+    name: 'Snowy Owl', value: 60, speed: 2.5, size: 0.65,
+    rarity: 'uncommon', weight: 18,
+    bodyColor: 0xf0f0f0, wingColor: 0xe0e0e0, headColor: 0xffffff,
+    beakColor: 0x333333, bellyColor: 0xffffff,
+    flapSpeed: 5, flapAmplitude: 0.8
+  },
+  puffin: {
+    name: 'Puffin', value: 80, speed: 3.5, size: 0.35,
+    rarity: 'uncommon', weight: 15,
+    bodyColor: 0x1a1a1a, wingColor: 0x111111, headColor: 0x1a1a1a,
+    beakColor: 0xFF6622, bellyColor: 0xeeeeee,
+    flapSpeed: 12, flapAmplitude: 0.45
+  },
+  arctic_tern: {
+    name: 'Arctic Tern', value: 110, speed: 3.8, size: 0.35,
+    rarity: 'rare', weight: 10,
+    bodyColor: 0xcccccc, wingColor: 0xaaaaaa, headColor: 0x1a1a1a,
+    beakColor: 0xDD2222, bellyColor: 0xeeeeee,
+    flapSpeed: 11, flapAmplitude: 0.55
+  },
+  gyrfalcon: {
+    name: 'Gyrfalcon', value: 180, speed: 3.8, size: 0.6,
+    rarity: 'epic', weight: 5,
+    bodyColor: 0xdddde0, wingColor: 0xc0c0c8, headColor: 0xdddde0,
+    beakColor: 0x333333, bellyColor: 0xeeeeee,
+    flapSpeed: 7, flapAmplitude: 0.75
+  },
+  ice_phoenix: {
+    name: 'Ice Phoenix', value: 350, speed: 3.5, size: 0.7,
+    rarity: 'legendary', weight: 2,
+    bodyColor: 0x88CCFF, wingColor: 0x55AAEE, headColor: 0xAADDFF,
+    beakColor: 0x4488AA, bellyColor: 0xCCEEFF,
+    flapSpeed: 5, flapAmplitude: 0.9
+  },
+
+  // ─── Dimension 4: Desert ───────────────────
+  sandgrouse: {
+    name: 'Sandgrouse', value: 30, speed: 2.5, size: 0.4,
+    rarity: 'common', weight: 35,
+    bodyColor: 0xC4A060, wingColor: 0xAA8840, headColor: 0xC4A060,
+    beakColor: 0x555555, bellyColor: 0xD8C090,
+    flapSpeed: 8, flapAmplitude: 0.5
+  },
+  roadrunner: {
+    name: 'Roadrunner', value: 50, speed: 3.5, size: 0.4,
+    rarity: 'common', weight: 28,
+    bodyColor: 0x4a5540, wingColor: 0x3a4530, headColor: 0x4a5540,
+    beakColor: 0x333333, bellyColor: 0xccccbb,
+    flapSpeed: 6, flapAmplitude: 0.4
+  },
+  vulture: {
+    name: 'Vulture', value: 80, speed: 2.0, size: 0.85,
+    rarity: 'uncommon', weight: 18,
+    bodyColor: 0x3a2a1a, wingColor: 0x2a1a0a, headColor: 0xCC5544,
+    beakColor: 0x444444, bellyColor: 0x3a2a1a,
+    flapSpeed: 3, flapAmplitude: 1.0
+  },
+  secretary_bird: {
+    name: 'Secretary Bird', value: 120, speed: 3.0, size: 0.7,
+    rarity: 'uncommon', weight: 14,
+    bodyColor: 0xaaaaaa, wingColor: 0x1a1a1a, headColor: 0xaaaaaa,
+    beakColor: 0x444444, bellyColor: 0xcccccc,
+    flapSpeed: 5, flapAmplitude: 0.8
+  },
+  desert_hawk: {
+    name: 'Desert Hawk', value: 180, speed: 3.8, size: 0.55,
+    rarity: 'rare', weight: 8,
+    bodyColor: 0x8B6914, wingColor: 0x7a5810, headColor: 0xAA8820,
+    beakColor: 0x333333, bellyColor: 0xD4B896,
+    flapSpeed: 7, flapAmplitude: 0.75
+  },
+  sand_falcon: {
+    name: 'Sand Falcon', value: 250, speed: 3.8, size: 0.5,
+    rarity: 'epic', weight: 5,
+    bodyColor: 0xD4A050, wingColor: 0xC09040, headColor: 0xD4A050,
+    beakColor: 0x333333, bellyColor: 0xE8D0A0,
+    flapSpeed: 8, flapAmplitude: 0.7
+  },
+  sun_phoenix: {
+    name: 'Sun Phoenix', value: 500, speed: 3.5, size: 0.75,
+    rarity: 'legendary', weight: 2,
+    bodyColor: 0xFF6600, wingColor: 0xDD4400, headColor: 0xFFAA00,
+    beakColor: 0xCC4400, bellyColor: 0xFFCC00,
+    flapSpeed: 5, flapAmplitude: 0.9
   }
 };
 
@@ -144,103 +305,255 @@ export const LOCATIONS = {
 };
 
 export const WEAPONS = {
+  // ─── Dimension 1: Earth ─────────────────────
   old_rifle: {
     name: "Grandpa's Old Rifle",
-    cost: 0,
+    cost: 0, dimension: 1,
     description: 'Slow and inaccurate, but it works.',
-    fireRate: 2.0,
-    accuracy: 0.85,
-    ammo: 1,
-    reloadTime: 2.5,
-    spread: 0.04,
-    isShotgun: false,
-    owned: true
+    fireRate: 2.0, accuracy: 0.85, ammo: 1, reloadTime: 2.5,
+    spread: 0.04, isShotgun: false, owned: true, isGrandpa: true
   },
   grandpas_shotgun: {
     name: "Grandpa's Shotgun",
-    cost: 0,
+    cost: 0, dimension: 1,
     description: 'Wide spread, easy to hit. Great for beginners.',
-    fireRate: 2.2,
-    accuracy: 0.6,
-    ammo: 2,
-    reloadTime: 2.8,
-    spread: 0.12,
-    pellets: 5,
-    isShotgun: true,
-    owned: true
+    fireRate: 2.2, accuracy: 0.6, ammo: 2, reloadTime: 2.8,
+    spread: 0.12, pellets: 5, isShotgun: true, owned: true, isGrandpa: true
   },
   hunting_rifle: {
     name: 'Hunting Rifle',
-    cost: 75,
+    cost: 75, dimension: 1,
     description: 'A proper hunting rifle. Much more reliable.',
-    fireRate: 1.5,
-    accuracy: 0.92,
-    ammo: 1,
-    reloadTime: 1.8,
-    spread: 0.025,
-    isShotgun: false,
-    owned: false
+    fireRate: 1.5, accuracy: 0.92, ammo: 1, reloadTime: 1.8,
+    spread: 0.025, isShotgun: false, owned: false
   },
   combat_shotgun: {
     name: 'Combat Shotgun',
-    cost: 200,
+    cost: 200, dimension: 1,
     description: '6 pellets, fast reload. Devastating at close range.',
-    fireRate: 1.6,
-    accuracy: 0.65,
-    ammo: 3,
-    reloadTime: 1.8,
-    spread: 0.10,
-    pellets: 6,
-    isShotgun: true,
-    owned: false
+    fireRate: 1.6, accuracy: 0.65, ammo: 3, reloadTime: 1.8,
+    spread: 0.10, pellets: 6, isShotgun: true, owned: false
   },
   scoped_rifle: {
     name: 'Scoped Rifle',
-    cost: 500,
+    cost: 500, dimension: 1,
     description: 'Zoom in for deadly precision shots.',
-    fireRate: 2.0,
-    accuracy: 0.97,
-    ammo: 1,
-    reloadTime: 2.0,
-    spread: 0.01,
-    hasScope: true,
-    isShotgun: false,
-    owned: false
+    fireRate: 2.0, accuracy: 0.97, ammo: 1, reloadTime: 2.0,
+    spread: 0.01, hasScope: true, isShotgun: false, owned: false
   },
   semi_auto: {
     name: 'Semi-Auto',
-    cost: 1200,
+    cost: 1200, dimension: 1,
     description: 'Fast firing. 5 shots before reload.',
-    fireRate: 0.4,
-    accuracy: 0.88,
-    ammo: 5,
-    reloadTime: 2.5,
-    spread: 0.035,
-    isShotgun: false,
-    owned: false
+    fireRate: 0.4, accuracy: 0.88, ammo: 5, reloadTime: 2.5,
+    spread: 0.035, isShotgun: false, owned: false
   },
   grandpas_rifle: {
     name: "Great-Grandfather's Rifle",
-    cost: 0,
+    cost: 0, dimension: 1,
     description: 'A rifle from another era. Immaculate. Infinite ammo. Never needs reloading.',
-    fireRate: 0.6,
-    accuracy: 0.96,
-    ammo: Infinity,
-    reloadTime: 0,
-    spread: 0.065,
-    isShotgun: true,
-    crosshairShape: 'square',
-    noReload: true,
-    isLegendary: true,
-    owned: false
+    fireRate: 0.6, accuracy: 0.96, ammo: Infinity, reloadTime: 0,
+    spread: 0.065, isShotgun: true, crosshairShape: 'square',
+    noReload: true, isLegendary: true, owned: false, isGrandpa: true
+  },
+
+  // ─── Dimension 2: Tropics ──────────────────
+  crossbow: {
+    name: 'Crossbow',
+    cost: 800, dimension: 2,
+    description: 'Silent and deadly. Perfect for jungle hunting.',
+    fireRate: 2.5, accuracy: 0.95, ammo: 1, reloadTime: 3.0,
+    spread: 0.015, isShotgun: false, owned: false
+  },
+  auto_shotgun: {
+    name: 'Auto Shotgun',
+    cost: 1500, dimension: 2,
+    description: 'Rapid-fire shotgun. 4 shots, 8 pellets each.',
+    fireRate: 0.6, accuracy: 0.55, ammo: 4, reloadTime: 3.0,
+    spread: 0.14, pellets: 8, isShotgun: true, owned: false
+  },
+
+  // ─── Dimension 3: Arctic ───────────────────
+  rail_gun: {
+    name: 'Rail Gun',
+    cost: 2000, dimension: 3,
+    description: 'Electromagnetic precision. Pierces through anything.',
+    fireRate: 3.0, accuracy: 0.99, ammo: 1, reloadTime: 3.5,
+    spread: 0.005, hasScope: true, isShotgun: false, owned: false
+  },
+  slomo_gun: {
+    name: 'Slo-Mo Gun',
+    cost: 3000, dimension: 3,
+    description: 'Slows time when you scope in. 3-second window, 5s cooldown.',
+    fireRate: 1.8, accuracy: 0.93, ammo: 2, reloadTime: 2.0,
+    spread: 0.02, hasScope: true, isSlomo: true, isShotgun: false, owned: false
+  },
+
+  // ─── Dimension 4: Desert ───────────────────
+  laser_rifle: {
+    name: 'Laser Rifle',
+    cost: 4000, dimension: 4,
+    description: 'Instant-hit beam. No spread, no bullet travel time.',
+    fireRate: 1.2, accuracy: 1.0, ammo: 3, reloadTime: 2.5,
+    spread: 0.0, hasScope: true, isShotgun: false, owned: false
+  },
+  plasma_shotgun: {
+    name: 'Plasma Shotgun',
+    cost: 5000, dimension: 4,
+    description: 'Fires superheated plasma. 10 pellets, massive spread.',
+    fireRate: 1.0, accuracy: 0.5, ammo: 2, reloadTime: 3.5,
+    spread: 0.18, pellets: 10, isShotgun: true, owned: false
   }
 };
+
+// ═══════════════════════════════════════════════
+// Dimensions Configuration
+// ═══════════════════════════════════════════════
+
+export const DIMENSIONS = [
+  {
+    id: 1,
+    name: 'Earth',
+    fee: 0, // Starting dimension
+    locations: {
+      backyard: {
+        name: 'Backyard', cost: 0,
+        description: 'Your own backyard. Small but familiar.',
+        birds: ['sparrow', 'pigeon'], maxBirds: 4, areaSize: 30, unlocked: true
+      },
+      park: {
+        name: 'City Park', cost: 50,
+        description: 'Open fields and old oak trees.',
+        birds: ['sparrow', 'pigeon', 'robin', 'bluejay'], maxBirds: 6, areaSize: 50, unlocked: false
+      },
+      forest: {
+        name: 'Forest', cost: 200,
+        description: 'Dense woods with rare songbirds.',
+        birds: ['robin', 'bluejay', 'cardinal', 'woodpecker'], maxBirds: 7, areaSize: 60, unlocked: false
+      },
+      lakeside: {
+        name: 'Lakeside', cost: 500,
+        description: 'Calm waters attract large wading birds.',
+        birds: ['robin', 'cardinal', 'heron', 'eagle'], maxBirds: 8, areaSize: 70, unlocked: false
+      },
+      mountain: {
+        name: 'Mountain', cost: 1500,
+        description: 'High altitude. Home of birds of prey.',
+        birds: ['eagle', 'hawk', 'falcon', 'golden_eagle'], maxBirds: 6, areaSize: 80, unlocked: false
+      }
+    },
+    weapons: ['old_rifle', 'grandpas_shotgun', 'hunting_rifle', 'combat_shotgun', 'scoped_rifle', 'semi_auto', 'grandpas_rifle']
+  },
+  {
+    id: 2,
+    name: 'Tropics',
+    fee: 2000,
+    locations: {
+      beach: {
+        name: 'Beach', cost: 300,
+        description: 'Sandy shores with seabirds and tropical flyers.',
+        birds: ['parrot', 'toucan'], maxBirds: 5, areaSize: 50, unlocked: false
+      },
+      jungle: {
+        name: 'Jungle', cost: 600,
+        description: 'Dense canopy. Colorful birds everywhere.',
+        birds: ['parrot', 'toucan', 'flamingo', 'macaw'], maxBirds: 7, areaSize: 55, unlocked: false
+      },
+      swamp: {
+        name: 'Swamp', cost: 1000,
+        description: 'Murky waters hide rare species.',
+        birds: ['flamingo', 'macaw', 'hornbill'], maxBirds: 6, areaSize: 45, unlocked: false
+      },
+      volcano: {
+        name: 'Volcano', cost: 1800,
+        description: 'Volcanic ridges attract fearless hunters.',
+        birds: ['hornbill', 'quetzal', 'harpy_eagle'], maxBirds: 5, areaSize: 60, unlocked: false
+      },
+      island: {
+        name: 'Island', cost: 3000,
+        description: 'Remote island paradise. Legendary birds nest here.',
+        birds: ['quetzal', 'harpy_eagle', 'phoenix_bird'], maxBirds: 5, areaSize: 70, unlocked: false
+      }
+    },
+    weapons: ['crossbow', 'auto_shotgun']
+  },
+  {
+    id: 3,
+    name: 'Arctic',
+    fee: 5000,
+    locations: {
+      tundra: {
+        name: 'Tundra', cost: 800,
+        description: 'Flat, frozen plains. Birds camouflage in the snow.',
+        birds: ['snow_bunting', 'ptarmigan'], maxBirds: 5, areaSize: 60, unlocked: false
+      },
+      glacier: {
+        name: 'Glacier', cost: 1500,
+        description: 'Icy cliffs and frozen waterfalls.',
+        birds: ['snow_bunting', 'ptarmigan', 'snowy_owl'], maxBirds: 6, areaSize: 50, unlocked: false
+      },
+      ice_cave: {
+        name: 'Ice Cave', cost: 2500,
+        description: 'Crystal caverns echo with wingbeats.',
+        birds: ['snowy_owl', 'puffin', 'arctic_tern'], maxBirds: 5, areaSize: 40, unlocked: false
+      },
+      frozen_lake: {
+        name: 'Frozen Lake', cost: 4000,
+        description: 'A vast frozen lake under the northern lights.',
+        birds: ['puffin', 'arctic_tern', 'gyrfalcon'], maxBirds: 6, areaSize: 65, unlocked: false
+      },
+      arctic_peak: {
+        name: 'Arctic Peak', cost: 6000,
+        description: 'The highest point. Only legendary birds dare fly here.',
+        birds: ['arctic_tern', 'gyrfalcon', 'ice_phoenix'], maxBirds: 4, areaSize: 70, unlocked: false
+      }
+    },
+    weapons: ['rail_gun', 'slomo_gun']
+  },
+  {
+    id: 4,
+    name: 'Desert',
+    fee: 10000,
+    locations: {
+      oasis: {
+        name: 'Oasis', cost: 1500,
+        description: 'A green haven in the sand. Birds come to drink.',
+        birds: ['sandgrouse', 'roadrunner'], maxBirds: 6, areaSize: 45, unlocked: false
+      },
+      canyon: {
+        name: 'Canyon', cost: 3000,
+        description: 'Deep rocky canyons with echoing calls.',
+        birds: ['sandgrouse', 'roadrunner', 'vulture'], maxBirds: 6, areaSize: 55, unlocked: false
+      },
+      dunes: {
+        name: 'Dunes', cost: 5000,
+        description: 'Endless rolling sand dunes under a blazing sun.',
+        birds: ['vulture', 'secretary_bird', 'desert_hawk'], maxBirds: 5, areaSize: 70, unlocked: false
+      },
+      mesa: {
+        name: 'Mesa', cost: 8000,
+        description: 'Flat-topped mountains where predators circle.',
+        birds: ['secretary_bird', 'desert_hawk', 'sand_falcon'], maxBirds: 5, areaSize: 65, unlocked: false
+      },
+      ruins: {
+        name: 'Ruins', cost: 12000,
+        description: 'Ancient ruins. The Sun Phoenix was last seen here.',
+        birds: ['desert_hawk', 'sand_falcon', 'sun_phoenix'], maxBirds: 4, areaSize: 75, unlocked: false
+      }
+    },
+    weapons: ['laser_rifle', 'plasma_shotgun']
+  }
+];
+
+// Grandpa weapons cannot be traded
+const GRANDPA_WEAPONS = ['old_rifle', 'grandpas_shotgun', 'grandpas_rifle'];
 
 export class Economy {
   constructor() {
     this.uid = null;
     this.money = 0;
     this.day = 1;
+    this.dimension = 1;
     this.totalBirdsKilled = 0;
     this.totalMoneyEarned = 0;
     this.currentWeapon = 'old_rifle';
@@ -250,7 +563,8 @@ export class Economy {
     this.equipped = { tag: null };
     this.story = null; // serialized story state
     this.weapons = JSON.parse(JSON.stringify(WEAPONS));
-    this.locations = JSON.parse(JSON.stringify(LOCATIONS));
+    // Initialize locations from dimension 1
+    this.locations = JSON.parse(JSON.stringify(DIMENSIONS[0].locations));
   }
 
   setUid(uid) {
@@ -266,6 +580,7 @@ export class Economy {
     const data = {
       money: this.money,
       day: this.day,
+      dimension: this.dimension,
       totalBirdsKilled: this.totalBirdsKilled,
       totalMoneyEarned: this.totalMoneyEarned,
       currentWeapon: this.currentWeapon,
@@ -298,6 +613,7 @@ export class Economy {
       const data = snap.data();
       this.money = data.money || 0;
       this.day = data.day || 1;
+      this.dimension = data.dimension || 1;
       this.totalBirdsKilled = data.totalBirdsKilled || 0;
       this.totalMoneyEarned = data.totalMoneyEarned || 0;
       if (this.totalMoneyEarned < this.money) {
@@ -308,6 +624,14 @@ export class Economy {
       this.inventory = data.inventory || { tags: [] };
       this.equipped = data.equipped || { tag: null };
       this.story = data.story || null;
+
+      // Rebuild locations from all unlocked dimensions
+      this.locations = {};
+      for (let d = 0; d < this.dimension && d < DIMENSIONS.length; d++) {
+        const dimLocs = JSON.parse(JSON.stringify(DIMENSIONS[d].locations));
+        Object.assign(this.locations, dimLocs);
+      }
+
       if (data.weaponOwned) {
         for (const [k, v] of Object.entries(data.weaponOwned)) {
           if (this.weapons[k]) this.weapons[k].owned = v;
@@ -326,16 +650,80 @@ export class Economy {
   reset() {
     this.money = 0;
     this.day = 1;
+    this.dimension = 1;
     this.totalBirdsKilled = 0;
     this.totalMoneyEarned = 0;
     this.currentWeapon = 'old_rifle';
     this.currentLocation = 'backyard';
     this.weapons = JSON.parse(JSON.stringify(WEAPONS));
-    this.locations = JSON.parse(JSON.stringify(LOCATIONS));
+    this.locations = JSON.parse(JSON.stringify(DIMENSIONS[0].locations));
     this.huntBag = [];
     this.inventory = { tags: [] };
     this.equipped = { tag: null };
     this.save();
+  }
+
+  // ─── Dimension Methods ──────────────────────
+
+  getDimensionName() {
+    const dim = DIMENSIONS[this.dimension - 1];
+    return dim ? dim.name : `Dimension ${this.dimension}`;
+  }
+
+  getDimensionFee() {
+    const nextDim = DIMENSIONS[this.dimension]; // 0-indexed, so this.dimension points to next
+    return nextDim ? nextDim.fee : 0;
+  }
+
+  /**
+   * Check if all locations in the CURRENT dimension are unlocked
+   */
+  canAdvanceDimension() {
+    if (this.dimension >= DIMENSIONS.length) return false; // no more dimensions
+    const currentDimLocs = DIMENSIONS[this.dimension - 1].locations;
+    for (const key of Object.keys(currentDimLocs)) {
+      if (!this.locations[key] || !this.locations[key].unlocked) return false;
+    }
+    return true;
+  }
+
+  /**
+   * Advance to the next dimension (charges fee, merges new content)
+   */
+  advanceDimension() {
+    if (!this.canAdvanceDimension()) return false;
+    const fee = this.getDimensionFee();
+    if (this.money < fee) return false;
+
+    this.money -= fee;
+    this.dimension++;
+
+    // Merge new dimension's locations
+    const newDim = DIMENSIONS[this.dimension - 1];
+    if (newDim) {
+      const newLocs = JSON.parse(JSON.stringify(newDim.locations));
+      Object.assign(this.locations, newLocs);
+    }
+
+    this.save();
+    return true;
+  }
+
+  /**
+   * Get which dimension a location belongs to
+   */
+  getDimensionForLocation(locKey) {
+    for (const dim of DIMENSIONS) {
+      if (dim.locations[locKey]) return dim.id;
+    }
+    return 1;
+  }
+
+  /**
+   * Check if a weapon is a grandpa weapon (cannot be traded)
+   */
+  static isGrandpaWeapon(key) {
+    return GRANDPA_WEAPONS.includes(key);
   }
 
   /**
@@ -348,6 +736,7 @@ export class Economy {
       currentMoney: this.money,
       totalEarned: this.totalMoneyEarned,
       day: this.day,
+      dimension: this.dimension,
       tag: this.equipped && this.equipped.tag ? this.equipped.tag : null,
       updatedAt: Date.now()
     };
@@ -364,10 +753,12 @@ export class Economy {
       snap.forEach(d => {
         const data = d.data();
         entries.push({
+          uid: d.id,
           name: data.name || 'Unknown',
           currentMoney: data.currentMoney || 0,
           totalEarned: data.totalEarned || 0,
           day: data.day || 1,
+          dimension: data.dimension || 1,
           tag: data.tag || null
         });
       });
