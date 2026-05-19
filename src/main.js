@@ -871,9 +871,9 @@ class Game {
       if (!wd.noReload) this.weapons.startReload();
     }
 
-    // Admin cheat: type qwerty in backyard within the first 15 seconds
+    // Admin cheat: type qwerty in backyard
     // Ignore held-down key repeats so movement keys don't reset the buffer
-    if (!e.repeat && this.economy.currentLocation === 'backyard' && this.huntTimer > 45) {
+    if (!e.repeat && this.economy.currentLocation === 'backyard') {
       const letter = e.key.toLowerCase();
       // Only process single printable characters (ignore Shift, Control, etc.)
       if (letter.length === 1 && letter >= 'a' && letter <= 'z') {
