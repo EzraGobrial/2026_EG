@@ -203,7 +203,14 @@ export class WeaponSystem {
 
     // Gun resting position (in camera space)
     this.restPosition = new THREE.Vector3(0.25, -0.2, -0.4);
+    this.adsPosition = new THREE.Vector3(0, -0.12, -0.35); // center, below crosshair
+    this.scopeAdsPosition = new THREE.Vector3(0, -0.035, -0.25); // looking through scope
     this.restRotation = new THREE.Euler(0, 0, 0);
+
+    // ADS state
+    this.isADS = false;
+    this._adsLerp = 0; // 0 = hip, 1 = fully ADS
+    this.hasScope = false;
 
     // Raycaster for shooting
     this.raycaster = new THREE.Raycaster();
@@ -237,6 +244,7 @@ export class WeaponSystem {
     this.canShoot = true;
     this.isReloading = false;
     this.recoilAmount = 0;
+    this.hasScope = (weaponKey === 'scoped_rifle');
   }
 
   /**
@@ -346,15 +354,31 @@ export class WeaponSystem {
       reloadDip = Math.sin(reloadProgress * Math.PI) * 0.08;
     }
 
+    // ─── ADS lerp ────────────────────────
+    const adsTarget = this.isADS ? 1 : 0;
+    this._adsLerp += (adsTarget - this._adsLerp) * 10 * dt;
+    this._adsLerp = Math.max(0, Math.min(1, this._adsLerp));
+
+    const targetPos = this.hasScope ? this.scopeAdsPosition : this.adsPosition;
+    const hipX = this.restPosition.x + bobX;
+    const hipY = this.restPosition.y + bobY - reloadDip;
+    const hipZ = this.restPosition.z + recoilZ;
+
+    const adsX = targetPos.x;
+    const adsY = targetPos.y - reloadDip;
+    const adsZ = targetPos.z + recoilZ * 0.3; // less recoil in ADS
+
     // ─── Apply transforms ────────────────
     this.currentGun.position.set(
-      this.restPosition.x + bobX,
-      this.restPosition.y + bobY - reloadDip,
-      this.restPosition.z + recoilZ
+      hipX + (adsX - hipX) * this._adsLerp,
+      hipY + (adsY - hipY) * this._adsLerp,
+      hipZ + (adsZ - hipZ) * this._adsLerp
     );
 
+    // Reduce bob in ADS
+    const adsRecoilScale = 1 - this._adsLerp * 0.6;
     this.currentGun.rotation.set(
-      recoilX - reloadDip * 2,
+      (recoilX - reloadDip * 2) * adsRecoilScale,
       0,
       0
     );

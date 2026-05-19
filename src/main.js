@@ -736,15 +736,27 @@ class Game {
     this.player.update(dt);
 
     // Scope FOV interpolation
-    const targetFOV = this._scoping ? this._scopeFOV : this._normalFOV;
+    const isScoped = this._scoping && this.weapons.hasScope;
+    const targetFOV = this._scoping
+      ? (isScoped ? 15 : this._scopeFOV)  // scoped weapons zoom in much more
+      : this._normalFOV;
     this._currentFOV += (targetFOV - this._currentFOV) * 8 * dt;
     this.camera.fov = this._currentFOV;
     this.camera.updateProjectionMatrix();
+
     // Sensitivity scales with zoom
-    this.player.mouseSensitivity = this._scoping ? this._normalSens * 0.4 : this._normalSens;
+    const sensScale = isScoped ? 0.2 : (this._scoping ? 0.4 : 1);
+    this.player.mouseSensitivity = this._normalSens * sensScale;
+
     // Scope vignette
     const vigEl = document.getElementById('scope-vignette');
-    if (vigEl) vigEl.classList.toggle('active', this._scoping);
+    if (vigEl) {
+      vigEl.classList.toggle('active', this._scoping);
+      vigEl.classList.toggle('scoped', isScoped);
+    }
+
+    // Tell weapon system about ADS state
+    this.weapons.isADS = this._scoping;
 
     // Weapon update
     this.weapons.update(dt, this.player.isMoving());
