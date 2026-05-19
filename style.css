@@ -72,14 +72,14 @@ body {
   opacity: 1;
 }
 
-/* Scoped weapon: black outside a tight circle, slight lens tint inside */
+/* Scoped weapon: dim outside the circle, not fully black */
 #scope-vignette.scoped {
   background: radial-gradient(
     circle at center,
     rgba(0, 20, 0, 0.05) 0%,
-    rgba(0, 15, 0, 0.1) 30%,
-    rgba(0, 0, 0, 1) 42%,
-    rgba(0, 0, 0, 1) 100%
+    rgba(0, 15, 0, 0.08) 30%,
+    rgba(0, 0, 0, 0.75) 42%,
+    rgba(0, 0, 0, 0.8) 100%
   );
 }
 
