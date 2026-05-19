@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gary's Life — Bird Hunting Tycoon</title>
   <meta name="description" content="An FPS bird hunting game where you start as a kid with grandpa's old rifle, hunting birds to make money and upgrade your gear.">
-  <link rel="stylesheet" href="style.css?v=2.4">
+  <link rel="stylesheet" href="style.css?v=2.5">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Special+Elite&display=swap" rel="stylesheet">
 </head>
@@ -268,6 +268,7 @@
   <div id="screen-shop" class="screen hidden">
     <div class="panel shop-panel">
       <h2 class="panel-title">Gary's Shop</h2>
+      <div id="shop-dimension" class="shop-dimension">Dimension 1 -- Earth</div>
       <div id="shop-money" class="shop-money">$0</div>
       <div class="shop-sections">
         <div class="shop-section">
@@ -279,7 +280,11 @@
           <div id="shop-locations" class="shop-grid"></div>
         </div>
       </div>
-      <button id="btn-sleep" class="btn btn-primary">Go to Sleep</button>
+      <div id="shop-advance-dim"></div>
+      <div class="shop-bottom-buttons">
+        <button id="btn-trade" class="btn btn-secondary">Trade<span id="trade-dot" class="trade-dot hidden"></span></button>
+        <button id="btn-sleep" class="btn btn-primary">Go to Sleep</button>
+      </div>
     </div>
   </div>
 

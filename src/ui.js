@@ -3,7 +3,7 @@
 // Menu screens: title, morning, results, shop, sleep, win
 // ═══════════════════════════════════════════════
 
-import { Economy, BIRDS, RARITY_COLORS, LOCATIONS, WEAPONS } from './economy.js';
+import { Economy, BIRDS, RARITY_COLORS, DIMENSIONS, WEAPONS } from './economy.js';
 
 export class UI {
   constructor(economy, audio) {
@@ -329,13 +329,21 @@ export class UI {
     const eco = this.economy;
     document.getElementById('shop-money').textContent = `$${eco.money}`;
 
-    // Weapons
+    // Dimension header
+    const dimHeader = document.getElementById('shop-dimension');
+    if (dimHeader) {
+      dimHeader.textContent = `Dimension ${eco.dimension} -- ${eco.getDimensionName()}`;
+    }
+
+    // Weapons — only show weapons from unlocked dimensions
     const weaponGrid = document.getElementById('shop-weapons');
     weaponGrid.innerHTML = '';
 
     for (const [key, weapon] of Object.entries(eco.weapons)) {
-      // Hide the legendary gun from the shop (quest-only reward)
+      // Hide legendary weapons (quest rewards)
       if (weapon.isLegendary) continue;
+      // Only show weapons from dimensions the player has reached
+      if (weapon.dimension && weapon.dimension > eco.dimension) continue;
 
       const item = document.createElement('div');
       item.className = 'shop-item';
@@ -381,44 +389,91 @@ export class UI {
       weaponGrid.appendChild(item);
     }
 
-    // Locations
+    // Locations — grouped by dimension
     const locGrid = document.getElementById('shop-locations');
     locGrid.innerHTML = '';
 
-    for (const [key, loc] of Object.entries(eco.locations)) {
-      const item = document.createElement('div');
-      item.className = 'shop-item';
+    for (let d = 0; d < eco.dimension && d < DIMENSIONS.length; d++) {
+      const dim = DIMENSIONS[d];
 
-      if (loc.unlocked) {
-        item.classList.add('owned');
-        item.innerHTML = `
-          <div class="shop-item-name">${loc.name}</div>
-          <div class="shop-item-desc">${loc.description}</div>
-          <div class="shop-item-price">UNLOCKED</div>
-        `;
-      } else if (eco.money < loc.cost) {
-        item.classList.add('cant-afford');
-        item.innerHTML = `
-          <div class="shop-item-name">${loc.name}</div>
-          <div class="shop-item-desc">${loc.description}</div>
-          <div class="shop-item-price">$${loc.cost}</div>
-        `;
-      } else {
-        item.innerHTML = `
-          <div class="shop-item-name">${loc.name}</div>
-          <div class="shop-item-desc">${loc.description}</div>
-          <div class="shop-item-price">$${loc.cost}</div>
-        `;
-        item.addEventListener('click', () => {
-          this.audio.playUIClick();
-          if (eco.buyLocation(key)) {
-            this.audio.playCashRegister();
-            this.showShop(); // refresh
+      // Dimension section header
+      const header = document.createElement('div');
+      header.className = 'shop-dim-header';
+      header.textContent = `${dim.name} (Dimension ${dim.id})`;
+      locGrid.appendChild(header);
+
+      for (const locKey of Object.keys(dim.locations)) {
+        const loc = eco.locations[locKey];
+        if (!loc) continue;
+
+        const item = document.createElement('div');
+        item.className = 'shop-item';
+
+        if (loc.unlocked) {
+          item.classList.add('owned');
+          const isSelected = locKey === eco.currentLocation;
+          item.innerHTML = `
+            <div class="shop-item-name">${loc.name}</div>
+            <div class="shop-item-desc">${loc.description}</div>
+            <div class="shop-item-price">${isSelected ? 'SELECTED' : 'UNLOCKED'}</div>
+          `;
+          if (!isSelected) {
+            item.style.cursor = 'pointer';
+            item.addEventListener('click', () => {
+              this.audio.playUIClick();
+              eco.selectLocation(locKey);
+              this.showShop();
+            });
           }
-        });
-      }
+        } else if (eco.money < loc.cost) {
+          item.classList.add('cant-afford');
+          item.innerHTML = `
+            <div class="shop-item-name">${loc.name}</div>
+            <div class="shop-item-desc">${loc.description}</div>
+            <div class="shop-item-price">$${loc.cost}</div>
+          `;
+        } else {
+          item.innerHTML = `
+            <div class="shop-item-name">${loc.name}</div>
+            <div class="shop-item-desc">${loc.description}</div>
+            <div class="shop-item-price">$${loc.cost}</div>
+          `;
+          item.addEventListener('click', () => {
+            this.audio.playUIClick();
+            if (eco.buyLocation(locKey)) {
+              this.audio.playCashRegister();
+              this.showShop(); // refresh
+            }
+          });
+        }
 
-      locGrid.appendChild(item);
+        locGrid.appendChild(item);
+      }
+    }
+
+    // ── Next Dimension Button ──────────────────
+    const advanceContainer = document.getElementById('shop-advance-dim');
+    if (advanceContainer) {
+      advanceContainer.innerHTML = '';
+      if (eco.canAdvanceDimension() && eco.dimension < DIMENSIONS.length) {
+        const nextDim = DIMENSIONS[eco.dimension];
+        const fee = eco.getDimensionFee();
+        const canAfford = eco.money >= fee;
+
+        const btn = document.createElement('button');
+        btn.className = `btn btn-dimension ${canAfford ? '' : 'cant-afford'}`;
+        btn.innerHTML = `Travel to Dimension ${nextDim.id} -- ${nextDim.name}<br><span class="dim-fee">$${fee}</span>`;
+        if (canAfford) {
+          btn.addEventListener('click', () => {
+            this.audio.playUIClick();
+            if (eco.advanceDimension()) {
+              this.audio.playCashRegister();
+              this.showShop();
+            }
+          });
+        }
+        advanceContainer.appendChild(btn);
+      }
     }
 
     // ── Story Quest Section ────────────────────
