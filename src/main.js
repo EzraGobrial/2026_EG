@@ -124,13 +124,23 @@ class Game {
     // Admin cheat
     this._cheatBuffer = '';
 
+    // Scope / ADS
+    this._scoping = false;
+    this._scopeFOV = 30;   // zoomed-in FOV
+    this._normalFOV = 70;  // default FOV
+    this._currentFOV = 70;
+    this._normalSens = this.player.mouseSensitivity;
+
     // ─── Clock ─────────────────────────────
     this.clock = new THREE.Clock();
 
     // ─── Events ────────────────────────────
     window.addEventListener('resize', () => this._onResize());
     this.canvas.addEventListener('mousedown', (e) => this._onMouseDown(e));
+    this.canvas.addEventListener('mouseup', (e) => this._onMouseUp(e));
+    this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     document.addEventListener('keydown', (e) => this._onKeyDown(e));
+    document.addEventListener('keyup', (e) => this._onKeyUp(e));
 
     // ─── Auth Callbacks ────────────────────
     this.ui.onLogin = (u, p) => this._handleLogin(u, p);
@@ -556,6 +566,11 @@ class Game {
 
   _onMouseDown(e) {
     if (this.state !== STATE.HUNTING) return;
+    if (e.button === 2) {
+      // Right-click: scope
+      this._scoping = true;
+      return;
+    }
     if (e.button !== 0) return; // left click only
 
     if (!this.player.isLocked) {
@@ -720,6 +735,17 @@ class Game {
     // Player movement
     this.player.update(dt);
 
+    // Scope FOV interpolation
+    const targetFOV = this._scoping ? this._scopeFOV : this._normalFOV;
+    this._currentFOV += (targetFOV - this._currentFOV) * 8 * dt;
+    this.camera.fov = this._currentFOV;
+    this.camera.updateProjectionMatrix();
+    // Sensitivity scales with zoom
+    this.player.mouseSensitivity = this._scoping ? this._normalSens * 0.4 : this._normalSens;
+    // Scope vignette
+    const vigEl = document.getElementById('scope-vignette');
+    if (vigEl) vigEl.classList.toggle('active', this._scoping);
+
     // Weapon update
     this.weapons.update(dt, this.player.isMoving());
 
@@ -788,7 +814,13 @@ class Game {
   }
 
   _onKeyDown(e) {
-    // I key — inspect in shed
+    // Spacebar scope (hold)
+    if (e.code === 'Space' && this.state === STATE.HUNTING && !e.repeat) {
+      e.preventDefault();
+      this._scoping = true;
+    }
+
+    // I key -- inspect in shed
     if (e.code === 'KeyI' && this.state === STATE.SHED && this.shedInterior) {
       const near = this.shedInterior.getNearestInteractable(this.player.position);
       if (near) {
@@ -850,7 +882,19 @@ class Game {
       }
     }
   }
+
+  _onMouseUp(e) {
+    if (e.button === 2) {
+      this._scoping = false;
+    }
+  }
+
+  _onKeyUp(e) {
+    if (e.code === 'Space') {
+      this._scoping = false;
+    }
+  }
 }
 
-// ─── Start ─────────────────────────────────────
+// --- Start -----------------------------------------
 const game = new Game();

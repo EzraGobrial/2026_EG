@@ -46,6 +46,33 @@ body {
   display: block;
 }
 
+/* ═══════════════════════════════════════════════
+   Scope Vignette
+   ═══════════════════════════════════════════════ */
+
+#scope-vignette {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 90;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  background: radial-gradient(
+    circle at center,
+    transparent 35%,
+    rgba(0, 0, 0, 0.3) 60%,
+    rgba(0, 0, 0, 0.7) 85%,
+    rgba(0, 0, 0, 0.9) 100%
+  );
+}
+
+#scope-vignette.active {
+  opacity: 1;
+}
+
 .hidden { display: none !important; }
 
 /* ═══════════════════════════════════════════════
