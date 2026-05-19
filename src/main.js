@@ -131,6 +131,12 @@ class Game {
     this._currentFOV = 70;
     this._normalSens = this.player.mouseSensitivity;
 
+    // Slo-Mo Gun state
+    this._slomoTimer = 0;        // how long scoped (max 3s)
+    this._slomoCooldown = 0;     // cooldown before can scope again
+    this._slomoActive = false;   // is slomo effect currently on
+    this.birdSpeedMultiplier = 1; // passed to bird system
+
     // ─── Clock ─────────────────────────────
     this.clock = new THREE.Clock();
 
@@ -754,6 +760,38 @@ class Game {
 
     // Scope FOV interpolation
     const isScoped = this._scoping && this.weapons.hasScope;
+    const isSlomo = this.economy.currentWeapon === 'slomo_gun';
+
+    // Slo-Mo Gun timer logic
+    if (isSlomo && isScoped) {
+      this._slomoTimer += dt;
+      this._slomoActive = true;
+      this.birdSpeedMultiplier = 0.25; // 25% speed
+
+      if (this._slomoTimer >= 3.0) {
+        // Auto-unscope after 3 seconds
+        this._scoping = false;
+        this._slomoTimer = 0;
+        this._slomoActive = false;
+        this._slomoCooldown = 5.0;
+        this.birdSpeedMultiplier = 1;
+      }
+    } else {
+      if (this._slomoActive) {
+        this._slomoActive = false;
+        this.birdSpeedMultiplier = 1;
+      }
+      if (this._slomoCooldown > 0) {
+        this._slomoCooldown -= dt;
+      }
+      this._slomoTimer = 0;
+    }
+
+    // Block scoping if slomo is on cooldown
+    if (isSlomo && this._slomoCooldown > 0 && this._scoping) {
+      this._scoping = false;
+    }
+
     const targetFOV = this._scoping
       ? (isScoped ? 15 : this._scopeFOV)  // scoped weapons zoom in much more
       : this._normalFOV;
@@ -804,8 +842,8 @@ class Game {
     // Update ammo display continuously
     this.hud.setAmmo(this.weapons.ammo, this.weapons.maxAmmo);
 
-    // Bird updates
-    this.birds.update(dt);
+    // Bird updates (pass slo-mo multiplier)
+    this.birds.update(dt * this.birdSpeedMultiplier);
 
     // Spawn new birds
     this.spawnTimer += dt;

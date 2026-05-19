@@ -75,6 +75,50 @@ function buildGunModel(weaponKey) {
       barrelLength = 0.4;
       barrelRadius = 0.013;
       break;
+    // ─── Dimension 2: Tropics ──────────────
+    case 'crossbow':
+      stockColor = 0x5a3a1a;
+      stockLength = 0.2;
+      barrelLength = 0.35;
+      barrelRadius = 0.008;
+      break;
+    case 'auto_shotgun':
+      stockColor = 0x2a2a2a;
+      stockLength = 0.25;
+      barrelLength = 0.4;
+      barrelRadius = 0.016;
+      isShotgunModel = true;
+      break;
+    // ─── Dimension 3: Arctic ──────────────
+    case 'rail_gun':
+      stockColor = 0x2a3a4a;
+      stockLength = 0.25;
+      barrelLength = 0.6;
+      barrelRadius = 0.014;
+      hasScope = true;
+      break;
+    case 'slomo_gun':
+      stockColor = 0x3a2a4a;
+      stockLength = 0.22;
+      barrelLength = 0.45;
+      barrelRadius = 0.012;
+      hasScope = true;
+      break;
+    // ─── Dimension 4: Desert ──────────────
+    case 'laser_rifle':
+      stockColor = 0x2a4a2a;
+      stockLength = 0.2;
+      barrelLength = 0.5;
+      barrelRadius = 0.01;
+      hasScope = true;
+      break;
+    case 'plasma_shotgun':
+      stockColor = 0x4a3a1a;
+      stockLength = 0.28;
+      barrelLength = 0.38;
+      barrelRadius = 0.022;
+      isShotgunModel = true;
+      break;
   }
 
   woodMat.color.setHex(stockColor);
@@ -161,11 +205,84 @@ function buildGunModel(weaponKey) {
   }
 
   // Semi-auto: magazine
-  if (weaponKey === 'semi_auto') {
+  if (weaponKey === 'semi_auto' || weaponKey === 'auto_shotgun') {
     const magGeo = new THREE.BoxGeometry(0.02, 0.08, 0.035);
     const mag = new THREE.Mesh(magGeo, darkMetalMat);
     mag.position.set(0, -0.06, 0.01);
     gun.add(mag);
+  }
+
+  // Crossbow: limbs and string
+  if (weaponKey === 'crossbow') {
+    const limbMat = new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.7, metalness: 0.2 });
+    const limbGeo = new THREE.BoxGeometry(0.18, 0.015, 0.015);
+    const limb = new THREE.Mesh(limbGeo, limbMat);
+    limb.position.set(0, 0.01, -0.28);
+    gun.add(limb);
+    // Bowstring
+    const stringMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.5 });
+    const stringGeo = new THREE.CylinderGeometry(0.001, 0.001, 0.18, 4);
+    const string = new THREE.Mesh(stringGeo, stringMat);
+    string.position.set(0, 0.01, -0.2);
+    string.rotation.z = Math.PI / 2;
+    gun.add(string);
+    // Bolt
+    const boltGeo = new THREE.CylinderGeometry(0.003, 0.003, 0.25, 4);
+    boltGeo.rotateX(Math.PI / 2);
+    const bolt = new THREE.Mesh(boltGeo, metalMat);
+    bolt.position.set(0, 0.02, -0.15);
+    gun.add(bolt);
+  }
+
+  // Rail Gun: glowing blue energy rails
+  if (weaponKey === 'rail_gun') {
+    const glowMat = new THREE.MeshStandardMaterial({
+      color: 0x2288ff, emissive: 0x1144aa, emissiveIntensity: 0.8,
+      roughness: 0.2, metalness: 0.9
+    });
+    for (const x of [-0.015, 0.015]) {
+      const railGeo = new THREE.BoxGeometry(0.006, 0.006, barrelLength * 0.8);
+      const rail = new THREE.Mesh(railGeo, glowMat);
+      rail.position.set(x, 0.01, -barrelLength * 0.4);
+      gun.add(rail);
+    }
+  }
+
+  // Slo-Mo Gun: purple crystal energy
+  if (weaponKey === 'slomo_gun') {
+    const crystalMat = new THREE.MeshStandardMaterial({
+      color: 0x9944ff, emissive: 0x6622cc, emissiveIntensity: 0.6,
+      roughness: 0.1, metalness: 0.5, transparent: true, opacity: 0.8
+    });
+    const crystalGeo = new THREE.OctahedronGeometry(0.02, 0);
+    const crystal = new THREE.Mesh(crystalGeo, crystalMat);
+    crystal.position.set(0, 0.04, -0.08);
+    gun.add(crystal);
+  }
+
+  // Laser Rifle: green tech prism
+  if (weaponKey === 'laser_rifle') {
+    const laserMat = new THREE.MeshStandardMaterial({
+      color: 0x22ff44, emissive: 0x118822, emissiveIntensity: 0.7,
+      roughness: 0.1, metalness: 0.8
+    });
+    const prismGeo = new THREE.ConeGeometry(0.012, 0.03, 6);
+    const prism = new THREE.Mesh(prismGeo, laserMat);
+    prism.position.set(0, 0.01, -barrelLength + 0.02);
+    prism.rotation.x = Math.PI / 2;
+    gun.add(prism);
+  }
+
+  // Plasma Shotgun: orange energy core
+  if (weaponKey === 'plasma_shotgun') {
+    const plasmaMat = new THREE.MeshStandardMaterial({
+      color: 0xff6600, emissive: 0xcc4400, emissiveIntensity: 0.5,
+      roughness: 0.2, metalness: 0.6, transparent: true, opacity: 0.7
+    });
+    const coreGeo = new THREE.SphereGeometry(0.018, 8, 8);
+    const core = new THREE.Mesh(coreGeo, plasmaMat);
+    core.position.set(0, 0.01, -0.1);
+    gun.add(core);
   }
 
   gun.userData.barrelTip = new THREE.Vector3(0, 0.01, -barrelLength);
@@ -244,7 +361,7 @@ export class WeaponSystem {
     this.canShoot = true;
     this.isReloading = false;
     this.recoilAmount = 0;
-    this.hasScope = (weaponKey === 'scoped_rifle');
+    this.hasScope = !!(weaponData.hasScope);
   }
 
   /**
