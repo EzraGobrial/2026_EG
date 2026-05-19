@@ -18,6 +18,8 @@ export class UI {
       morning: document.getElementById('screen-morning'),
       results: document.getElementById('screen-results'),
       shop: document.getElementById('screen-shop'),
+      trade: document.getElementById('screen-trade'),
+      tradeBuilder: document.getElementById('trade-builder'),
       locker: document.getElementById('screen-locker'),
       sleep: document.getElementById('screen-sleep'),
       win: document.getElementById('screen-win')
@@ -36,6 +38,7 @@ export class UI {
     this.onLogin = null;
     this.onSignup = null;
     this.onLogout = null;
+    this.onTrade = null; // callback to open trade screen
 
     this._bindButtons();
     this._bindAuth();
@@ -81,6 +84,16 @@ export class UI {
     document.getElementById('btn-restart').addEventListener('click', () => {
       this.audio.playUIClick();
       if (this.onRestart) this.onRestart();
+    });
+
+    document.getElementById('btn-trade').addEventListener('click', () => {
+      this.audio.playUIClick();
+      if (this.onTrade) this.onTrade();
+    });
+
+    document.getElementById('btn-trade-back').addEventListener('click', () => {
+      this.audio.playUIClick();
+      this.showShop();
     });
   }
 
@@ -555,6 +568,241 @@ export class UI {
     grid.appendChild(item);
   }
 
+
+  // ─── Trade Screen ──────────────────────────
+
+  async showTradeScreen(uid, displayName, pendingTrades, playersInDim) {
+    const eco = this.economy;
+
+    // Left panel — incoming requests
+    const requestsEl = document.getElementById('trade-requests');
+    requestsEl.innerHTML = '';
+
+    if (pendingTrades.length === 0) {
+      requestsEl.innerHTML = '<div class="trade-empty">No incoming trade requests</div>';
+    } else {
+      for (const trade of pendingTrades) {
+        const card = document.createElement('div');
+        card.className = 'trade-request-card';
+
+        const offerWeapons = (trade.offering.weapons || []).map(k => eco.weapons[k]?.name || k).join(', ');
+        const offerLocs = (trade.offering.locations || []).map(k => eco.locations[k]?.name || k).join(', ');
+        const wantWeapons = (trade.requesting.weapons || []).map(k => eco.weapons[k]?.name || k).join(', ');
+        const wantLocs = (trade.requesting.locations || []).map(k => eco.locations[k]?.name || k).join(', ');
+
+        let details = '<strong>They offer:</strong> ';
+        const offerParts = [];
+        if (offerWeapons) offerParts.push(offerWeapons);
+        if (offerLocs) offerParts.push(offerLocs);
+        if (trade.offering.money) offerParts.push(`$${trade.offering.money}`);
+        details += offerParts.join(', ') || 'Nothing';
+
+        details += '<br><strong>They want:</strong> ';
+        const wantParts = [];
+        if (wantWeapons) wantParts.push(wantWeapons);
+        if (wantLocs) wantParts.push(wantLocs);
+        if (trade.requesting.money) wantParts.push(`$${trade.requesting.money}`);
+        details += wantParts.join(', ') || 'Nothing';
+
+        card.innerHTML = `
+          <div class="trade-request-from">From: ${trade.fromName}</div>
+          <div class="trade-request-details">${details}</div>
+          <div class="trade-request-actions">
+            <button class="trade-btn-accept" data-id="${trade.id}">✓ Accept</button>
+            <button class="trade-btn-decline" data-id="${trade.id}">✕ Decline</button>
+          </div>
+        `;
+
+        card.querySelector('.trade-btn-accept').addEventListener('click', async (e) => {
+          const { acceptTrade } = await import('./trading.js');
+          const success = await acceptTrade(e.target.dataset.id);
+          if (success) {
+            await eco.load(); // Reload our save after swap
+            this.audio.playCashRegister();
+          }
+          if (this.onTrade) this.onTrade(); // Refresh trade screen
+        });
+
+        card.querySelector('.trade-btn-decline').addEventListener('click', async (e) => {
+          const { declineTrade } = await import('./trading.js');
+          await declineTrade(e.target.dataset.id);
+          if (this.onTrade) this.onTrade(); // Refresh
+        });
+
+        requestsEl.appendChild(card);
+      }
+    }
+
+    // Right panel — players in same dimension
+    const playersEl = document.getElementById('trade-players');
+    playersEl.innerHTML = '';
+
+    if (playersInDim.length === 0) {
+      playersEl.innerHTML = '<div class="trade-empty">No other players in your dimension</div>';
+    } else {
+      for (const player of playersInDim) {
+        const item = document.createElement('div');
+        item.className = 'trade-player-item';
+        item.innerHTML = `
+          <span class="trade-player-name">${player.name}</span>
+          <span class="trade-player-arrow">→</span>
+        `;
+        item.addEventListener('click', () => {
+          this.audio.playUIClick();
+          this.showTradeBuilder(uid, displayName, player);
+        });
+        playersEl.appendChild(item);
+      }
+    }
+
+    this.showScreen('trade');
+  }
+
+  showTradeBuilder(uid, displayName, partner) {
+    const eco = this.economy;
+
+    document.getElementById('trade-partner-name').textContent = `Trading with: ${partner.name}`;
+
+    // Build "You Offer" items — weapons and locations you own
+    const offerGrid = document.getElementById('trade-offer-items');
+    offerGrid.innerHTML = '';
+    const selectedOffer = { weapons: new Set(), locations: new Set() };
+
+    // Weapons you own (excluding grandpa weapons)
+    for (const [key, weapon] of Object.entries(eco.weapons)) {
+      if (!weapon.owned || weapon.isGrandpa) continue;
+      const item = document.createElement('div');
+      item.className = 'trade-item';
+      item.innerHTML = `<div class="trade-item-type">Weapon</div>${weapon.name}`;
+      item.addEventListener('click', () => {
+        if (selectedOffer.weapons.has(key)) {
+          selectedOffer.weapons.delete(key);
+          item.classList.remove('selected');
+        } else {
+          selectedOffer.weapons.add(key);
+          item.classList.add('selected');
+        }
+      });
+      offerGrid.appendChild(item);
+    }
+
+    // Locations you own
+    for (const [key, loc] of Object.entries(eco.locations)) {
+      if (!loc.unlocked) continue;
+      // Don't trade the backyard (free starting location)
+      if (key === 'backyard') continue;
+      const item = document.createElement('div');
+      item.className = 'trade-item';
+      item.innerHTML = `<div class="trade-item-type">Location</div>${loc.name}`;
+      item.addEventListener('click', () => {
+        if (selectedOffer.locations.has(key)) {
+          selectedOffer.locations.delete(key);
+          item.classList.remove('selected');
+        } else {
+          selectedOffer.locations.add(key);
+          item.classList.add('selected');
+        }
+      });
+      offerGrid.appendChild(item);
+    }
+
+    // Build "You Want" items — weapons and locations partner might have
+    const wantGrid = document.getElementById('trade-want-items');
+    wantGrid.innerHTML = '';
+    const selectedWant = { weapons: new Set(), locations: new Set() };
+
+    // Show all non-grandpa weapons as potential wants
+    for (const [key, weapon] of Object.entries(eco.weapons)) {
+      if (weapon.isGrandpa || weapon.isLegendary) continue;
+      if (eco.weapons[key].owned) continue; // Don't want what we already have
+      const item = document.createElement('div');
+      item.className = 'trade-item';
+      item.innerHTML = `<div class="trade-item-type">Weapon</div>${weapon.name}`;
+      item.addEventListener('click', () => {
+        if (selectedWant.weapons.has(key)) {
+          selectedWant.weapons.delete(key);
+          item.classList.remove('selected');
+        } else {
+          selectedWant.weapons.add(key);
+          item.classList.add('selected');
+        }
+      });
+      wantGrid.appendChild(item);
+    }
+
+    // Show locations we don't have
+    for (const [key, loc] of Object.entries(eco.locations)) {
+      if (loc.unlocked || key === 'backyard') continue;
+      const item = document.createElement('div');
+      item.className = 'trade-item';
+      item.innerHTML = `<div class="trade-item-type">Location</div>${loc.name}`;
+      item.addEventListener('click', () => {
+        if (selectedWant.locations.has(key)) {
+          selectedWant.locations.delete(key);
+          item.classList.remove('selected');
+        } else {
+          selectedWant.locations.add(key);
+          item.classList.add('selected');
+        }
+      });
+      wantGrid.appendChild(item);
+    }
+
+    // Reset money inputs
+    document.getElementById('trade-offer-money').value = 0;
+    document.getElementById('trade-want-money').value = 0;
+
+    // Send button
+    const sendBtn = document.getElementById('btn-trade-send');
+    const newSendBtn = sendBtn.cloneNode(true);
+    sendBtn.parentNode.replaceChild(newSendBtn, sendBtn);
+    newSendBtn.addEventListener('click', async () => {
+      const { sendTrade } = await import('./trading.js');
+      const offerMoney = parseInt(document.getElementById('trade-offer-money').value) || 0;
+      const wantMoney = parseInt(document.getElementById('trade-want-money').value) || 0;
+
+      // Validate — can't trade nothing for nothing
+      if (selectedOffer.weapons.size === 0 && selectedOffer.locations.size === 0 && offerMoney === 0 &&
+          selectedWant.weapons.size === 0 && selectedWant.locations.size === 0 && wantMoney === 0) {
+        return;
+      }
+
+      // Validate — can't offer more money than you have
+      if (offerMoney > eco.money) return;
+
+      await sendTrade(
+        uid, displayName,
+        partner.uid, partner.name,
+        eco.dimension,
+        { weapons: [...selectedOffer.weapons], locations: [...selectedOffer.locations], money: offerMoney },
+        { weapons: [...selectedWant.weapons], locations: [...selectedWant.locations], money: wantMoney }
+      );
+
+      this.audio.playUIClick();
+      if (this.onTrade) this.onTrade(); // Go back to trade screen
+    });
+
+    // Cancel button
+    const cancelBtn = document.getElementById('btn-trade-cancel');
+    const newCancelBtn = cancelBtn.cloneNode(true);
+    cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+    newCancelBtn.addEventListener('click', () => {
+      this.audio.playUIClick();
+      if (this.onTrade) this.onTrade();
+    });
+
+    this.showScreen('tradeBuilder');
+  }
+
+  /**
+   * Update the red notification dot on the trade button
+   */
+  setTradeNotification(hasTrades) {
+    const dot = document.getElementById('trade-dot');
+    if (dot) {
+      dot.classList.toggle('hidden', !hasTrades);
+    }
+  }
 
   // ─── Sleep Screen ───────────────────────────
 

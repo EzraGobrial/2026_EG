@@ -178,6 +178,15 @@ class Game {
       this._showMorning();
     };
 
+    this.ui.onTrade = async () => {
+      const { getPendingTrades, getPlayersInDimension } = await import('./trading.js');
+      const uid = this.auth.getUid();
+      const displayName = this.auth.getDisplayName();
+      const pending = await getPendingTrades(uid);
+      const players = await getPlayersInDimension(this.economy.dimension, uid);
+      this.ui.showTradeScreen(uid, displayName, pending, players);
+    };
+
     // ─── Initial state ─────────────────────
     this.sky.setPreset('backyard');
     this.ui.showScreen('login');
@@ -534,6 +543,14 @@ class Game {
   _goToShop() {
     this.state = STATE.SHOP;
     this.ui.showShop();
+
+    // Check for pending trades (async, non-blocking)
+    import('./trading.js').then(({ hasPendingTrades }) => {
+      const uid = this.auth.getUid();
+      if (uid) {
+        hasPendingTrades(uid).then(has => this.ui.setTradeNotification(has));
+      }
+    });
   }
 
   _goToSleep() {

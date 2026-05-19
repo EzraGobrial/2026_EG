@@ -288,7 +288,58 @@
     </div>
   </div>
 
-  <!-- Sleep Screen -->
+  <!-- Trade Screen -->
+  <div id="screen-trade" class="screen hidden">
+    <div class="panel trade-panel">
+      <h2 class="panel-title">Trading Post</h2>
+      <button id="btn-trade-back" class="btn btn-back">← Back to Shop</button>
+      <div class="trade-layout">
+        <!-- Left: Incoming Requests -->
+        <div class="trade-column">
+          <h3>Incoming Requests</h3>
+          <div id="trade-requests" class="trade-list"></div>
+        </div>
+        <!-- Right: Propose a Trade -->
+        <div class="trade-column">
+          <h3>Players in Your Dimension</h3>
+          <div id="trade-players" class="trade-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trade Builder Modal -->
+  <div id="trade-builder" class="screen hidden">
+    <div class="panel trade-builder-panel">
+      <h2 class="panel-title">Propose Trade</h2>
+      <div id="trade-partner-name" class="trade-partner-name"></div>
+      <div class="trade-builder-layout">
+        <div class="trade-builder-col">
+          <h3>You Offer</h3>
+          <div id="trade-offer-items" class="trade-items-grid"></div>
+          <div class="trade-money-row">
+            <label>Money: $</label>
+            <input type="number" id="trade-offer-money" value="0" min="0" class="trade-money-input">
+          </div>
+        </div>
+        <div class="trade-builder-divider">⇄</div>
+        <div class="trade-builder-col">
+          <h3>You Want</h3>
+          <div id="trade-want-items" class="trade-items-grid"></div>
+          <div class="trade-money-row">
+            <label>Money: $</label>
+            <input type="number" id="trade-want-money" value="0" min="0" class="trade-money-input">
+          </div>
+        </div>
+      </div>
+      <div class="trade-builder-buttons">
+        <button id="btn-trade-cancel" class="btn btn-secondary">Cancel</button>
+        <button id="btn-trade-send" class="btn btn-primary">Send Trade</button>
+      </div>
+    </div>
+  </div>
+
+
   <div id="screen-sleep" class="screen hidden">
     <div class="sleep-content">
       <div id="sleep-text" class="sleep-text">Day 1 Complete</div>
