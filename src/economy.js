@@ -65,21 +65,21 @@ export const BIRDS = {
     flapSpeed: 4, flapAmplitude: 1.0
   },
   hawk: {
-    name: 'Hawk', value: 50, speed: 4.5, size: 0.6,
+    name: 'Hawk', value: 50, speed: 3.8, size: 0.6,
     rarity: 'rare', weight: 6,
     bodyColor: 0x6B4226, wingColor: 0x5a3520, headColor: 0x7a5030,
     beakColor: 0x333333, bellyColor: 0xd4b896,
     flapSpeed: 6, flapAmplitude: 0.8
   },
   falcon: {
-    name: 'Falcon', value: 75, speed: 5.5, size: 0.5,
+    name: 'Falcon', value: 75, speed: 3.8, size: 0.5,
     rarity: 'epic', weight: 4,
     bodyColor: 0x4a5570, wingColor: 0x3a4560, headColor: 0x2a3550,
     beakColor: 0x333333, bellyColor: 0xc8c0b0,
     flapSpeed: 7, flapAmplitude: 0.75
   },
   golden_eagle: {
-    name: 'Golden Eagle', value: 150, speed: 4.0, size: 0.9,
+    name: 'Golden Eagle', value: 150, speed: 3.5, size: 0.9,
     rarity: 'legendary', weight: 2,
     bodyColor: 0x6B4E1F, wingColor: 0x5a3d10, headColor: 0xD4A520,
     beakColor: 0x333333, bellyColor: 0x8B6914,
