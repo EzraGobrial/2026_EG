@@ -352,14 +352,106 @@ export class TrailWorld {
     o.add(mailboxG);
 
     // ── Corridor Wall Data (invisible) ────────
-    // Simple: keep player within ±3.5 X the whole way
-    this.corridorHalfWidth = 3.5;
+    // Simple: keep player within ±5 X the whole way (wide enough to reach the shed)
+    this.corridorHalfWidth = 5;
 
-    // ── The Shed ──────────────────────────────
+    // ── The Shed (hidden until player reaches the lake and turns back) ──
     this.shedGroup = this._buildShedExterior();
-    this.shedGroup.position.set(6, 0, -130);
-    this.shedGroup.rotation.y = -0.4;
+    this.shedGroup.position.set(3, 0, -90);
+    this.shedGroup.rotation.y = -0.3;
+    this.shedGroup.visible = false; // hidden on the way to the lake
+    this._shedRevealed = false;
     o.add(this.shedGroup);
+
+    // ── Dried-Up Lucky Lake ──────────────────
+    this._buildDriedLake(o, TRAIL_LEN);
+  }
+
+  _buildDriedLake(parent, trailLen) {
+    // Cracked, dry lakebed at the end of the trail
+    const lakebedMat = makeMat(0x8a7a60, 0.95);
+    const lakebed = new THREE.Mesh(
+      new THREE.CircleGeometry(18, 32),
+      lakebedMat
+    );
+    lakebed.rotation.x = -Math.PI / 2;
+    lakebed.position.set(0, 0.02, -(trailLen + 8));
+    lakebed.receiveShadow = true;
+    parent.add(lakebed);
+
+    // Cracks on the lakebed
+    const crackMat = makeMat(0x5a4a35, 0.98);
+    for (let i = 0; i < 20; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = Math.random() * 14;
+      const len = 1.5 + Math.random() * 4;
+      const crack = new THREE.Mesh(
+        new THREE.BoxGeometry(0.06, 0.01, len),
+        crackMat
+      );
+      crack.position.set(
+        Math.cos(angle) * dist,
+        0.03,
+        -(trailLen + 8) + Math.sin(angle) * dist
+      );
+      crack.rotation.y = angle + (Math.random() - 0.5) * 0.8;
+      parent.add(crack);
+    }
+
+    // Dead reeds around the edges
+    const reedMat = makeMat(0x8a7040, 0.95);
+    for (let i = 0; i < 30; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 12 + Math.random() * 6;
+      const h = 0.6 + Math.random() * 1.0;
+      const reed = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.01, 0.02, h, 4),
+        reedMat
+      );
+      reed.position.set(
+        Math.cos(angle) * dist,
+        h / 2,
+        -(trailLen + 8) + Math.sin(angle) * dist
+      );
+      reed.rotation.x = (Math.random() - 0.5) * 0.3;
+      reed.rotation.z = (Math.random() - 0.5) * 0.3;
+      parent.add(reed);
+    }
+
+    // Weathered "Lucky Lake" sign
+    const signPostMat = makeMat(0x4a3015, 0.9);
+    const signPost = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.04, 0.05, 1.8, 6),
+      signPostMat
+    );
+    signPost.position.set(3, 0.9, -(trailLen + 2));
+    signPost.castShadow = true;
+    parent.add(signPost);
+
+    const signBoard = new THREE.Mesh(
+      new THREE.BoxGeometry(1.8, 0.5, 0.06),
+      makeMat(0x5a3a12, 0.9)
+    );
+    signBoard.position.set(3, 1.7, -(trailLen + 2));
+    signBoard.rotation.y = 0.15;
+    signBoard.castShadow = true;
+    parent.add(signBoard);
+
+    // Small puddle (the last bit of water)
+    const puddleMat = new THREE.MeshStandardMaterial({
+      color: 0x3a5a4a,
+      roughness: 0.1,
+      metalness: 0.4,
+      transparent: true,
+      opacity: 0.6
+    });
+    const puddle = new THREE.Mesh(
+      new THREE.CircleGeometry(2.5, 16),
+      puddleMat
+    );
+    puddle.rotation.x = -Math.PI / 2;
+    puddle.position.set(-3, 0.03, -(trailLen + 10));
+    parent.add(puddle);
   }
 
   _buildShedExterior() {
@@ -440,15 +532,23 @@ export class TrailWorld {
 
   clampPlayer(pos) {
     pos.x = Math.max(-this.corridorHalfWidth, Math.min(this.corridorHalfWidth, pos.x));
-    // Don't let player go past the shed
-    pos.z = Math.max(-137, pos.z);
+    // Don't let player go past the lake
+    pos.z = Math.max(-155, pos.z);
+
+    // Reveal the shed once the player has reached the lake area and starts heading back
+    if (!this._shedRevealed && pos.z < -140) {
+      this._shedRevealed = true;
+      if (this.shedGroup) this.shedGroup.visible = true;
+    }
+
     return pos;
   }
 
   // ─── Check Shed Trigger ──────────────────
 
   checkShedTrigger(playerZ) {
-    return playerZ <= this.shedTriggerZ;
+    // Only trigger when revealed and player is near the shed (which is at z=-90)
+    return this._shedRevealed && playerZ <= -85 && playerZ >= -95;
   }
 
   dispose() {
