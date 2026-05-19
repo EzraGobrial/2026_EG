@@ -748,12 +748,23 @@ class Game {
     const sensScale = isScoped ? 0.2 : (this._scoping ? 0.4 : 1);
     this.player.mouseSensitivity = this._normalSens * sensScale;
 
-    // Scope vignette
+    // Scope overlay
     const vigEl = document.getElementById('scope-vignette');
     if (vigEl) {
       vigEl.classList.toggle('active', this._scoping);
       vigEl.classList.toggle('scoped', isScoped);
     }
+
+    // Hide gun model when looking through scope (full scope takeover)
+    if (this.weapons.currentGun) {
+      this.weapons.currentGun.visible = !isScoped;
+    }
+
+    // Hide normal crosshair when in scope view, show scope reticle instead
+    const crosshairEl = document.getElementById('crosshair');
+    const reticleEl = document.getElementById('scope-reticle');
+    if (crosshairEl) crosshairEl.style.display = isScoped ? 'none' : '';
+    if (reticleEl) reticleEl.style.display = isScoped ? 'block' : 'none';
 
     // Tell weapon system about ADS state
     this.weapons.isADS = this._scoping;

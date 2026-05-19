@@ -45,7 +45,6 @@ body {
   height: 100vh;
   display: block;
 }
-
 /* ═══════════════════════════════════════════════
    Scope Vignette
    ═══════════════════════════════════════════════ */
@@ -73,38 +72,34 @@ body {
   opacity: 1;
 }
 
-/* Scoped weapon: green-tinted, tighter circle */
+/* Scoped weapon: black outside a tight circle, slight lens tint inside */
 #scope-vignette.scoped {
   background: radial-gradient(
     circle at center,
-    rgba(0, 40, 0, 0.15) 20%,
-    rgba(0, 30, 0, 0.4) 40%,
-    rgba(0, 0, 0, 0.85) 55%,
-    rgba(0, 0, 0, 0.98) 65%,
-    rgba(0, 0, 0, 1) 70%
+    rgba(0, 20, 0, 0.05) 0%,
+    rgba(0, 15, 0, 0.1) 30%,
+    rgba(0, 0, 0, 1) 42%,
+    rgba(0, 0, 0, 1) 100%
   );
 }
 
-/* Scope crosshair lines (shown only when scoped) */
-#scope-vignette.scoped::before,
-#scope-vignette.scoped::after {
-  content: '';
-  position: absolute;
-  background: rgba(0, 0, 0, 0.6);
-}
-#scope-vignette.scoped::before {
-  /* Vertical line */
-  width: 1px;
-  height: 100%;
-  left: 50%;
+/* ═══════════════════════════════════════════════
+   Scope Reticle
+   ═══════════════════════════════════════════════ */
+
+#scope-reticle {
+  position: fixed;
   top: 0;
-}
-#scope-vignette.scoped::after {
-  /* Horizontal line */
-  width: 100%;
-  height: 1px;
-  top: 50%;
   left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 95;
+}
+
+#scope-reticle svg {
+  width: 100%;
+  height: 100%;
 }
 
 .hidden { display: none !important; }
