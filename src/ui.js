@@ -186,38 +186,59 @@ export class UI {
     document.getElementById('morning-money').textContent = `$${eco.money}`;
     document.getElementById('morning-weapon').textContent = eco.getWeapon().name;
 
-    // Build location list
+    // Dimension badge
+    const dimEl = document.getElementById('morning-dimension');
+    if (dimEl) {
+      dimEl.textContent = `Dimension ${eco.dimension} — ${eco.getDimensionName()}`;
+    }
+
+    // Build location list, grouped by dimension
     const locList = document.getElementById('location-list');
     locList.innerHTML = '';
 
-    for (const [key, loc] of Object.entries(eco.locations)) {
-      const card = document.createElement('div');
-      card.className = 'location-card';
+    for (let d = 0; d < eco.dimension && d < DIMENSIONS.length; d++) {
+      const dim = DIMENSIONS[d];
 
-      if (!loc.unlocked) {
-        card.classList.add('locked');
-        card.innerHTML = `
-          <div class="loc-name">${loc.name}</div>
-          <div class="loc-info">Locked — $${loc.cost}</div>
-        `;
-      } else {
-        if (key === eco.currentLocation) {
-          card.classList.add('selected');
-        }
-        card.innerHTML = `
-          <div class="loc-name">${loc.name}</div>
-          <div class="loc-info">${loc.birds.length} bird types</div>
-        `;
-        card.addEventListener('click', () => {
-          this.audio.playUIClick();
-          eco.selectLocation(key);
-          // Update selection
-          locList.querySelectorAll('.location-card').forEach(c => c.classList.remove('selected'));
-          card.classList.add('selected');
-        });
+      // Dimension header (skip if only 1 dimension)
+      if (eco.dimension > 1) {
+        const header = document.createElement('div');
+        header.className = 'shop-dim-header';
+        header.textContent = dim.name;
+        locList.appendChild(header);
       }
 
-      locList.appendChild(card);
+      for (const key of Object.keys(dim.locations)) {
+        const loc = eco.locations[key];
+        if (!loc) continue;
+
+        const card = document.createElement('div');
+        card.className = 'location-card';
+
+        if (!loc.unlocked) {
+          card.classList.add('locked');
+          card.innerHTML = `
+            <div class="loc-name">${loc.name}</div>
+            <div class="loc-info">Locked — $${loc.cost}</div>
+          `;
+        } else {
+          if (key === eco.currentLocation) {
+            card.classList.add('selected');
+          }
+          card.innerHTML = `
+            <div class="loc-name">${loc.name}</div>
+            <div class="loc-info">${loc.birds.length} bird types</div>
+          `;
+          card.addEventListener('click', () => {
+            this.audio.playUIClick();
+            eco.selectLocation(key);
+            // Update selection
+            locList.querySelectorAll('.location-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+          });
+        }
+
+        locList.appendChild(card);
+      }
     }
 
     this.showScreen('morning');
