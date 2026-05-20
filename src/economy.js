@@ -89,56 +89,56 @@ export const BIRDS = {
 
   // ─── Dimension 2: Tropics ──────────────────
   parrot: {
-    name: 'Parrot', value: 10, speed: 2.5, size: 0.45,
+    name: 'Parrot', value: 10, speed: 3.2, size: 0.45,
     rarity: 'common', weight: 35,
     bodyColor: 0x22AA22, wingColor: 0x1188DD, headColor: 0xDD2222,
     beakColor: 0x333333, bellyColor: 0x44CC44,
     flapSpeed: 8, flapAmplitude: 0.5
   },
   toucan: {
-    name: 'Toucan', value: 18, speed: 2.0, size: 0.5,
+    name: 'Toucan', value: 18, speed: 3.0, size: 0.5,
     rarity: 'common', weight: 30,
     bodyColor: 0x1a1a1a, wingColor: 0x111111, headColor: 0x1a1a1a,
     beakColor: 0xFF8800, bellyColor: 0xFFDD00,
     flapSpeed: 6, flapAmplitude: 0.55
   },
   flamingo: {
-    name: 'Flamingo', value: 30, speed: 1.8, size: 0.75,
+    name: 'Flamingo', value: 30, speed: 2.8, size: 0.75,
     rarity: 'uncommon', weight: 20,
     bodyColor: 0xFF7799, wingColor: 0xFF5588, headColor: 0xFFAABB,
     beakColor: 0x222222, bellyColor: 0xFF88AA,
     flapSpeed: 4, flapAmplitude: 0.85
   },
   macaw: {
-    name: 'Macaw', value: 50, speed: 3.5, size: 0.55,
+    name: 'Macaw', value: 50, speed: 4.5, size: 0.55,
     rarity: 'uncommon', weight: 15,
     bodyColor: 0xDD2222, wingColor: 0x2266DD, headColor: 0xDD2222,
     beakColor: 0x222222, bellyColor: 0xFFCC00,
     flapSpeed: 9, flapAmplitude: 0.6
   },
   hornbill: {
-    name: 'Hornbill', value: 70, speed: 2.8, size: 0.6,
+    name: 'Hornbill', value: 70, speed: 3.8, size: 0.6,
     rarity: 'rare', weight: 10,
     bodyColor: 0x1a1a1a, wingColor: 0x222222, headColor: 0x1a1a1a,
     beakColor: 0xFFAA00, bellyColor: 0xeeeeee,
     flapSpeed: 5, flapAmplitude: 0.7
   },
   quetzal: {
-    name: 'Quetzal', value: 100, speed: 3.8, size: 0.4,
+    name: 'Quetzal', value: 100, speed: 4.8, size: 0.4,
     rarity: 'rare', weight: 8,
     bodyColor: 0x00AA55, wingColor: 0x008844, headColor: 0xDD2222,
     beakColor: 0xCCAA00, bellyColor: 0x00CC66,
     flapSpeed: 10, flapAmplitude: 0.65
   },
   harpy_eagle: {
-    name: 'Harpy Eagle', value: 160, speed: 3.5, size: 0.85,
+    name: 'Harpy Eagle', value: 160, speed: 4.5, size: 0.85,
     rarity: 'epic', weight: 5,
     bodyColor: 0x4a4a4a, wingColor: 0x333333, headColor: 0xcccccc,
     beakColor: 0x333333, bellyColor: 0xdddddd,
     flapSpeed: 4, flapAmplitude: 1.0
   },
   phoenix_bird: {
-    name: 'Bird of Paradise', value: 250, speed: 3.2, size: 0.5,
+    name: 'Bird of Paradise', value: 250, speed: 5.0, size: 0.5,
     rarity: 'legendary', weight: 2,
     bodyColor: 0xFF4400, wingColor: 0xDD2200, headColor: 0xFF6600,
     beakColor: 0x333333, bellyColor: 0xFFAA00,
@@ -147,49 +147,49 @@ export const BIRDS = {
 
   // ─── Dimension 3: Arctic ───────────────────
   snow_bunting: {
-    name: 'Snow Bunting', value: 20, speed: 2.8, size: 0.3,
+    name: 'Snow Bunting', value: 20, speed: 3.8, size: 0.3,
     rarity: 'common', weight: 35,
     bodyColor: 0xeeeeee, wingColor: 0x1a1a1a, headColor: 0xeeeeee,
     beakColor: 0xCCAA00, bellyColor: 0xffffff,
     flapSpeed: 10, flapAmplitude: 0.5
   },
   ptarmigan: {
-    name: 'Ptarmigan', value: 35, speed: 2.2, size: 0.45,
+    name: 'Ptarmigan', value: 35, speed: 3.5, size: 0.45,
     rarity: 'common', weight: 30,
     bodyColor: 0xddddee, wingColor: 0xccccdd, headColor: 0xddddee,
     beakColor: 0x333333, bellyColor: 0xffffff,
     flapSpeed: 7, flapAmplitude: 0.5
   },
   snowy_owl: {
-    name: 'Snowy Owl', value: 60, speed: 2.5, size: 0.65,
+    name: 'Snowy Owl', value: 60, speed: 3.8, size: 0.65,
     rarity: 'uncommon', weight: 18,
     bodyColor: 0xf0f0f0, wingColor: 0xe0e0e0, headColor: 0xffffff,
     beakColor: 0x333333, bellyColor: 0xffffff,
     flapSpeed: 5, flapAmplitude: 0.8
   },
   puffin: {
-    name: 'Puffin', value: 80, speed: 3.5, size: 0.35,
+    name: 'Puffin', value: 80, speed: 4.5, size: 0.35,
     rarity: 'uncommon', weight: 15,
     bodyColor: 0x1a1a1a, wingColor: 0x111111, headColor: 0x1a1a1a,
     beakColor: 0xFF6622, bellyColor: 0xeeeeee,
     flapSpeed: 12, flapAmplitude: 0.45
   },
   arctic_tern: {
-    name: 'Arctic Tern', value: 110, speed: 3.8, size: 0.35,
+    name: 'Arctic Tern', value: 110, speed: 5.0, size: 0.35,
     rarity: 'rare', weight: 10,
     bodyColor: 0xcccccc, wingColor: 0xaaaaaa, headColor: 0x1a1a1a,
     beakColor: 0xDD2222, bellyColor: 0xeeeeee,
     flapSpeed: 11, flapAmplitude: 0.55
   },
   gyrfalcon: {
-    name: 'Gyrfalcon', value: 180, speed: 3.8, size: 0.6,
+    name: 'Gyrfalcon', value: 180, speed: 5.2, size: 0.6,
     rarity: 'epic', weight: 5,
     bodyColor: 0xdddde0, wingColor: 0xc0c0c8, headColor: 0xdddde0,
     beakColor: 0x333333, bellyColor: 0xeeeeee,
     flapSpeed: 7, flapAmplitude: 0.75
   },
   ice_phoenix: {
-    name: 'Ice Phoenix', value: 350, speed: 3.5, size: 0.7,
+    name: 'Ice Phoenix', value: 350, speed: 5.5, size: 0.7,
     rarity: 'legendary', weight: 2,
     bodyColor: 0x88CCFF, wingColor: 0x55AAEE, headColor: 0xAADDFF,
     beakColor: 0x4488AA, bellyColor: 0xCCEEFF,
@@ -198,49 +198,49 @@ export const BIRDS = {
 
   // ─── Dimension 4: Desert ───────────────────
   sandgrouse: {
-    name: 'Sandgrouse', value: 30, speed: 2.5, size: 0.4,
+    name: 'Sandgrouse', value: 30, speed: 4.0, size: 0.4,
     rarity: 'common', weight: 35,
     bodyColor: 0xC4A060, wingColor: 0xAA8840, headColor: 0xC4A060,
     beakColor: 0x555555, bellyColor: 0xD8C090,
     flapSpeed: 8, flapAmplitude: 0.5
   },
   roadrunner: {
-    name: 'Roadrunner', value: 50, speed: 3.5, size: 0.4,
+    name: 'Roadrunner', value: 50, speed: 4.8, size: 0.4,
     rarity: 'common', weight: 28,
     bodyColor: 0x4a5540, wingColor: 0x3a4530, headColor: 0x4a5540,
     beakColor: 0x333333, bellyColor: 0xccccbb,
     flapSpeed: 6, flapAmplitude: 0.4
   },
   vulture: {
-    name: 'Vulture', value: 80, speed: 2.0, size: 0.85,
+    name: 'Vulture', value: 80, speed: 3.2, size: 0.85,
     rarity: 'uncommon', weight: 18,
     bodyColor: 0x3a2a1a, wingColor: 0x2a1a0a, headColor: 0xCC5544,
     beakColor: 0x444444, bellyColor: 0x3a2a1a,
     flapSpeed: 3, flapAmplitude: 1.0
   },
   secretary_bird: {
-    name: 'Secretary Bird', value: 120, speed: 3.0, size: 0.7,
+    name: 'Secretary Bird', value: 120, speed: 4.5, size: 0.7,
     rarity: 'uncommon', weight: 14,
     bodyColor: 0xaaaaaa, wingColor: 0x1a1a1a, headColor: 0xaaaaaa,
     beakColor: 0x444444, bellyColor: 0xcccccc,
     flapSpeed: 5, flapAmplitude: 0.8
   },
   desert_hawk: {
-    name: 'Desert Hawk', value: 180, speed: 3.8, size: 0.55,
+    name: 'Desert Hawk', value: 180, speed: 5.5, size: 0.55,
     rarity: 'rare', weight: 8,
     bodyColor: 0x8B6914, wingColor: 0x7a5810, headColor: 0xAA8820,
     beakColor: 0x333333, bellyColor: 0xD4B896,
     flapSpeed: 7, flapAmplitude: 0.75
   },
   sand_falcon: {
-    name: 'Sand Falcon', value: 250, speed: 3.8, size: 0.5,
+    name: 'Sand Falcon', value: 250, speed: 5.8, size: 0.5,
     rarity: 'epic', weight: 5,
     bodyColor: 0xD4A050, wingColor: 0xC09040, headColor: 0xD4A050,
     beakColor: 0x333333, bellyColor: 0xE8D0A0,
     flapSpeed: 8, flapAmplitude: 0.7
   },
   sun_phoenix: {
-    name: 'Sun Phoenix', value: 500, speed: 3.5, size: 0.75,
+    name: 'Sun Phoenix', value: 500, speed: 6.0, size: 0.75,
     rarity: 'legendary', weight: 2,
     bodyColor: 0xFF6600, wingColor: 0xDD4400, headColor: 0xFFAA00,
     beakColor: 0xCC4400, bellyColor: 0xFFCC00,
