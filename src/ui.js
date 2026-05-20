@@ -46,55 +46,22 @@ export class UI {
   }
 
   _bindButtons() {
-    document.getElementById('btn-start').addEventListener('click', () => {
-      this.audio.playUIClick();
-      if (this.onStartGame) this.onStartGame();
-    });
+    const bind = (id, fn) => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('click', fn);
+      else console.warn(`UI: button #${id} not found`);
+    };
 
-    document.getElementById('btn-hunt').addEventListener('click', () => {
-      this.audio.playUIClick();
-      if (this.onStartHunt) this.onStartHunt();
-    });
-
-    document.getElementById('btn-to-shop').addEventListener('click', () => {
-      this.audio.playUIClick();
-      if (this.onGoToShop) this.onGoToShop();
-    });
-
-    document.getElementById('btn-to-locker').addEventListener('click', () => {
-      this.audio.playUIClick();
-      if (this.onGoToLocker) this.onGoToLocker();
-    });
-
-    document.getElementById('btn-skip-shop').addEventListener('click', () => {
-      this.audio.playUIClick();
-      if (this.onSkipToSleep) this.onSkipToSleep();
-    });
-
-    document.getElementById('btn-sleep').addEventListener('click', () => {
-      this.audio.playUIClick();
-      if (this.onSleep) this.onSleep();
-    });
-
-    document.getElementById('btn-continue').addEventListener('click', () => {
-      this.audio.playUIClick();
-      if (this.onContinueAfterWin) this.onContinueAfterWin();
-    });
-
-    document.getElementById('btn-restart').addEventListener('click', () => {
-      this.audio.playUIClick();
-      if (this.onRestart) this.onRestart();
-    });
-
-    document.getElementById('btn-trade').addEventListener('click', () => {
-      this.audio.playUIClick();
-      if (this.onTrade) this.onTrade();
-    });
-
-    document.getElementById('btn-trade-back').addEventListener('click', () => {
-      this.audio.playUIClick();
-      this.showShop();
-    });
+    bind('btn-start', () => { this.audio.playUIClick(); if (this.onStartGame) this.onStartGame(); });
+    bind('btn-hunt', () => { this.audio.playUIClick(); if (this.onStartHunt) this.onStartHunt(); });
+    bind('btn-to-shop', () => { this.audio.playUIClick(); if (this.onGoToShop) this.onGoToShop(); });
+    bind('btn-to-locker', () => { this.audio.playUIClick(); if (this.onGoToLocker) this.onGoToLocker(); });
+    bind('btn-skip-shop', () => { this.audio.playUIClick(); if (this.onSkipToSleep) this.onSkipToSleep(); });
+    bind('btn-sleep', () => { this.audio.playUIClick(); if (this.onSleep) this.onSleep(); });
+    bind('btn-continue', () => { this.audio.playUIClick(); if (this.onContinueAfterWin) this.onContinueAfterWin(); });
+    bind('btn-restart', () => { this.audio.playUIClick(); if (this.onRestart) this.onRestart(); });
+    bind('btn-trade', () => { this.audio.playUIClick(); if (this.onTrade) this.onTrade(); });
+    bind('btn-trade-back', () => { this.audio.playUIClick(); this.showShop(); });
   }
 
   _bindAuth() {
@@ -165,7 +132,7 @@ export class UI {
 
   showScreen(name) {
     for (const el of Object.values(this.screens)) {
-      el.classList.add('hidden');
+      if (el) el.classList.add('hidden');
     }
     if (this.screens[name]) {
       this.screens[name].classList.remove('hidden');
@@ -360,6 +327,7 @@ export class UI {
   // ─── Shop Screen ────────────────────────────
 
   showShop() {
+    try {
     const eco = this.economy;
     document.getElementById('shop-money').textContent = `$${eco.money}`;
 
@@ -514,6 +482,7 @@ export class UI {
     this._renderQuestShop();
 
     this.showScreen('shop');
+    } catch(e) { console.error('showShop error:', e); }
   }
 
   _renderQuestShop() {
