@@ -185,12 +185,17 @@ class Game {
     };
 
     this.ui.onTrade = async () => {
-      const { getPendingTrades, getPlayersInDimension } = await import('./trading.js');
-      const uid = this.auth.getUid();
-      const displayName = this.auth.getDisplayName();
-      const pending = await getPendingTrades(uid);
-      const players = await getPlayersInDimension(this.economy.dimension, uid);
-      this.ui.showTradeScreen(uid, displayName, pending, players);
+      try {
+        const { getPendingTrades, getPlayersInDimension } = await import('./trading.js');
+        const uid = this.auth.getUid();
+        const displayName = this.auth.getDisplayName();
+        const pending = await getPendingTrades(uid);
+        const players = await getPlayersInDimension(this.economy.dimension, uid);
+        this.ui.showTradeScreen(uid, displayName, pending, players);
+      } catch (e) {
+        console.warn('Trade screen failed:', e);
+        alert('Trading is unavailable right now.');
+      }
     };
 
     // ─── Initial state ─────────────────────
@@ -554,9 +559,9 @@ class Game {
     import('./trading.js').then(({ hasPendingTrades }) => {
       const uid = this.auth.getUid();
       if (uid) {
-        hasPendingTrades(uid).then(has => this.ui.setTradeNotification(has));
+        hasPendingTrades(uid).then(has => this.ui.setTradeNotification(has)).catch(() => {});
       }
-    });
+    }).catch(e => console.warn('Trading module load failed:', e));
   }
 
   _goToSleep() {
