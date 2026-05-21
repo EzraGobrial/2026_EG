@@ -327,6 +327,9 @@ export class UI {
   // ─── Shop Screen ────────────────────────────
 
   showShop() {
+    // ALWAYS switch screen first, so the button is never unresponsive
+    this.showScreen('shop');
+
     try {
     const eco = this.economy;
     document.getElementById('shop-money').textContent = `$${eco.money}`;
@@ -355,7 +358,7 @@ export class UI {
         const isEquipped = key === eco.currentWeapon;
         item.innerHTML = `
           <div class="shop-item-name">${weapon.name}</div>
-          <div class="shop-item-desc">${weapon.description}</div>
+          <div class="shop-item-desc">${weapon.description || ''}</div>
           <div class="shop-item-price">${isEquipped ? 'EQUIPPED' : 'OWNED'}</div>
         `;
         if (!isEquipped) {
@@ -370,13 +373,13 @@ export class UI {
         item.classList.add('cant-afford');
         item.innerHTML = `
           <div class="shop-item-name">${weapon.name}</div>
-          <div class="shop-item-desc">${weapon.description}</div>
+          <div class="shop-item-desc">${weapon.description || ''}</div>
           <div class="shop-item-price">$${weapon.cost}</div>
         `;
       } else {
         item.innerHTML = `
           <div class="shop-item-name">${weapon.name}</div>
-          <div class="shop-item-desc">${weapon.description}</div>
+          <div class="shop-item-desc">${weapon.description || ''}</div>
           <div class="shop-item-price">$${weapon.cost}</div>
         `;
         item.addEventListener('click', () => {
@@ -416,7 +419,7 @@ export class UI {
           const isSelected = locKey === eco.currentLocation;
           item.innerHTML = `
             <div class="shop-item-name">${loc.name}</div>
-            <div class="shop-item-desc">${loc.description}</div>
+            <div class="shop-item-desc">${loc.description || ''}</div>
             <div class="shop-item-price">${isSelected ? 'SELECTED' : 'UNLOCKED'}</div>
           `;
           if (!isSelected) {
@@ -431,13 +434,13 @@ export class UI {
           item.classList.add('cant-afford');
           item.innerHTML = `
             <div class="shop-item-name">${loc.name}</div>
-            <div class="shop-item-desc">${loc.description}</div>
+            <div class="shop-item-desc">${loc.description || ''}</div>
             <div class="shop-item-price">$${loc.cost}</div>
           `;
         } else {
           item.innerHTML = `
             <div class="shop-item-name">${loc.name}</div>
-            <div class="shop-item-desc">${loc.description}</div>
+            <div class="shop-item-desc">${loc.description || ''}</div>
             <div class="shop-item-price">$${loc.cost}</div>
           `;
           item.addEventListener('click', () => {
@@ -481,8 +484,10 @@ export class UI {
     // ── Story Quest Section ────────────────────
     this._renderQuestShop();
 
-    this.showScreen('shop');
-    } catch(e) { console.error('showShop error:', e); }
+    } catch(e) {
+      console.error('showShop error:', e);
+      alert('Shop error: ' + e.message);
+    }
   }
 
   _renderQuestShop() {
