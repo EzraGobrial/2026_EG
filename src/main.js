@@ -548,11 +548,6 @@ class Game {
 
     // Show results — the UI will handle adding money
     this.ui.showResults(this.huntBag, this.auth.getDisplayName());
-  }
-
-  _goToShop() {
-    this.state = STATE.SHOP;
-    this.ui.showShop();
 
     // Check for pending trades (async, non-blocking)
     import('./trading.js').then(({ hasPendingTrades }) => {
@@ -561,6 +556,11 @@ class Game {
         hasPendingTrades(uid).then(has => this.ui.setTradeNotification(has)).catch(() => {});
       }
     }).catch(e => console.warn('Trading module load failed:', e));
+  }
+
+  _goToShop() {
+    this.state = STATE.SHOP;
+    this.ui.showShop();
   }
 
   _goToSleep() {
