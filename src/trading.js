@@ -80,6 +80,26 @@ export async function acceptTrade(tradeId) {
     const fromWeapons = fromSave.weaponOwned || {};
     const toWeapons = toSave.weaponOwned || {};
 
+    // Validate: reject if receiver already owns what they'd get
+    for (const wk of (trade.offering.weapons || [])) {
+      if (toWeapons[wk]) return false; // recipient already has this weapon
+    }
+    for (const wk of (trade.requesting.weapons || [])) {
+      if (fromWeapons[wk]) return false; // sender already has this weapon
+    }
+
+    // Transfer locations (unlock flags)
+    const fromLocs = fromSave.locationUnlocked || {};
+    const toLocs = toSave.locationUnlocked || {};
+
+    for (const lk of (trade.offering.locations || [])) {
+      if (toLocs[lk]) return false; // recipient already has this location
+    }
+    for (const lk of (trade.requesting.locations || [])) {
+      if (fromLocs[lk]) return false; // sender already has this location
+    }
+
+    // All clear — do the transfers
     for (const wk of (trade.offering.weapons || [])) {
       fromWeapons[wk] = false;
       toWeapons[wk] = true;
@@ -92,10 +112,7 @@ export async function acceptTrade(tradeId) {
     fromSave.weaponOwned = fromWeapons;
     toSave.weaponOwned = toWeapons;
 
-    // Transfer locations (unlock flags)
-    const fromLocs = fromSave.locationUnlocked || {};
-    const toLocs = toSave.locationUnlocked || {};
-
+    // Transfer locations
     for (const lk of (trade.offering.locations || [])) {
       fromLocs[lk] = false;
       toLocs[lk] = true;
