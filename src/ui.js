@@ -484,10 +484,7 @@ export class UI {
     // ── Story Quest Section ────────────────────
     this._renderQuestShop();
 
-    } catch(e) {
-      console.error('showShop error:', e);
-      alert('Shop error: ' + e.message);
-    }
+    } catch(e) { console.error('showShop error:', e); }
   }
 
   _renderQuestShop() {

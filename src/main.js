@@ -194,7 +194,6 @@ class Game {
         this.ui.showTradeScreen(uid, displayName, pending, players);
       } catch (e) {
         console.warn('Trade screen failed:', e);
-        alert('Trading is unavailable right now.');
       }
     };
 
