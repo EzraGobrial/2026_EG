@@ -23,7 +23,7 @@ function getRankBadgeHTML(level, large = false) {
     case 4: // Diamond
       return `<span class="rank-badge ${wrap}" title="Diamond"><span class="rank-badge-diamond-wrap"><div class="rank-badge-diamond"></div></span></span>`;
     case 5: // Apex
-      return `<span class="rank-badge ${wrap}" title="Apex"><div class="rank-badge-apex"><div class="rank-badge-apex-points"><div class="rank-badge-apex-point"></div><div class="rank-badge-apex-point"></div><div class="rank-badge-apex-point"></div><div class="rank-badge-apex-point"></div><div class="rank-badge-apex-point"></div></div><div class="rank-badge-apex-base"><div class="rank-badge-apex-gem"></div></div></div></span>`;
+      return `<span class="rank-badge ${wrap}" title="Savage"><div class="rank-badge-apex"><div class="rank-badge-apex-points"><div class="rank-badge-apex-point"></div><div class="rank-badge-apex-point"></div><div class="rank-badge-apex-point"></div><div class="rank-badge-apex-point"></div><div class="rank-badge-apex-point"></div></div><div class="rank-badge-apex-base"><div class="rank-badge-apex-gem"></div></div></div></span>`;
     default:
       return '';
   }

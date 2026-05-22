@@ -485,7 +485,7 @@ export const RANKS = [
   { level: 2, name: 'Silver',  icon: '🥈', xpRequired: 500,  color: '#E5E4E2', glow: false },
   { level: 3, name: 'Gold',    icon: '🥇', xpRequired: 2000, color: '#FFD700', glow: false },
   { level: 4, name: 'Diamond', icon: '💎', xpRequired: 5000, color: '#00E5FF', glow: true },
-  { level: 5, name: 'Apex',    icon: '👑', xpRequired: 15000, color: '#FFD700', glow: true, holographic: true },
+  { level: 5, name: 'Savage',  icon: '👑', xpRequired: 15000, color: '#FFD700', glow: true, holographic: true },
 ];
 
 // ═══════════════════════════════════════════════
