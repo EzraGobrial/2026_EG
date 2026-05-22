@@ -891,6 +891,61 @@ export class UI {
       }
 
       content.appendChild(grid);
+    } else if (tab === 'loadout') {
+      content.innerHTML = '';
+      const allOwned = eco.getOwnedWeaponKeys();
+      const currentLoadout = eco.loadout || [];
+
+      const desc = document.createElement('div');
+      desc.className = 'loadout-desc';
+      desc.textContent = 'Select up to 5 weapons for your loadout. These will appear in your weapon bar during hunts.';
+      content.appendChild(desc);
+
+      const grid = document.createElement('div');
+      grid.className = 'locker-items';
+
+      for (const key of allOwned) {
+        const weapon = eco.weapons[key];
+        const inLoadout = currentLoadout.includes(key);
+        const item = document.createElement('div');
+        item.className = `locker-item${inLoadout ? ' equipped' : ''}`;
+        item.innerHTML = `
+          <div class="locker-item-icon">${inLoadout ? (currentLoadout.indexOf(key) + 1) : '—'}</div>
+          <div class="locker-item-name">${weapon.name}</div>
+          <div class="locker-item-desc">${weapon.description || ''}</div>
+          <button class="btn ${inLoadout ? 'btn-secondary' : 'btn-primary'}">${inLoadout ? 'Remove' : 'Add'}</button>
+        `;
+        item.querySelector('.btn').addEventListener('click', () => {
+          if (inLoadout) {
+            eco.loadout = currentLoadout.filter(k => k !== key);
+          } else {
+            if (currentLoadout.length >= 5) return; // max 5
+            eco.loadout = [...currentLoadout, key];
+          }
+          eco.save();
+          this._renderLockerTab('loadout');
+        });
+        grid.appendChild(item);
+      }
+
+      if (allOwned.length === 0) {
+        content.innerHTML = '<div class="locker-coming-soon">No weapons owned yet</div>';
+        return;
+      }
+
+      // Clear all button
+      const clearBtn = document.createElement('button');
+      clearBtn.className = 'btn btn-secondary';
+      clearBtn.style.marginTop = '16px';
+      clearBtn.textContent = 'Clear Loadout (Use All Weapons)';
+      clearBtn.addEventListener('click', () => {
+        eco.loadout = [];
+        eco.save();
+        this._renderLockerTab('loadout');
+      });
+
+      content.appendChild(grid);
+      content.appendChild(clearBtn);
     } else {
       content.innerHTML = `<div class="locker-coming-soon">Coming Soon</div>`;
     }

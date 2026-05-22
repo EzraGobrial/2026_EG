@@ -865,7 +865,7 @@ class Game {
   // ─── Weapon Switching ─────────────────────────
 
   _buildWeaponSlots() {
-    const ownedKeys = this.economy.getOwnedWeaponKeys();
+    const ownedKeys = this.economy.getLoadoutWeaponKeys();
     const ownedInfo = ownedKeys.map(key => ({
       key,
       name: this.economy.weapons[key].name
@@ -948,7 +948,7 @@ class Game {
     // Number keys 1-9 for weapon switching
     const num = parseInt(e.key);
     if (num >= 1 && num <= 9) {
-      const ownedKeys = this.economy.getOwnedWeaponKeys();
+      const ownedKeys = this.economy.getLoadoutWeaponKeys();
       const idx = num - 1;
       if (idx < ownedKeys.length) {
         this._switchWeapon(ownedKeys[idx]);

@@ -1087,6 +1087,13 @@ body {
   opacity: 0.6;
 }
 
+.loadout-desc {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
 .btn-accent {
   background: linear-gradient(135deg, #6a4fd4, #9b6dff);
   color: #fff;

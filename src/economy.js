@@ -561,6 +561,7 @@ export class Economy {
     this.huntBag = [];
     this.inventory = { tags: [] };
     this.equipped = { tag: null };
+    this.loadout = [];
     this.story = null; // serialized story state
     this.weapons = JSON.parse(JSON.stringify(WEAPONS));
     // Initialize locations from dimension 1
@@ -588,6 +589,7 @@ export class Economy {
       inventory: this.inventory,
       equipped: this.equipped,
       story: this.story || null,
+      loadout: this.loadout || [],
       weaponOwned: {},
       locationUnlocked: {}
     };
@@ -624,6 +626,7 @@ export class Economy {
       this.inventory = data.inventory || { tags: [] };
       this.equipped = data.equipped || { tag: null };
       this.story = data.story || null;
+      if (data.loadout) this.loadout = data.loadout;
 
       // Rebuild locations from all unlocked dimensions
       this.locations = {};
@@ -829,6 +832,15 @@ export class Economy {
     return Object.entries(this.weapons)
       .filter(([k, w]) => w.owned)
       .map(([k]) => k);
+  }
+
+  getLoadoutWeaponKeys() {
+    // If loadout is set and has weapons, return only those (that are still owned)
+    if (this.loadout && this.loadout.length > 0) {
+      return this.loadout.filter(k => this.weapons[k] && this.weapons[k].owned);
+    }
+    // Fallback: all owned weapons
+    return this.getOwnedWeaponKeys();
   }
 
   selectLocation(key) {
