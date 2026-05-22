@@ -361,8 +361,8 @@ export const WEAPONS = {
   crossbow: {
     name: 'Crossbow',
     cost: 800, dimension: 2,
-    description: 'Silent and deadly. Perfect for jungle hunting.',
-    fireRate: 2.5, accuracy: 0.95, ammo: 1, reloadTime: 3.0,
+    description: 'Silent and deadly. Lightning-fast reload.',
+    fireRate: 2.5, accuracy: 0.95, ammo: 1, reloadTime: 0.8,
     spread: 0.015, isShotgun: false, owned: false
   },
   auto_shotgun: {
