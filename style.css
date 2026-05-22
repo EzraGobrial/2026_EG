@@ -1156,6 +1156,45 @@ body {
   margin-top: 8px;
 }
 
+.shop-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.shop-tab {
+  flex: 1;
+  min-width: 60px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.shop-tab:hover {
+  background: rgba(255,255,255,0.1);
+  color: var(--text-primary);
+}
+
+.shop-tab.active {
+  background: var(--accent-gold);
+  color: var(--bg-dark);
+  border-color: var(--accent-gold);
+  font-weight: 700;
+}
+
+.shop-tab-content {
+  min-height: 250px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
 .shop-bottom-buttons {
   display: flex;
   gap: 12px;

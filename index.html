@@ -289,15 +289,16 @@
       <h2 class="panel-title">Gary's Shop</h2>
       <div id="shop-dimension" class="shop-dimension">Dimension 1 -- Earth</div>
       <div id="shop-money" class="shop-money">$0</div>
-      <div class="shop-sections">
-        <div class="shop-section">
-          <h3>Weapons</h3>
-          <div id="shop-weapons" class="shop-grid"></div>
-        </div>
-        <div class="shop-section">
-          <h3>Hunting Locations</h3>
-          <div id="shop-locations" class="shop-grid"></div>
-        </div>
+      <div class="shop-tabs">
+        <button class="shop-tab active" data-shop-tab="weapons">Weapons</button>
+        <button class="shop-tab" data-shop-tab="locations">Locations</button>
+        <button class="shop-tab" data-shop-tab="banners">Banners</button>
+        <button class="shop-tab" data-shop-tab="quests">Quests</button>
+      </div>
+      <div id="shop-tab-content" class="shop-tab-content">
+        <div id="shop-weapons" class="shop-grid"></div>
+        <div id="shop-locations" class="shop-grid"></div>
+        <div id="shop-quests" class="shop-grid"></div>
       </div>
       <div id="shop-advance-dim"></div>
       <div class="shop-bottom-buttons">

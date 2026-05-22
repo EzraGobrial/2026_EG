@@ -58,6 +58,15 @@ export class UI {
     bind('btn-to-locker', () => { this.audio.playUIClick(); if (this.onGoToLocker) this.onGoToLocker(); });
     bind('btn-skip-shop', () => { this.audio.playUIClick(); if (this.onSkipToSleep) this.onSkipToSleep(); });
     bind('btn-sleep', () => { this.audio.playUIClick(); if (this.onSleep) this.onSleep(); });
+    // Shop tab switching
+    document.querySelectorAll('.shop-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        this.audio.playUIClick();
+        document.querySelectorAll('.shop-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        this._renderShopTab(tab.dataset.shopTab);
+      });
+    });
     bind('btn-continue', () => { this.audio.playUIClick(); if (this.onContinueAfterWin) this.onContinueAfterWin(); });
     bind('btn-restart', () => { this.audio.playUIClick(); if (this.onRestart) this.onRestart(); });
     bind('btn-trade', () => { this.audio.playUIClick(); if (this.onTrade) this.onTrade(); });
@@ -327,27 +336,51 @@ export class UI {
   // ─── Shop Screen ────────────────────────────
 
   showShop() {
-    // ALWAYS switch screen first, so the button is never unresponsive
     this.showScreen('shop');
 
     try {
-    const eco = this.economy;
-    document.getElementById('shop-money').textContent = `$${eco.money}`;
+      const eco = this.economy;
+      document.getElementById('shop-money').textContent = `$${eco.money}`;
 
-    // Dimension header
-    const dimHeader = document.getElementById('shop-dimension');
-    if (dimHeader) {
-      dimHeader.textContent = `Dimension ${eco.dimension} -- ${eco.getDimensionName()}`;
+      const dimHeader = document.getElementById('shop-dimension');
+      if (dimHeader) {
+        dimHeader.textContent = `Dimension ${eco.dimension} -- ${eco.getDimensionName()}`;
+      }
+
+      // Reset to weapons tab
+      document.querySelectorAll('.shop-tab').forEach(t => t.classList.remove('active'));
+      const weaponTab = document.querySelector('.shop-tab[data-shop-tab="weapons"]');
+      if (weaponTab) weaponTab.classList.add('active');
+
+      // Render dimension advance button
+      this._renderDimensionAdvance();
+
+      // Render default tab
+      this._renderShopTab('weapons');
+    } catch(e) { console.error('showShop error:', e); }
+  }
+
+  _renderShopTab(tab) {
+    const content = document.getElementById('shop-tab-content');
+    content.innerHTML = '';
+    const advanceEl = document.getElementById('shop-advance-dim');
+    if (advanceEl) advanceEl.style.display = (tab === 'locations') ? '' : 'none';
+
+    switch(tab) {
+      case 'weapons': this._renderShopWeapons(content); break;
+      case 'locations': this._renderShopLocations(content); break;
+      case 'banners': this._renderShopBanners(content); break;
+      case 'quests': this._renderShopQuests(content); break;
     }
+  }
 
-    // Weapons — only show weapons from unlocked dimensions
-    const weaponGrid = document.getElementById('shop-weapons');
-    weaponGrid.innerHTML = '';
+  _renderShopWeapons(container) {
+    const eco = this.economy;
+    const grid = document.createElement('div');
+    grid.className = 'shop-grid';
 
     for (const [key, weapon] of Object.entries(eco.weapons)) {
-      // Hide legendary weapons (quest rewards)
       if (weapon.isLegendary) continue;
-      // Only show weapons from dimensions the player has reached
       if (weapon.dimension && weapon.dimension > eco.dimension) continue;
 
       const item = document.createElement('div');
@@ -366,7 +399,7 @@ export class UI {
           item.addEventListener('click', () => {
             this.audio.playUIClick();
             eco.selectWeapon(key);
-            this.showShop(); // refresh
+            this._renderShopTab('weapons');
           });
         }
       } else if (eco.money < weapon.cost) {
@@ -386,26 +419,27 @@ export class UI {
           this.audio.playUIClick();
           if (eco.buyWeapon(key)) {
             this.audio.playCashRegister();
-            this.showShop(); // refresh
+            document.getElementById('shop-money').textContent = `$${eco.money}`;
+            this._renderShopTab('weapons');
           }
         });
       }
-
-      weaponGrid.appendChild(item);
+      grid.appendChild(item);
     }
+    container.appendChild(grid);
+  }
 
-    // Locations — grouped by dimension
-    const locGrid = document.getElementById('shop-locations');
-    locGrid.innerHTML = '';
+  _renderShopLocations(container) {
+    const eco = this.economy;
+    const grid = document.createElement('div');
+    grid.className = 'shop-grid';
 
     for (let d = 0; d < eco.dimension && d < DIMENSIONS.length; d++) {
       const dim = DIMENSIONS[d];
-
-      // Dimension section header
       const header = document.createElement('div');
       header.className = 'shop-dim-header';
       header.textContent = `${dim.name} (Dimension ${dim.id})`;
-      locGrid.appendChild(header);
+      grid.appendChild(header);
 
       for (const locKey of Object.keys(dim.locations)) {
         const loc = eco.locations[locKey];
@@ -427,7 +461,7 @@ export class UI {
             item.addEventListener('click', () => {
               this.audio.playUIClick();
               eco.selectLocation(locKey);
-              this.showShop();
+              this._renderShopTab('locations');
             });
           }
         } else if (eco.money < loc.cost) {
@@ -447,71 +481,28 @@ export class UI {
             this.audio.playUIClick();
             if (eco.buyLocation(locKey)) {
               this.audio.playCashRegister();
-              this.showShop(); // refresh
+              document.getElementById('shop-money').textContent = `$${eco.money}`;
+              this._renderShopTab('locations');
             }
           });
         }
-
-        locGrid.appendChild(item);
+        grid.appendChild(item);
       }
     }
-
-    // ── Next Dimension Button ──────────────────
-    const advanceContainer = document.getElementById('shop-advance-dim');
-    if (advanceContainer) {
-      advanceContainer.innerHTML = '';
-      if (eco.canAdvanceDimension() && eco.dimension < DIMENSIONS.length) {
-        const nextDim = DIMENSIONS[eco.dimension];
-        const fee = eco.getDimensionFee();
-        const canAfford = eco.money >= fee;
-
-        const btn = document.createElement('button');
-        btn.className = `btn btn-dimension ${canAfford ? '' : 'cant-afford'}`;
-        btn.innerHTML = `Travel to Dimension ${nextDim.id} -- ${nextDim.name}<br><span class="dim-fee">$${fee}</span>`;
-        if (canAfford) {
-          btn.addEventListener('click', () => {
-            this.audio.playUIClick();
-            if (eco.advanceDimension()) {
-              this.audio.playCashRegister();
-              this.showShop();
-            }
-          });
-        }
-        advanceContainer.appendChild(btn);
-      }
-    }
-
-    // ── Story Quest Section ────────────────────
-    this._renderQuestShop();
-
-    } catch(e) { console.error('showShop error:', e); }
+    container.appendChild(grid);
   }
 
-  _renderQuestShop() {
-    // Find or create quest section
-    let questSection = document.getElementById('shop-quests-section');
-    if (!questSection) {
-      const shopScreen = document.getElementById('screen-shop');
-      questSection = document.createElement('div');
-      questSection.id = 'shop-quests-section';
-      questSection.innerHTML = '<h3 class="shop-section-title" style="margin-top:60px; padding-top:24px; border-top:1px solid rgba(255,255,255,0.1)">Story Quests</h3>';
-      const grid = document.createElement('div');
-      grid.id = 'shop-quests';
-      grid.className = 'shop-grid';
-      questSection.appendChild(grid);
-      // Insert before the back button
-      const backBtn = shopScreen.querySelector('.btn-secondary');
-      if (backBtn) shopScreen.insertBefore(questSection, backBtn);
-      else shopScreen.appendChild(questSection);
-    }
+  _renderShopBanners(container) {
+    container.innerHTML = '<div class="locker-coming-soon">Banners Coming Soon</div>';
+  }
 
-    const grid = document.getElementById('shop-quests');
-    if (!grid) return;
-    grid.innerHTML = '';
+  _renderShopQuests(container) {
+    const grid = document.createElement('div');
+    grid.className = 'shop-grid';
+    container.appendChild(grid);
 
-    const eco   = this.economy;
-    const story = this._storyRef; // set by main.js
-
+    const eco = this.economy;
+    const story = this._storyRef;
     const QUEST_COST = 50;
     const phase = story ? story.getPhase() : 'locked';
 
@@ -521,11 +512,11 @@ export class UI {
     if (phase !== 'locked') {
       item.classList.add('owned');
       const phaseLabels = {
-        bought:      'UNLOCKED — Start next morning',
-        walking:     'IN PROGRESS — Trail Walk',
-        shed_found:  'IN PROGRESS — The Shed',
-        riding:      'IN PROGRESS — Riding Home',
-        assembling:  'IN PROGRESS — Assembling the rifle',
+        bought:      'UNLOCKED \u2014 Start next morning',
+        walking:     'IN PROGRESS \u2014 Trail Walk',
+        shed_found:  'IN PROGRESS \u2014 The Shed',
+        riding:      'IN PROGRESS \u2014 Riding Home',
+        assembling:  'IN PROGRESS \u2014 Assembling the rifle',
         complete:    'COMPLETE'
       };
       item.innerHTML = `
@@ -552,12 +543,42 @@ export class UI {
           eco.money -= QUEST_COST;
           eco.save();
           this.audio.playCashRegister();
-          this._renderQuestShop();
+          document.getElementById('shop-money').textContent = `$${eco.money}`;
+          this._renderShopTab('quests');
         }
       });
     }
-
     grid.appendChild(item);
+  }
+
+  _renderDimensionAdvance() {
+    const eco = this.economy;
+    const advanceContainer = document.getElementById('shop-advance-dim');
+    if (!advanceContainer) return;
+    advanceContainer.innerHTML = '';
+    if (eco.canAdvanceDimension() && eco.dimension < DIMENSIONS.length) {
+      const nextDim = DIMENSIONS[eco.dimension];
+      const fee = eco.getDimensionFee();
+      const canAfford = eco.money >= fee;
+
+      const btn = document.createElement('button');
+      btn.className = `btn btn-dimension ${canAfford ? '' : 'cant-afford'}`;
+      btn.innerHTML = `Travel to Dimension ${nextDim.id} -- ${nextDim.name}<br><span class="dim-fee">$${fee}</span>`;
+      if (canAfford) {
+        btn.addEventListener('click', () => {
+          this.audio.playUIClick();
+          if (eco.advanceDimension()) {
+            this.audio.playCashRegister();
+            this.showShop();
+          }
+        });
+      }
+      advanceContainer.appendChild(btn);
+    }
+  }
+
+  _renderQuestShop() {
+    // Quests are now rendered via shop tabs
   }
 
 
