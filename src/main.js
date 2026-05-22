@@ -941,7 +941,13 @@ class Game {
         birdKey = this.economy.spawnRandomBird();
       }
 
-      this.birds.spawn(birdKey);
+      // Flock spawn: 25% chance, max 2 active flocks, not for bosses
+      const isBossSpawn = birdKey && BIRDS[birdKey] && (BIRDS[birdKey].hp || 1) > 1;
+      if (!isBossSpawn && Math.random() < 0.25 && this.birds.getFlockCount() < 2) {
+        this.birds.spawnFlock(birdKey);
+      } else {
+        this.birds.spawn(birdKey);
+      }
       this.spawnInterval = 2 + Math.random() * 3; // randomize next spawn
     }
 

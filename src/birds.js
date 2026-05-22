@@ -261,6 +261,7 @@ export class BirdSystem {
   constructor(scene) {
     this.scene = scene;
     this.birds = [];
+    this.flocks = [];       // Active flocks
     this.areaSize = 30;
   }
 
@@ -368,12 +369,102 @@ export class BirdSystem {
   }
 
   /**
+   * Spawn a flock — group of 3-6 same-type birds with a designated leader
+   */
+  spawnFlock(birdKey, count) {
+    const data = BIRDS[birdKey];
+    if (!data) return null;
+
+    count = Math.max(2, Math.min(6, count || (3 + Math.floor(Math.random() * 4))));
+    const flockId = `flock_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+
+    const flock = {
+      id: flockId,
+      birdKey,
+      members: [],
+      leader: null,
+      scattered: false
+    };
+
+    // Spawn leader first
+    const leaderBird = this.spawn(birdKey);
+    if (!leaderBird) return null;
+    leaderBird.flockId = flockId;
+    leaderBird.isFlockLeader = true;
+    flock.leader = leaderBird;
+    flock.members.push(leaderBird);
+
+    // Spawn followers in formation around leader
+    for (let i = 1; i < count; i++) {
+      const follower = this.spawn(birdKey);
+      if (!follower) continue;
+      follower.flockId = flockId;
+      follower.isFlockLeader = false;
+
+      // Offset position slightly from leader (V-formation)
+      const side = i % 2 === 0 ? 1 : -1;
+      const row = Math.ceil(i / 2);
+      const offset = new THREE.Vector3(
+        side * row * data.size * 2.5,
+        (Math.random() - 0.5) * 0.5,
+        row * data.size * 2
+      );
+      follower.mesh.position.add(offset);
+
+      flock.members.push(follower);
+    }
+
+    this.flocks.push(flock);
+    return flock;
+  }
+
+  /**
+   * Scatter a flock — called when leader is killed
+   */
+  scatterFlock(flockId) {
+    const flock = this.flocks.find(f => f.id === flockId);
+    if (!flock || flock.scattered) return;
+    flock.scattered = true;
+
+    for (const member of flock.members) {
+      if (!member.alive || member.state === 'FALLING') continue;
+
+      // Each bird startles and flies in a random direction
+      member.startled = true;
+      member.startledTimer = 3 + Math.random() * 2;
+      member.flockId = null; // Leave the flock
+      member.isFlockLeader = false;
+
+      // Build a panic exit path
+      const escapeDir = new THREE.Vector3(
+        (Math.random() - 0.5) * 2,
+        0.5 + Math.random(),
+        (Math.random() - 0.5) * 2
+      ).normalize();
+
+      member.waypoints = [
+        member.mesh.position.clone(),
+        member.mesh.position.clone().add(escapeDir.clone().multiplyScalar(12)).add(new THREE.Vector3(0, 8, 0)),
+        this._getEdgePosition(8 + Math.random() * 6)
+      ];
+      member.waypointIndex = 0;
+      member.pathT = 0;
+      member.state = 'EXITING';
+    }
+  }
+
+  /**
    * Kill a bird — starts falling/tumbling instead of instant removal
    */
   kill(birdObj) {
     birdObj.state = 'FALLING';
     birdObj.fallVelocity = 0;
     birdObj.fallRotation = (Math.random() - 0.5) * 8;
+
+    // If this bird was a flock leader, scatter the flock
+    if (birdObj.isFlockLeader && birdObj.flockId) {
+      this.scatterFlock(birdObj.flockId);
+    }
   }
 
   /**
@@ -610,6 +701,76 @@ export class BirdSystem {
 
       // Body bob
       bird.mesh.position.y += Math.sin(bird.flapPhase * 0.8) * 0.02;
+
+      // ─── Boids flocking behavior for flock members ───
+      if (bird.flockId && !bird.startled && bird.state === 'FLYING') {
+        const flock = this.flocks.find(f => f.id === bird.flockId);
+        if (flock && !flock.scattered && flock.leader && flock.leader.alive) {
+          const leader = flock.leader;
+
+          // Only apply to followers, not the leader
+          if (!bird.isFlockLeader) {
+            const pos = bird.mesh.position;
+            const leaderPos = leader.mesh.position;
+            const separation = new THREE.Vector3();
+            const alignment = new THREE.Vector3();
+            const cohesion = new THREE.Vector3();
+            let neighborCount = 0;
+
+            for (const other of flock.members) {
+              if (other === bird || !other.alive || other.state === 'FALLING') continue;
+              const diff = pos.clone().sub(other.mesh.position);
+              const dist = diff.length();
+
+              if (dist < bird.data.size * 6 && dist > 0.01) {
+                // Separation — avoid getting too close
+                separation.add(diff.normalize().multiplyScalar(1.0 / Math.max(dist, 0.5)));
+
+                // Alignment — match velocity direction
+                const otherVel = other.mesh.position.clone().sub(other._prevPos || other.mesh.position);
+                alignment.add(otherVel);
+
+                // Cohesion — steer toward center of neighbors
+                cohesion.add(other.mesh.position);
+                neighborCount++;
+              }
+            }
+
+            const steer = new THREE.Vector3();
+
+            // Separation force
+            if (separation.lengthSq() > 0) {
+              steer.add(separation.normalize().multiplyScalar(0.8));
+            }
+
+            // Alignment force
+            if (neighborCount > 0) {
+              alignment.divideScalar(neighborCount);
+              if (alignment.lengthSq() > 0) {
+                steer.add(alignment.normalize().multiplyScalar(0.3));
+              }
+
+              // Cohesion force
+              cohesion.divideScalar(neighborCount);
+              const toCenter = cohesion.sub(pos);
+              steer.add(toCenter.normalize().multiplyScalar(0.2));
+            }
+
+            // Follow the leader (strongest force)
+            const toLeader = leaderPos.clone().sub(pos);
+            const leaderDist = toLeader.length();
+            if (leaderDist > bird.data.size * 3) {
+              steer.add(toLeader.normalize().multiplyScalar(1.2));
+            }
+
+            // Apply forces gently
+            bird.mesh.position.add(steer.multiplyScalar(dt * bird.speed * 0.3));
+          }
+        }
+      }
+
+      // Store previous position for alignment calculations
+      bird._prevPos = bird.mesh.position.clone();
     }
 
     // Silent cleanup of exited birds
@@ -639,9 +800,14 @@ export class BirdSystem {
       }
     }
     this.birds = [];
+    this.flocks = [];
   }
 
   getLivingCount() {
     return this.birds.filter(b => b.alive && b.state !== 'EXITING').length;
+  }
+
+  getFlockCount() {
+    return this.flocks.filter(f => !f.scattered && f.members.some(m => m.alive)).length;
   }
 }
