@@ -941,9 +941,9 @@ class Game {
       if (!wd.noReload) this.weapons.startReload();
     }
 
-    // Admin cheat: type qwerty in backyard between 40s and 30s on the timer
+    // Admin cheat: type qwerty in the last 10 seconds of a day
     // Ignore held-down key repeats so movement keys don't reset the buffer
-    if (!e.repeat && this.economy.currentLocation === 'backyard' && this.huntTimer <= 40 && this.huntTimer >= 30) {
+    if (!e.repeat && this.huntTimer <= 10) {
       const letter = e.key.toLowerCase();
       // Only process single printable characters (ignore Shift, Control, etc.)
       if (letter.length === 1 && letter >= 'a' && letter <= 'z') {
