@@ -173,6 +173,7 @@ class Game {
       this.state = STATE.RESULTS;
     };
     this.ui.onSkipToSleep = () => this._goToSleep();
+    this.ui.onShopBack = () => { this.ui.showScreen('results'); };
     this.ui.onSleep = () => this._goToSleep();
     this.ui.onContinueAfterWin = () => {
       this.winShown = true;

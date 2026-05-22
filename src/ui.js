@@ -57,6 +57,7 @@ export class UI {
     bind('btn-to-shop', () => { this.audio.playUIClick(); if (this.onGoToShop) this.onGoToShop(); });
     bind('btn-to-locker', () => { this.audio.playUIClick(); if (this.onGoToLocker) this.onGoToLocker(); });
     bind('btn-skip-shop', () => { this.audio.playUIClick(); if (this.onSkipToSleep) this.onSkipToSleep(); });
+    bind('btn-shop-back', () => { this.audio.playUIClick(); if (this.onShopBack) this.onShopBack(); });
     bind('btn-sleep', () => { this.audio.playUIClick(); if (this.onSleep) this.onSleep(); });
     // Shop tab switching
     document.querySelectorAll('.shop-tab').forEach(tab => {
