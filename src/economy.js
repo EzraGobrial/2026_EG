@@ -11,240 +11,268 @@ export const BIRDS = {
   // ─── Dimension 1: Earth ─────────────────────
   sparrow: {
     name: 'Sparrow', value: 2, speed: 1.8, size: 0.45,
-    rarity: 'common', weight: 40,
+    rarity: 'common', weight: 40, hp: 1,
     bodyColor: 0x8B7355, wingColor: 0x6B5B45, headColor: 0x8B7355,
     beakColor: 0x4a3a2a, bellyColor: 0xd4c4a8,
     flapSpeed: 7, flapAmplitude: 0.5
   },
   pigeon: {
     name: 'Pigeon', value: 3, speed: 1.2, size: 0.55,
-    rarity: 'common', weight: 35,
+    rarity: 'common', weight: 35, hp: 1,
     bodyColor: 0x808890, wingColor: 0x606870, headColor: 0x556B6B,
     beakColor: 0x555555, bellyColor: 0xa0a8b0,
     flapSpeed: 5, flapAmplitude: 0.4
   },
   robin: {
     name: 'Robin', value: 5, speed: 3.0, size: 0.32,
-    rarity: 'common', weight: 30,
+    rarity: 'common', weight: 30, hp: 1,
     bodyColor: 0x6B5B45, wingColor: 0x5a4a35, headColor: 0x3a3a3a,
     beakColor: 0x4a4a30, bellyColor: 0xCC4422,
     flapSpeed: 11, flapAmplitude: 0.65
   },
   bluejay: {
     name: 'Blue Jay', value: 8, speed: 3.8, size: 0.38,
-    rarity: 'uncommon', weight: 20,
+    rarity: 'uncommon', weight: 20, hp: 1,
     bodyColor: 0x3060BB, wingColor: 0x2050AA, headColor: 0x2855A0,
     beakColor: 0x222222, bellyColor: 0xd8d8e0,
     flapSpeed: 10, flapAmplitude: 0.6
   },
   cardinal: {
     name: 'Cardinal', value: 12, speed: 2.8, size: 0.34,
-    rarity: 'uncommon', weight: 18,
+    rarity: 'uncommon', weight: 18, hp: 1,
     bodyColor: 0xCC2222, wingColor: 0xAA1818, headColor: 0xDD2828,
     beakColor: 0xDD8822, bellyColor: 0xBB3030,
     flapSpeed: 10, flapAmplitude: 0.6
   },
   woodpecker: {
     name: 'Woodpecker', value: 15, speed: 2.5, size: 0.35,
-    rarity: 'uncommon', weight: 15,
+    rarity: 'uncommon', weight: 15, hp: 1,
     bodyColor: 0x1a1a1a, wingColor: 0x111111, headColor: 0xCC1111,
     beakColor: 0x333333, bellyColor: 0xeeeeee,
     flapSpeed: 14, flapAmplitude: 0.4
   },
   heron: {
     name: 'Heron', value: 25, speed: 1.8, size: 0.7,
-    rarity: 'rare', weight: 10,
+    rarity: 'rare', weight: 10, hp: 1,
     bodyColor: 0x8899AA, wingColor: 0x6677AA, headColor: 0xd0d0e0,
     beakColor: 0xccaa33, bellyColor: 0xc8c8d8,
     flapSpeed: 5, flapAmplitude: 0.9
   },
   eagle: {
     name: 'Eagle', value: 40, speed: 3.5, size: 0.8,
-    rarity: 'rare', weight: 8,
+    rarity: 'rare', weight: 8, hp: 1,
     bodyColor: 0x3a2a18, wingColor: 0x2a1a08, headColor: 0xeeeeee,
     beakColor: 0xccaa00, bellyColor: 0x3a2a18,
     flapSpeed: 4, flapAmplitude: 1.0
   },
   hawk: {
     name: 'Hawk', value: 50, speed: 3.8, size: 0.6,
-    rarity: 'rare', weight: 6,
+    rarity: 'rare', weight: 6, hp: 1,
     bodyColor: 0x6B4226, wingColor: 0x5a3520, headColor: 0x7a5030,
     beakColor: 0x333333, bellyColor: 0xd4b896,
     flapSpeed: 6, flapAmplitude: 0.8
   },
   falcon: {
     name: 'Falcon', value: 75, speed: 3.8, size: 0.5,
-    rarity: 'epic', weight: 4,
+    rarity: 'epic', weight: 4, hp: 1,
     bodyColor: 0x4a5570, wingColor: 0x3a4560, headColor: 0x2a3550,
     beakColor: 0x333333, bellyColor: 0xc8c0b0,
     flapSpeed: 7, flapAmplitude: 0.75
   },
   golden_eagle: {
     name: 'Golden Eagle', value: 150, speed: 3.5, size: 0.9,
-    rarity: 'legendary', weight: 2,
+    rarity: 'legendary', weight: 2, hp: 1,
     bodyColor: 0x6B4E1F, wingColor: 0x5a3d10, headColor: 0xD4A520,
     beakColor: 0x333333, bellyColor: 0x8B6914,
     flapSpeed: 3.5, flapAmplitude: 1.1
+  },
+  thunderhawk: {
+    name: 'Thunderhawk', value: 100, speed: 1.8, size: 2.5,
+    rarity: 'legendary', weight: 0, hp: 3,
+    bodyColor: 0x2a2a3a, wingColor: 0x4444aa, headColor: 0x3333aa,
+    beakColor: 0xddaa22, bellyColor: 0x5555cc,
+    flapSpeed: 1.5, flapAmplitude: 0.7
   },
 
   // ─── Dimension 2: Tropics ──────────────────
   parrot: {
     name: 'Parrot', value: 10, speed: 3.2, size: 0.45,
-    rarity: 'common', weight: 35,
+    rarity: 'common', weight: 35, hp: 1,
     bodyColor: 0x22AA22, wingColor: 0x1188DD, headColor: 0xDD2222,
     beakColor: 0x333333, bellyColor: 0x44CC44,
     flapSpeed: 8, flapAmplitude: 0.5
   },
   toucan: {
     name: 'Toucan', value: 18, speed: 3.0, size: 0.5,
-    rarity: 'common', weight: 30,
+    rarity: 'common', weight: 30, hp: 1,
     bodyColor: 0x1a1a1a, wingColor: 0x111111, headColor: 0x1a1a1a,
     beakColor: 0xFF8800, bellyColor: 0xFFDD00,
     flapSpeed: 6, flapAmplitude: 0.55
   },
   flamingo: {
     name: 'Flamingo', value: 30, speed: 2.8, size: 0.75,
-    rarity: 'uncommon', weight: 20,
+    rarity: 'uncommon', weight: 20, hp: 1,
     bodyColor: 0xFF7799, wingColor: 0xFF5588, headColor: 0xFFAABB,
     beakColor: 0x222222, bellyColor: 0xFF88AA,
     flapSpeed: 4, flapAmplitude: 0.85
   },
   macaw: {
     name: 'Macaw', value: 50, speed: 4.5, size: 0.55,
-    rarity: 'uncommon', weight: 15,
+    rarity: 'uncommon', weight: 15, hp: 1,
     bodyColor: 0xDD2222, wingColor: 0x2266DD, headColor: 0xDD2222,
     beakColor: 0x222222, bellyColor: 0xFFCC00,
     flapSpeed: 9, flapAmplitude: 0.6
   },
   hornbill: {
     name: 'Hornbill', value: 70, speed: 3.8, size: 0.6,
-    rarity: 'rare', weight: 10,
+    rarity: 'rare', weight: 10, hp: 1,
     bodyColor: 0x1a1a1a, wingColor: 0x222222, headColor: 0x1a1a1a,
     beakColor: 0xFFAA00, bellyColor: 0xeeeeee,
     flapSpeed: 5, flapAmplitude: 0.7
   },
   quetzal: {
     name: 'Quetzal', value: 100, speed: 4.8, size: 0.4,
-    rarity: 'rare', weight: 8,
+    rarity: 'rare', weight: 8, hp: 1,
     bodyColor: 0x00AA55, wingColor: 0x008844, headColor: 0xDD2222,
     beakColor: 0xCCAA00, bellyColor: 0x00CC66,
     flapSpeed: 10, flapAmplitude: 0.65
   },
   harpy_eagle: {
     name: 'Harpy Eagle', value: 160, speed: 4.5, size: 0.85,
-    rarity: 'epic', weight: 5,
+    rarity: 'epic', weight: 5, hp: 1,
     bodyColor: 0x4a4a4a, wingColor: 0x333333, headColor: 0xcccccc,
     beakColor: 0x333333, bellyColor: 0xdddddd,
     flapSpeed: 4, flapAmplitude: 1.0
   },
   phoenix_bird: {
     name: 'Bird of Paradise', value: 250, speed: 5.0, size: 0.5,
-    rarity: 'legendary', weight: 2,
+    rarity: 'legendary', weight: 2, hp: 1,
     bodyColor: 0xFF4400, wingColor: 0xDD2200, headColor: 0xFF6600,
     beakColor: 0x333333, bellyColor: 0xFFAA00,
     flapSpeed: 8, flapAmplitude: 0.7
+  },
+  storm_phoenix: {
+    name: 'Storm Phoenix', value: 200, speed: 2.0, size: 2.8,
+    rarity: 'legendary', weight: 0, hp: 3,
+    bodyColor: 0x553399, wingColor: 0x7744cc, headColor: 0x6633bb,
+    beakColor: 0xffcc00, bellyColor: 0x8855dd,
+    flapSpeed: 1.8, flapAmplitude: 0.8
   },
 
   // ─── Dimension 3: Arctic ───────────────────
   snow_bunting: {
     name: 'Snow Bunting', value: 20, speed: 3.8, size: 0.3,
-    rarity: 'common', weight: 35,
+    rarity: 'common', weight: 35, hp: 1,
     bodyColor: 0xeeeeee, wingColor: 0x1a1a1a, headColor: 0xeeeeee,
     beakColor: 0xCCAA00, bellyColor: 0xffffff,
     flapSpeed: 10, flapAmplitude: 0.5
   },
   ptarmigan: {
     name: 'Ptarmigan', value: 35, speed: 3.5, size: 0.45,
-    rarity: 'common', weight: 30,
+    rarity: 'common', weight: 30, hp: 1,
     bodyColor: 0xddddee, wingColor: 0xccccdd, headColor: 0xddddee,
     beakColor: 0x333333, bellyColor: 0xffffff,
     flapSpeed: 7, flapAmplitude: 0.5
   },
   snowy_owl: {
     name: 'Snowy Owl', value: 60, speed: 3.8, size: 0.65,
-    rarity: 'uncommon', weight: 18,
+    rarity: 'uncommon', weight: 18, hp: 1,
     bodyColor: 0xf0f0f0, wingColor: 0xe0e0e0, headColor: 0xffffff,
     beakColor: 0x333333, bellyColor: 0xffffff,
     flapSpeed: 5, flapAmplitude: 0.8
   },
   puffin: {
     name: 'Puffin', value: 80, speed: 4.5, size: 0.35,
-    rarity: 'uncommon', weight: 15,
+    rarity: 'uncommon', weight: 15, hp: 1,
     bodyColor: 0x1a1a1a, wingColor: 0x111111, headColor: 0x1a1a1a,
     beakColor: 0xFF6622, bellyColor: 0xeeeeee,
     flapSpeed: 12, flapAmplitude: 0.45
   },
   arctic_tern: {
     name: 'Arctic Tern', value: 110, speed: 5.0, size: 0.35,
-    rarity: 'rare', weight: 10,
+    rarity: 'rare', weight: 10, hp: 1,
     bodyColor: 0xcccccc, wingColor: 0xaaaaaa, headColor: 0x1a1a1a,
     beakColor: 0xDD2222, bellyColor: 0xeeeeee,
     flapSpeed: 11, flapAmplitude: 0.55
   },
   gyrfalcon: {
     name: 'Gyrfalcon', value: 180, speed: 5.2, size: 0.6,
-    rarity: 'epic', weight: 5,
+    rarity: 'epic', weight: 5, hp: 1,
     bodyColor: 0xdddde0, wingColor: 0xc0c0c8, headColor: 0xdddde0,
     beakColor: 0x333333, bellyColor: 0xeeeeee,
     flapSpeed: 7, flapAmplitude: 0.75
   },
   ice_phoenix: {
     name: 'Ice Phoenix', value: 350, speed: 5.5, size: 0.7,
-    rarity: 'legendary', weight: 2,
+    rarity: 'legendary', weight: 2, hp: 1,
     bodyColor: 0x88CCFF, wingColor: 0x55AAEE, headColor: 0xAADDFF,
     beakColor: 0x4488AA, bellyColor: 0xCCEEFF,
     flapSpeed: 5, flapAmplitude: 0.9
+  },
+  frost_wyrm: {
+    name: 'Frost Wyrm', value: 300, speed: 1.5, size: 3.0,
+    rarity: 'legendary', weight: 0, hp: 3,
+    bodyColor: 0x88bbdd, wingColor: 0xaaddff, headColor: 0x99ccee,
+    beakColor: 0x4488aa, bellyColor: 0xbbddff,
+    flapSpeed: 1.2, flapAmplitude: 0.9
   },
 
   // ─── Dimension 4: Desert ───────────────────
   sandgrouse: {
     name: 'Sandgrouse', value: 30, speed: 4.0, size: 0.4,
-    rarity: 'common', weight: 35,
+    rarity: 'common', weight: 35, hp: 1,
     bodyColor: 0xC4A060, wingColor: 0xAA8840, headColor: 0xC4A060,
     beakColor: 0x555555, bellyColor: 0xD8C090,
     flapSpeed: 8, flapAmplitude: 0.5
   },
   roadrunner: {
     name: 'Roadrunner', value: 50, speed: 4.8, size: 0.4,
-    rarity: 'common', weight: 28,
+    rarity: 'common', weight: 28, hp: 1,
     bodyColor: 0x4a5540, wingColor: 0x3a4530, headColor: 0x4a5540,
     beakColor: 0x333333, bellyColor: 0xccccbb,
     flapSpeed: 6, flapAmplitude: 0.4
   },
   vulture: {
     name: 'Vulture', value: 80, speed: 3.2, size: 0.85,
-    rarity: 'uncommon', weight: 18,
+    rarity: 'uncommon', weight: 18, hp: 1,
     bodyColor: 0x3a2a1a, wingColor: 0x2a1a0a, headColor: 0xCC5544,
     beakColor: 0x444444, bellyColor: 0x3a2a1a,
     flapSpeed: 3, flapAmplitude: 1.0
   },
   secretary_bird: {
     name: 'Secretary Bird', value: 120, speed: 4.5, size: 0.7,
-    rarity: 'uncommon', weight: 14,
+    rarity: 'uncommon', weight: 14, hp: 1,
     bodyColor: 0xaaaaaa, wingColor: 0x1a1a1a, headColor: 0xaaaaaa,
     beakColor: 0x444444, bellyColor: 0xcccccc,
     flapSpeed: 5, flapAmplitude: 0.8
   },
   desert_hawk: {
     name: 'Desert Hawk', value: 180, speed: 5.5, size: 0.55,
-    rarity: 'rare', weight: 8,
+    rarity: 'rare', weight: 8, hp: 1,
     bodyColor: 0x8B6914, wingColor: 0x7a5810, headColor: 0xAA8820,
     beakColor: 0x333333, bellyColor: 0xD4B896,
     flapSpeed: 7, flapAmplitude: 0.75
   },
   sand_falcon: {
     name: 'Sand Falcon', value: 250, speed: 5.8, size: 0.5,
-    rarity: 'epic', weight: 5,
+    rarity: 'epic', weight: 5, hp: 1,
     bodyColor: 0xD4A050, wingColor: 0xC09040, headColor: 0xD4A050,
     beakColor: 0x333333, bellyColor: 0xE8D0A0,
     flapSpeed: 8, flapAmplitude: 0.7
   },
   sun_phoenix: {
     name: 'Sun Phoenix', value: 500, speed: 6.0, size: 0.75,
-    rarity: 'legendary', weight: 2,
+    rarity: 'legendary', weight: 2, hp: 1,
     bodyColor: 0xFF6600, wingColor: 0xDD4400, headColor: 0xFFAA00,
     beakColor: 0xCC4400, bellyColor: 0xFFCC00,
     flapSpeed: 5, flapAmplitude: 0.9
+  },
+  sun_dragon: {
+    name: 'Sun Dragon', value: 400, speed: 1.6, size: 3.0,
+    rarity: 'legendary', weight: 0, hp: 3,
+    bodyColor: 0xcc5500, wingColor: 0xff7722, headColor: 0xdd6611,
+    beakColor: 0xffaa00, bellyColor: 0xff9933,
+    flapSpeed: 1.3, flapAmplitude: 0.85
   }
 };
 
@@ -406,6 +434,33 @@ export const WEAPONS = {
   }
 };
 
+export const BANNERS = {
+  hunter_green:  { name: 'Hunter Green',  cost: 200,  color: '#2d5a2d' },
+  golden_hour:   { name: 'Golden Hour',   cost: 500,  color: '#d4a853' },
+  midnight:      { name: 'Midnight',      cost: 300,  color: '#1a1a3a' },
+  crimson:       { name: 'Crimson',       cost: 400,  color: '#8b2252' },
+  arctic_frost:  { name: 'Arctic Frost',  cost: 600,  color: '#88ccee', dimension: 3 },
+  desert_flame:  { name: 'Desert Flame',  cost: 800,  color: '#cc5522', dimension: 4 },
+  champion:      { name: 'Champion',      cost: null, color: '#ffd700', tournamentOnly: true },
+};
+
+export const CONSUMABLES = {
+  double_money:   { name: 'Double Money',   cost: 100, desc: '2x earnings this hunt' },
+  extra_time:     { name: 'Extra Time',      cost: 75,  desc: '+15 seconds to hunt' },
+  bird_magnet:    { name: 'Bird Magnet',     cost: 150, desc: 'Faster bird spawns' },
+  steady_hands:   { name: 'Steady Hands',    cost: 125, desc: 'Perfect accuracy for 1 hunt' },
+  lucky_charm:    { name: 'Lucky Charm',     cost: 200, desc: 'Higher rare bird spawn rate' },
+};
+
+export const WEAPON_SKINS = {
+  default:        { name: 'Default',        cost: 0,    colors: null },
+  gold:           { name: 'Gold',           cost: 500,  colors: { stock: 0xbfa24d, metal: 0xd4a853 } },
+  arctic_camo:    { name: 'Arctic',         cost: 400,  colors: { stock: 0xccddee, metal: 0xaabbcc } },
+  shadow:         { name: 'Shadow',         cost: 600,  colors: { stock: 0x1a1a1a, metal: 0x333333 } },
+  neon:           { name: 'Neon',           cost: 800,  colors: { stock: 0x00ff88, metal: 0x00ccff } },
+  champion_gold:  { name: 'Champion Gold',  cost: null, colors: { stock: 0xffd700, metal: 0xffc107 }, tournamentOnly: true },
+};
+
 // ═══════════════════════════════════════════════
 // Dimensions Configuration
 // ═══════════════════════════════════════════════
@@ -539,7 +594,8 @@ export const DIMENSIONS = [
         name: 'Ruins', cost: 12000,
         description: 'Ancient ruins. The Sun Phoenix was last seen here.',
         birds: ['desert_hawk', 'sand_falcon', 'sun_phoenix'], maxBirds: 4, areaSize: 75, unlocked: false
-      }
+      },
+      boss_desert: { name: 'Sun Titan', hp: 100, isBoss: true }
     },
     weapons: ['laser_rifle', 'plasma_shotgun']
   }
@@ -563,9 +619,16 @@ export class Economy {
     this.equipped = { tag: null };
     this.loadout = [];
     this.story = null; // serialized story state
+    this.weaponUpgrades = {};
     this.weapons = JSON.parse(JSON.stringify(WEAPONS));
     // Initialize locations from dimension 1
     this.locations = JSON.parse(JSON.stringify(DIMENSIONS[0].locations));
+    this.ownedBanners = [];
+    this.ownedSkins = ['default'];
+    this.ownedConsumables = {}; // { key: count }
+    this.equippedBanner = null;
+    this.equippedSkins = {}; // { weaponKey: skinKey }
+    this.activeConsumables = []; // consumed for current hunt
   }
 
   setUid(uid) {
@@ -590,6 +653,12 @@ export class Economy {
       equipped: this.equipped,
       story: this.story || null,
       loadout: this.loadout || [],
+      weaponUpgrades: this.weaponUpgrades || {},
+      ownedBanners: this.ownedBanners || [],
+      ownedSkins: this.ownedSkins || ['default'],
+      ownedConsumables: this.ownedConsumables || {},
+      equippedBanner: this.equippedBanner || null,
+      equippedSkins: this.equippedSkins || {},
       weaponOwned: {},
       locationUnlocked: {}
     };
@@ -627,6 +696,12 @@ export class Economy {
       this.equipped = data.equipped || { tag: null };
       this.story = data.story || null;
       if (data.loadout) this.loadout = data.loadout;
+      if (data.weaponUpgrades) this.weaponUpgrades = data.weaponUpgrades;
+      if (data.ownedBanners) this.ownedBanners = data.ownedBanners;
+      if (data.ownedSkins) this.ownedSkins = data.ownedSkins;
+      if (data.ownedConsumables) this.ownedConsumables = data.ownedConsumables;
+      if (data.equippedBanner) this.equippedBanner = data.equippedBanner;
+      if (data.equippedSkins) this.equippedSkins = data.equippedSkins;
 
       // Rebuild locations from all unlocked dimensions
       this.locations = {};
@@ -663,6 +738,13 @@ export class Economy {
     this.huntBag = [];
     this.inventory = { tags: [] };
     this.equipped = { tag: null };
+    this.weaponUpgrades = {};
+    this.ownedBanners = [];
+    this.ownedSkins = ['default'];
+    this.ownedConsumables = {};
+    this.equippedBanner = null;
+    this.equippedSkins = {};
+    this.activeConsumables = [];
     this.save();
   }
 
@@ -741,6 +823,7 @@ export class Economy {
       day: this.day,
       dimension: this.dimension,
       tag: this.equipped && this.equipped.tag ? this.equipped.tag : null,
+      banner: this.equippedBanner || null,
       updatedAt: Date.now()
     };
     setDoc(doc(db, 'leaderboard', this.uid), data).catch(e => console.warn('Leaderboard update failed:', e));
@@ -776,7 +859,43 @@ export class Economy {
   }
 
   getWeapon() {
-    return this.weapons[this.currentWeapon];
+    return this.getWeaponWithUpgrades(this.currentWeapon);
+  }
+
+  getUpgradeLevel(weaponKey) {
+    return (this.weaponUpgrades[weaponKey] || {}).level || 0;
+  }
+
+  getUpgradeCost(weaponKey) {
+    const weapon = this.weapons[weaponKey];
+    if (!weapon) return Infinity;
+    const level = this.getUpgradeLevel(weaponKey);
+    if (level >= 3) return Infinity;
+    return Math.floor(weapon.cost * (level + 1) * 0.75);
+  }
+
+  upgradeWeapon(weaponKey) {
+    const cost = this.getUpgradeCost(weaponKey);
+    if (this.money < cost) return false;
+    const level = this.getUpgradeLevel(weaponKey);
+    if (level >= 3) return false;
+    this.money -= cost;
+    if (!this.weaponUpgrades[weaponKey]) this.weaponUpgrades[weaponKey] = {};
+    this.weaponUpgrades[weaponKey].level = level + 1;
+    this.save();
+    return true;
+  }
+
+  getWeaponWithUpgrades(weaponKey) {
+    const base = this.weapons[weaponKey];
+    if (!base) return base;
+    const level = this.getUpgradeLevel(weaponKey);
+    if (level === 0) return base;
+    const w = { ...base };
+    if (level >= 1) { w.accuracy = Math.min(1, w.accuracy * 1.1); w.reloadTime *= 0.9; }
+    if (level >= 2) { w.ammo += 1; w.fireRate *= 0.9; }
+    if (level >= 3) { w.accuracy = Math.min(1, w.accuracy * 1.1); w.reloadTime *= 0.85; w.fireRate *= 0.9; }
+    return w;
   }
 
   getLocation() {
@@ -841,6 +960,56 @@ export class Economy {
     }
     // Fallback: all owned weapons
     return this.getOwnedWeaponKeys();
+  }
+
+  buyBanner(key) {
+    const b = BANNERS[key];
+    if (!b || b.cost === null || this.money < b.cost) return false;
+    if (b.dimension && b.dimension > this.dimension) return false;
+    if (this.ownedBanners.includes(key)) return false;
+    this.money -= b.cost;
+    this.ownedBanners.push(key);
+    this.save();
+    return true;
+  }
+
+  buyConsumable(key) {
+    const c = CONSUMABLES[key];
+    if (!c || this.money < c.cost) return false;
+    this.money -= c.cost;
+    this.ownedConsumables[key] = (this.ownedConsumables[key] || 0) + 1;
+    this.save();
+    return true;
+  }
+
+  useConsumable(key) {
+    if (!this.ownedConsumables[key] || this.ownedConsumables[key] <= 0) return false;
+    this.ownedConsumables[key]--;
+    if (this.ownedConsumables[key] <= 0) delete this.ownedConsumables[key];
+    this.activeConsumables.push(key);
+    this.save();
+    return true;
+  }
+
+  clearActiveConsumables() {
+    this.activeConsumables = [];
+  }
+
+  buyWeaponSkin(skinKey) {
+    const s = WEAPON_SKINS[skinKey];
+    if (!s || s.cost === null || this.money < s.cost) return false;
+    if (this.ownedSkins.includes(skinKey)) return false;
+    this.money -= s.cost;
+    this.ownedSkins.push(skinKey);
+    this.save();
+    return true;
+  }
+
+  equipSkin(weaponKey, skinKey) {
+    if (!this.ownedSkins.includes(skinKey)) return false;
+    this.equippedSkins[weaponKey] = skinKey;
+    this.save();
+    return true;
   }
 
   selectLocation(key) {

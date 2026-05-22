@@ -498,6 +498,11 @@ export class UI {
   }
 
   _renderShopQuests(container) {
+    // --- TEMPORARILY HIDDEN: Re-enable when quest is ready for public ---
+    container.innerHTML = '<div class="locker-coming-soon" style="text-align:center;padding:40px;color:var(--text-secondary)">Coming Soon</div>';
+    return;
+    // --- END HIDDEN BLOCK ---
+
     const grid = document.createElement('div');
     grid.className = 'shop-grid';
     container.appendChild(grid);
