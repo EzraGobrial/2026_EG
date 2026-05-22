@@ -462,6 +462,32 @@ export const WEAPON_SKINS = {
   champion_gold:  { name: 'Champion Gold',  cost: null, colors: { stock: 0xffd700, metal: 0xffc107 }, tournamentOnly: true },
 };
 
+export const PETS = {
+  hunting_dog: {
+    name: 'Hunting Dog', cost: 300, ability: 'retrieve',
+    desc: 'Auto-retrieves fallen birds (+$5 per bird bonus)',
+    color: 0x8B6914
+  },
+  scout_hawk: {
+    name: 'Scout Hawk', cost: 500, ability: 'spot',
+    desc: 'Highlights rare birds with a glow',
+    color: 0x6B4226
+  },
+  falcon: {
+    name: 'Falcon', cost: 800, ability: 'assist',
+    desc: 'Falcon occasionally catches small birds for you',
+    color: 0x4a5570
+  }
+};
+
+export const RANKS = [
+  { level: 1, name: 'Bronze',  icon: '🥉', xpRequired: 0,    color: '#CD7F32', glow: false },
+  { level: 2, name: 'Silver',  icon: '🥈', xpRequired: 500,  color: '#E5E4E2', glow: false },
+  { level: 3, name: 'Gold',    icon: '🥇', xpRequired: 2000, color: '#FFD700', glow: false },
+  { level: 4, name: 'Diamond', icon: '💎', xpRequired: 5000, color: '#00E5FF', glow: true },
+  { level: 5, name: 'Apex',    icon: '👑', xpRequired: 15000, color: '#FFD700', glow: true, holographic: true },
+];
+
 // ═══════════════════════════════════════════════
 // Dimensions Configuration
 // ═══════════════════════════════════════════════
@@ -632,6 +658,11 @@ export class Economy {
     this.activeConsumables = []; // consumed for current hunt
     this.dailyChallenges = [];
     this.challengeDay = 0;
+    this.ownedPets = [];
+    this.activePet = null;
+    this.clanId = null;
+    this.xp = 0;
+    this.rank = 1;
   }
 
   setUid(uid) {
@@ -664,6 +695,11 @@ export class Economy {
       equippedSkins: this.equippedSkins || {},
       dailyChallenges: serializeChallenges(this.dailyChallenges || []),
       challengeDay: this.challengeDay || 0,
+      ownedPets: this.ownedPets || [],
+      activePet: this.activePet || null,
+      clanId: this.clanId || null,
+      xp: this.xp || 0,
+      rank: this.rank || 1,
       weaponOwned: {},
       locationUnlocked: {}
     };
@@ -709,6 +745,11 @@ export class Economy {
       if (data.equippedSkins) this.equippedSkins = data.equippedSkins;
       if (data.challengeDay) this.challengeDay = data.challengeDay;
       if (data.dailyChallenges) this.dailyChallenges = deserializeChallenges(data.dailyChallenges);
+      if (data.ownedPets) this.ownedPets = data.ownedPets;
+      if (data.activePet) this.activePet = data.activePet;
+      if (data.clanId) this.clanId = data.clanId;
+      if (data.xp !== undefined) this.xp = data.xp;
+      if (data.rank !== undefined) this.rank = data.rank;
 
       // Rebuild locations from all unlocked dimensions
       this.locations = {};
@@ -754,6 +795,11 @@ export class Economy {
     this.activeConsumables = [];
     this.dailyChallenges = [];
     this.challengeDay = 0;
+    this.ownedPets = [];
+    this.activePet = null;
+    this.clanId = null;
+    this.xp = 0;
+    this.rank = 1;
     this.save();
   }
 
@@ -833,6 +879,7 @@ export class Economy {
       dimension: this.dimension,
       tag: this.equipped && this.equipped.tag ? this.equipped.tag : null,
       banner: this.equippedBanner || null,
+      rank: this.rank || 1,
       updatedAt: Date.now()
     };
     setDoc(doc(db, 'leaderboard', this.uid), data).catch(e => console.warn('Leaderboard update failed:', e));
@@ -854,7 +901,8 @@ export class Economy {
           totalEarned: data.totalEarned || 0,
           day: data.day || 1,
           dimension: data.dimension || 1,
-          tag: data.tag || null
+          tag: data.tag || null,
+          rank: data.rank || 1
         });
       });
       return {
@@ -922,7 +970,9 @@ export class Economy {
       const bird = BIRDS[key];
       // Small random fluctuation ±15%
       const fluctuation = 0.85 + Math.random() * 0.3;
-      const value = Math.round(bird.value * fluctuation);
+      let value = Math.round(bird.value * fluctuation);
+      // Hunting Dog pet bonus: +$5 per bird
+      if (this.activePet === 'hunting_dog') value += 5;
       total += value;
     }
     this.money += total;
@@ -1027,6 +1077,58 @@ export class Economy {
       this.challengeDay = this.day;
       this.save();
     }
+  }
+
+  buyPet(key) {
+    const pet = PETS[key];
+    if (!pet || this.money < pet.cost) return false;
+    if (this.ownedPets.includes(key)) return false;
+    this.money -= pet.cost;
+    this.ownedPets.push(key);
+    this.save();
+    return true;
+  }
+
+  equipPet(key) {
+    if (key === null) {
+      this.activePet = null;
+      this.save();
+      return true;
+    }
+    if (!this.ownedPets.includes(key)) return false;
+    this.activePet = key;
+    this.save();
+    return true;
+  }
+
+  getRank() {
+    let currentRank = RANKS[0];
+    for (const r of RANKS) {
+      if (this.xp >= r.xpRequired) currentRank = r;
+    }
+    return currentRank;
+  }
+
+  getXPToNextRank() {
+    const current = this.getRank();
+    const nextIdx = RANKS.findIndex(r => r.level === current.level) + 1;
+    if (nextIdx >= RANKS.length) return { needed: 0, progress: 1 }; // max rank
+    const next = RANKS[nextIdx];
+    const needed = next.xpRequired - current.xpRequired;
+    const progress = (this.xp - current.xpRequired) / needed;
+    return { needed, progress: Math.min(1, progress), nextRank: next };
+  }
+
+  addXP(amount) {
+    const oldRank = this.getRank();
+    this.xp += amount;
+    const newRank = this.getRank();
+    this.rank = newRank.level;
+    this.save();
+    if (newRank.level > oldRank.level) {
+      return { ranked: true, oldRank, newRank };
+    }
+    return { ranked: false };
   }
 
   selectLocation(key) {

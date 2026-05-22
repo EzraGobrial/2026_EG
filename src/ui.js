@@ -3,7 +3,7 @@
 // Menu screens: title, morning, results, shop, sleep, win
 // ═══════════════════════════════════════════════
 
-import { Economy, BIRDS, RARITY_COLORS, DIMENSIONS, WEAPONS, BANNERS, CONSUMABLES, WEAPON_SKINS } from './economy.js';
+import { Economy, BIRDS, RARITY_COLORS, DIMENSIONS, WEAPONS, BANNERS, CONSUMABLES, WEAPON_SKINS, PETS, RANKS } from './economy.js';
 
 export class UI {
   constructor(economy, audio) {
@@ -180,6 +180,33 @@ export class UI {
     if (dimEl) {
       dimEl.textContent = `Dimension ${eco.dimension} — ${eco.getDimensionName()}`;
     }
+
+    // Rank display
+    const rank = eco.getRank();
+    const xpInfo = eco.getXPToNextRank();
+    let rankEl = document.getElementById('morning-rank');
+    if (!rankEl) {
+      rankEl = document.createElement('div');
+      rankEl.id = 'morning-rank';
+      rankEl.style.cssText = 'margin-top:8px;text-align:center;';
+      const morningPanel = document.querySelector('#screen-morning .panel');
+      if (morningPanel) {
+        // Insert after dimension badge
+        if (dimEl && dimEl.nextSibling) {
+          dimEl.parentNode.insertBefore(rankEl, dimEl.nextSibling);
+        } else if (morningPanel) {
+          morningPanel.insertBefore(rankEl, morningPanel.querySelector('.location-list')?.parentNode || null);
+        }
+      }
+    }
+    const glowStyle = rank.glow ? `text-shadow: 0 0 8px ${rank.color}, 0 0 16px ${rank.color}40;` : '';
+    const holoStyle = rank.holographic ? 'animation: holoShift 2s ease-in-out infinite;' : '';
+    rankEl.innerHTML = `
+      <span style="font-size:20px;${glowStyle}${holoStyle}">${rank.icon}</span>
+      <span style="color:${rank.color};font-weight:700;margin-left:6px;font-size:14px">${rank.name}</span>
+      <span style="color:var(--text-secondary);font-size:12px;margin-left:8px">${eco.xp} XP</span>
+      ${xpInfo.needed > 0 ? `<div style="width:120px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;margin:6px auto 0;overflow:hidden"><div style="height:100%;background:${rank.color};width:${xpInfo.progress * 100}%;border-radius:2px;transition:width 0.3s"></div></div>` : '<div style="font-size:11px;color:var(--accent-gold);margin-top:4px">MAX RANK</div>'}
+    `;
 
     // Build location list, grouped by dimension
     const locList = document.getElementById('location-list');
@@ -371,9 +398,18 @@ export class UI {
         const div = document.createElement('div');
         div.className = `lb-entry${isYou ? ' lb-you' : ''}`;
         if (isYou) div.id = `lb-you-${valueKey}`;
+
+        // Rank badge
+        let rankBadge = '';
+        if (entry.rank) {
+          const rankData = RANKS.find(r => r.level === entry.rank) || RANKS[0];
+          const badgeClass = rankData.holographic ? 'rank-badge holographic' : (rankData.glow ? 'rank-badge glow' : 'rank-badge');
+          rankBadge = `<span class="${badgeClass}" title="${rankData.name}">${rankData.icon}</span>`;
+        }
+
         div.innerHTML = `
           <span class="lb-rank">${i + 1}</span>
-          <span class="lb-name">${entry.name}${entry.tag ? ' <span class="og-badge">OG</span>' : ''}${isYou ? ' (you)' : ''}</span>
+          <span class="lb-name">${rankBadge}${entry.name}${entry.tag ? ' <span class="og-badge">OG</span>' : ''}${isYou ? ' (you)' : ''}</span>
           <span class="lb-money">$${entry[valueKey].toLocaleString()}</span>
         `;
         container.appendChild(div);
@@ -1154,6 +1190,37 @@ export class UI {
 
       content.appendChild(grid);
       content.appendChild(clearBtn);
+    } else if (tab === 'pets') {
+      content.innerHTML = '';
+      const grid = document.createElement('div');
+      grid.className = 'locker-items';
+      for (const [key, pet] of Object.entries(PETS)) {
+        const owned = eco.ownedPets.includes(key);
+        const isActive = eco.activePet === key;
+        const item = document.createElement('div');
+        item.className = `locker-item${isActive ? ' equipped' : ''}`;
+        item.innerHTML = `
+          <div class="locker-item-icon" style="font-size:24px">${key === 'hunting_dog' ? '🐕' : key === 'scout_hawk' ? '🦅' : '🦅'}</div>
+          <div class="locker-item-name">${pet.name}</div>
+          <div class="locker-item-desc" style="font-size:11px;color:var(--text-secondary)">${pet.desc}</div>
+          ${owned
+            ? `<button class="btn ${isActive ? 'btn-secondary' : 'btn-primary'}">${isActive ? 'Unequip' : 'Equip'}</button>`
+            : `<button class="btn btn-primary ${eco.money < pet.cost ? 'cant-afford' : ''}">Buy $${pet.cost}</button>`
+          }
+        `;
+        item.querySelector('.btn').addEventListener('click', () => {
+          this.audio.playUIClick();
+          if (owned) {
+            eco.equipPet(isActive ? null : key);
+          } else if (eco.money >= pet.cost) {
+            eco.buyPet(key);
+            this.audio.playCashRegister();
+          }
+          this._renderLockerTab('pets');
+        });
+        grid.appendChild(item);
+      }
+      content.appendChild(grid);
     } else if (tab === 'banners') {
       content.innerHTML = '';
       if (eco.ownedBanners.length === 0) {

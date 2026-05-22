@@ -595,6 +595,17 @@ class Game {
       }
     }
 
+    // Award XP based on hunt performance (10 per kill, 50 per boss)
+    const huntXP = (this.huntStats.totalKills * 10) + (this.huntStats.bossKills * 50);
+    if (huntXP > 0) {
+      const result = this.economy.addXP(huntXP);
+      if (result.ranked) {
+        setTimeout(() => {
+          this.ui.showSpeechBubble(`🎖️ RANK UP! ${result.newRank.icon} ${result.newRank.name}`, 5000);
+        }, 1500);
+      }
+    }
+
     // Check for pending trades (async, non-blocking)
     import('./trading.js').then(({ hasPendingTrades }) => {
       const uid = this.auth.getUid();

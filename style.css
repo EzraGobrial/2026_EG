@@ -1839,3 +1839,31 @@ body {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* Rank Badge Animations */
+@keyframes holoShift {
+  0%   { filter: hue-rotate(0deg)   brightness(1); }
+  50%  { filter: hue-rotate(30deg)  brightness(1.3); }
+  100% { filter: hue-rotate(0deg)   brightness(1); }
+}
+
+@keyframes diamondGlow {
+  0%   { text-shadow: 0 0 8px #00E5FF, 0 0 16px #00E5FF40; }
+  50%  { text-shadow: 0 0 16px #00E5FF, 0 0 30px #00E5FF60; }
+  100% { text-shadow: 0 0 8px #00E5FF, 0 0 16px #00E5FF40; }
+}
+
+/* Rank badge on leaderboard */
+.rank-badge {
+  display: inline-block;
+  margin-right: 4px;
+  font-size: 14px;
+}
+
+.rank-badge.glow {
+  animation: diamondGlow 2s ease-in-out infinite;
+}
+
+.rank-badge.holographic {
+  animation: holoShift 2s ease-in-out infinite;
+}
