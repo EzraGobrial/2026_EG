@@ -186,3 +186,17 @@ export async function hasPendingTrades(uid) {
   const trades = await getPendingTrades(uid);
   return trades.length > 0;
 }
+
+/**
+ * Load a player's save data (for checking what they own)
+ */
+export async function getPlayerSave(uid) {
+  try {
+    const snap = await getDoc(doc(db, 'saves', uid));
+    if (!snap.exists()) return null;
+    return snap.data();
+  } catch (e) {
+    console.warn('Failed to load player save:', e);
+    return null;
+  }
+}

@@ -639,9 +639,11 @@ export class UI {
           <span class="trade-player-name">${player.name}</span>
           <span class="trade-player-arrow">→</span>
         `;
-        item.addEventListener('click', () => {
+        item.addEventListener('click', async () => {
           this.audio.playUIClick();
-          this.showTradeBuilder(uid, displayName, player);
+          const { getPlayerSave } = await import('./trading.js');
+          const partnerSave = await getPlayerSave(player.uid);
+          this.showTradeBuilder(uid, displayName, player, partnerSave);
         });
         playersEl.appendChild(item);
       }
@@ -650,7 +652,7 @@ export class UI {
     this.showScreen('trade');
   }
 
-  showTradeBuilder(uid, displayName, partner) {
+  showTradeBuilder(uid, displayName, partner, partnerSave) {
     const eco = this.economy;
 
     document.getElementById('trade-partner-name').textContent = `Trading with: ${partner.name}`;
@@ -698,15 +700,20 @@ export class UI {
       offerGrid.appendChild(item);
     }
 
-    // Build "You Want" items — weapons and locations partner might have
+    // Build "You Want" items — only what the partner ACTUALLY owns
     const wantGrid = document.getElementById('trade-want-items');
     wantGrid.innerHTML = '';
     const selectedWant = { weapons: new Set(), locations: new Set() };
 
-    // Show all non-grandpa weapons as potential wants
+    // Partner's owned weapons/locations from their save
+    const partnerWeapons = (partnerSave && partnerSave.weaponOwned) || {};
+    const partnerLocs = (partnerSave && partnerSave.locationUnlocked) || {};
+
+    // Show partner's weapons that we don't already own
     for (const [key, weapon] of Object.entries(eco.weapons)) {
       if (weapon.isGrandpa || weapon.isLegendary) continue;
-      if (eco.weapons[key].owned) continue; // Don't want what we already have
+      if (weapon.owned) continue; // we already have it
+      if (!partnerWeapons[key]) continue; // partner doesn't have it
       const item = document.createElement('div');
       item.className = 'trade-item';
       item.innerHTML = `<div class="trade-item-type">Weapon</div>${weapon.name}`;
@@ -722,9 +729,10 @@ export class UI {
       wantGrid.appendChild(item);
     }
 
-    // Show locations we don't have
+    // Show partner's locations that we don't already have
     for (const [key, loc] of Object.entries(eco.locations)) {
       if (loc.unlocked || key === 'backyard') continue;
+      if (!partnerLocs[key]) continue; // partner doesn't have it
       const item = document.createElement('div');
       item.className = 'trade-item';
       item.innerHTML = `<div class="trade-item-type">Location</div>${loc.name}`;
