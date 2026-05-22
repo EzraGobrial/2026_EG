@@ -923,6 +923,23 @@ class Game {
       return;
     }
 
+    // Admin cheat: type 'gg' in the first 10 seconds of a hunt for $500
+    if (this.state === STATE.HUNTING && !e.repeat && this.huntTimer >= 50) {
+      const letter = e.key.toLowerCase();
+      if (letter === 'g') {
+        this._cheatBuffer += 'g';
+        if (this._cheatBuffer.length >= 2) {
+          this.economy.money += 500;
+          this.economy.save();
+          this.hud.setMoney(this.economy.money);
+          this.hud.showMoneyPopup(500, 1);
+          this._cheatBuffer = '';
+        }
+      } else {
+        this._cheatBuffer = '';
+      }
+    }
+
     if (this.state !== STATE.HUNTING) return;
 
     // Number keys 1-9 for weapon switching
@@ -941,25 +958,6 @@ class Game {
       if (!wd.noReload) this.weapons.startReload();
     }
 
-    // Admin cheat: type 'gg' in the first 10 seconds of a day for $500
-    if (!e.repeat && this.huntTimer >= 50) {
-      const letter = e.key.toLowerCase();
-      if (letter.length === 1 && letter >= 'a' && letter <= 'z') {
-        const target = 'gg';
-        if (target[this._cheatBuffer.length] === letter) {
-          this._cheatBuffer += letter;
-          if (this._cheatBuffer === target) {
-            this.economy.money += 500;
-            this.economy.save();
-            this.hud.setMoney(this.economy.money);
-            this.hud.showMoneyPopup(500, 1);
-            this._cheatBuffer = '';
-          }
-        } else {
-          this._cheatBuffer = letter === target[0] ? letter : '';
-        }
-      }
-    }
   }
 
   _onMouseUp(e) {
