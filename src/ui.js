@@ -188,7 +188,7 @@ export class UI {
     if (!rankEl) {
       rankEl = document.createElement('div');
       rankEl.id = 'morning-rank';
-      rankEl.style.cssText = 'margin-top:8px;text-align:center;';
+      rankEl.style.cssText = 'margin-top:8px;margin-bottom:16px;text-align:center;';
       const morningPanel = document.querySelector('#screen-morning .panel');
       if (morningPanel) {
         // Insert after dimension badge
