@@ -21,6 +21,9 @@ export class UI {
       trade: document.getElementById('screen-trade'),
       tradeBuilder: document.getElementById('trade-builder'),
       locker: document.getElementById('screen-locker'),
+      friends: document.getElementById('screen-friends'),
+      tournament: document.getElementById('screen-tournament'),
+      clan: document.getElementById('screen-clan'),
       sleep: document.getElementById('screen-sleep'),
       win: document.getElementById('screen-win')
     };
@@ -38,7 +41,10 @@ export class UI {
     this.onLogin = null;
     this.onSignup = null;
     this.onLogout = null;
-    this.onTrade = null; // callback to open trade screen
+    this.onTrade = null;
+    this.onFriends = null;
+    this.onTournament = null;
+    this.onClan = null;
 
     this._bindButtons();
     this._bindAuth();
@@ -72,6 +78,12 @@ export class UI {
     bind('btn-restart', () => { this.audio.playUIClick(); if (this.onRestart) this.onRestart(); });
     bind('btn-trade', () => { this.audio.playUIClick(); if (this.onTrade) this.onTrade(); });
     bind('btn-trade-back', () => { this.audio.playUIClick(); this.showScreen('results'); });
+    bind('btn-friends', () => { this.audio.playUIClick(); if (this.onFriends) this.onFriends(); });
+    bind('btn-friends-back', () => { this.audio.playUIClick(); this.showScreen('results'); });
+    bind('btn-tournament', () => { this.audio.playUIClick(); if (this.onTournament) this.onTournament(); });
+    bind('btn-tournament-back', () => { this.audio.playUIClick(); this.showScreen('results'); });
+    bind('btn-clan', () => { this.audio.playUIClick(); if (this.onClan) this.onClan(); });
+    bind('btn-clan-back', () => { this.audio.playUIClick(); this.showScreen('results'); });
   }
 
   _bindAuth() {
@@ -1200,6 +1212,259 @@ export class UI {
     } else {
       content.innerHTML = `<div class="locker-coming-soon">Coming Soon</div>`;
     }
+  }
+
+  // ─── Friends UI ────────────────────────────────
+
+  async showFriends(uid, displayName) {
+    const { getFriends, getPendingFriendRequests, acceptFriendRequest, declineFriendRequest, sendFriendRequest, removeFriend, searchPlayers } = await import('./friends.js');
+
+    // Friend requests
+    const reqList = document.getElementById('friend-requests-list');
+    reqList.innerHTML = '<div style="color:var(--text-secondary);font-size:13px">Loading...</div>';
+    const requests = await getPendingFriendRequests(uid);
+    reqList.innerHTML = '';
+    if (requests.length === 0) {
+      reqList.innerHTML = '<div style="color:var(--text-secondary);font-size:13px">No pending requests</div>';
+    }
+    for (const req of requests) {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:8px 12px;margin-bottom:4px;background:rgba(255,255,255,0.05);border-radius:6px;';
+      row.innerHTML = `<span>${req.fromName}</span><div><button class="btn btn-primary" style="font-size:11px;padding:4px 10px;margin-right:4px">Accept</button><button class="btn btn-secondary" style="font-size:11px;padding:4px 10px">Decline</button></div>`;
+      row.querySelector('.btn-primary').addEventListener('click', async () => {
+        await acceptFriendRequest(req.id);
+        this.showFriends(uid, displayName);
+      });
+      row.querySelector('.btn-secondary').addEventListener('click', async () => {
+        await declineFriendRequest(req.id);
+        this.showFriends(uid, displayName);
+      });
+      reqList.appendChild(row);
+    }
+
+    // Friends list
+    const friendList = document.getElementById('friend-list');
+    friendList.innerHTML = '<div style="color:var(--text-secondary);font-size:13px">Loading...</div>';
+    const friends = await getFriends(uid);
+    friendList.innerHTML = '';
+    if (friends.length === 0) {
+      friendList.innerHTML = '<div style="color:var(--text-secondary);font-size:13px">No friends yet — search for players above!</div>';
+    }
+    for (const friend of friends) {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:8px 12px;margin-bottom:4px;background:rgba(255,255,255,0.05);border-radius:6px;';
+      row.innerHTML = `<span>${friend.name}</span><button class="btn btn-secondary" style="font-size:11px;padding:4px 10px">Remove</button>`;
+      row.querySelector('.btn').addEventListener('click', async () => {
+        await removeFriend(uid, friend.uid);
+        this.showFriends(uid, displayName);
+      });
+      friendList.appendChild(row);
+    }
+
+    // Search
+    const searchInput = document.getElementById('friend-search-input');
+    const searchResults = document.getElementById('friend-search-results');
+    searchInput.value = '';
+    searchResults.innerHTML = '';
+    searchInput.oninput = async () => {
+      const q = searchInput.value.trim();
+      if (q.length < 2) { searchResults.innerHTML = ''; return; }
+      const results = await searchPlayers(q, uid);
+      searchResults.innerHTML = '';
+      for (const p of results) {
+        const isFriend = friends.find(f => f.uid === p.uid);
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:6px 10px;margin-bottom:4px;background:rgba(255,255,255,0.03);border-radius:4px;font-size:13px;';
+        row.innerHTML = `<span>${p.name} <span style="color:var(--text-secondary)">(Dim ${p.dimension})</span></span>${isFriend ? '<span style="color:#5ab55a">Friend</span>' : `<button class="btn btn-primary" style="font-size:11px;padding:3px 8px">Add</button>`}`;
+        if (!isFriend) {
+          row.querySelector('.btn').addEventListener('click', async () => {
+            await sendFriendRequest(uid, displayName, p.uid, p.name);
+            row.querySelector('.btn').textContent = 'Sent!';
+            row.querySelector('.btn').disabled = true;
+          });
+        }
+        searchResults.appendChild(row);
+      }
+    };
+
+    this.showScreen('friends');
+  }
+
+  // ─── Tournament UI ────────────────────────────
+
+  async showTournament(uid, displayName, economy) {
+    const { getCurrentTournament, getTournamentLeaderboard, getPlacement, getPrize, claimPrize } = await import('./tournaments.js');
+
+    const tournament = await getCurrentTournament();
+    const weaponData = WEAPONS[tournament.weapon];
+    const weaponName = weaponData ? weaponData.name : tournament.weapon;
+
+    // Info
+    const info = document.getElementById('tournament-info');
+    info.innerHTML = `
+      <div style="font-size:14px;color:var(--text-secondary);margin-bottom:8px">Week: <strong style="color:var(--text-primary)">${tournament.weekId}</strong></div>
+      <div style="font-size:14px;color:var(--text-secondary)">Weapon: <strong style="color:var(--accent-gold)">${weaponName}</strong> • Location: <strong style="color:var(--accent-gold)">${tournament.location}</strong></div>
+    `;
+
+    // Prizes
+    const prizes = document.getElementById('tournament-prizes');
+    prizes.innerHTML = `
+      <h3 style="color:var(--accent-gold);font-size:14px;margin-bottom:8px">Prizes</h3>
+      <div style="font-size:12px;color:var(--text-secondary);line-height:1.8">
+        <div>🥇 1st: $1000 + Champion Banner + Champion Gold Skin</div>
+        <div>🥈 2nd: $750 + Champion Banner</div>
+        <div>🥉 3rd: $500</div>
+        <div>🏅 Top 10: $250</div>
+        <div>✓ Participated: $50</div>
+      </div>
+    `;
+
+    // Leaderboard
+    const entries = tournament.entries || [];
+    const lbEl = document.getElementById('tournament-leaderboard');
+    lbEl.innerHTML = '<h3 style="color:var(--accent-gold);font-size:14px;margin-bottom:8px">Leaderboard</h3>';
+    if (entries.length === 0) {
+      lbEl.innerHTML += '<div style="color:var(--text-secondary);font-size:13px">No entries yet — be the first!</div>';
+    } else {
+      for (let i = 0; i < Math.min(entries.length, 10); i++) {
+        const e = entries[i];
+        const isMe = e.uid === uid;
+        const row = document.createElement('div');
+        row.style.cssText = `display:flex;justify-content:space-between;padding:6px 10px;margin-bottom:3px;border-radius:4px;font-size:13px;background:${isMe ? 'rgba(212,168,83,0.15)' : 'rgba(255,255,255,0.03)'};`;
+        row.innerHTML = `<span>${i + 1}. ${e.name}</span><span style="color:var(--accent-gold)">$${e.score} (${e.kills} kills)</span>`;
+        lbEl.appendChild(row);
+      }
+    }
+
+    // Actions
+    const actions = document.getElementById('tournament-actions');
+    const myPlacement = getPlacement(entries, uid);
+    actions.innerHTML = '';
+    if (myPlacement > 0) {
+      const prize = getPrize(myPlacement);
+      const claimBtn = document.createElement('button');
+      claimBtn.className = 'btn btn-primary';
+      claimBtn.textContent = `Claim Prize: ${prize.label}`;
+      claimBtn.addEventListener('click', async () => {
+        const result = await claimPrize(tournament.weekId, uid, economy);
+        if (result) {
+          claimBtn.textContent = 'Prize Claimed!';
+          claimBtn.disabled = true;
+        } else {
+          claimBtn.textContent = 'Already Claimed';
+          claimBtn.disabled = true;
+        }
+      });
+      actions.appendChild(claimBtn);
+    }
+
+    this.showScreen('tournament');
+  }
+
+  // ─── Clan UI ──────────────────────────────────
+
+  async showClan(uid, displayName, economy) {
+    const { findUserClan, createClan, getClan, leaveClan, inviteToClan, getClanInvites, acceptClanInvite } = await import('./clans.js');
+
+    const content = document.getElementById('clan-content');
+    content.innerHTML = '<div style="color:var(--text-secondary);font-size:13px">Loading...</div>';
+
+    const myClan = await findUserClan(uid);
+    const invites = await getClanInvites(uid);
+
+    content.innerHTML = '';
+
+    // Pending invites
+    if (invites.length > 0) {
+      const invHeader = document.createElement('h3');
+      invHeader.style.cssText = 'color:var(--accent-gold);font-size:14px;margin-bottom:8px';
+      invHeader.textContent = 'Clan Invites';
+      content.appendChild(invHeader);
+      for (const inv of invites) {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:8px 12px;margin-bottom:4px;background:rgba(255,255,255,0.05);border-radius:6px;';
+        row.innerHTML = `<span>${inv.clanName} (from ${inv.fromName})</span><button class="btn btn-primary" style="font-size:11px;padding:4px 10px">Join</button>`;
+        row.querySelector('.btn').addEventListener('click', async () => {
+          await acceptClanInvite(inv.id, uid, displayName);
+          economy.clanId = inv.clanId;
+          economy.save();
+          this.showClan(uid, displayName, economy);
+        });
+        content.appendChild(row);
+      }
+    }
+
+    if (myClan) {
+      // Show clan details
+      const header = document.createElement('div');
+      header.innerHTML = `
+        <h3 style="color:var(--accent-gold);font-size:18px;margin-bottom:4px">[${myClan.tag}] ${myClan.name}</h3>
+        <div style="color:var(--text-secondary);font-size:13px;margin-bottom:12px">${myClan.members.length}/10 members</div>
+      `;
+      content.appendChild(header);
+
+      // Members
+      for (const m of myClan.members) {
+        const row = document.createElement('div');
+        const isLeader = m.uid === myClan.leader;
+        row.style.cssText = 'padding:6px 10px;margin-bottom:3px;background:rgba(255,255,255,0.03);border-radius:4px;font-size:13px;';
+        row.innerHTML = `${isLeader ? '👑 ' : ''}${m.name}${m.uid === uid ? ' (you)' : ''}`;
+        content.appendChild(row);
+      }
+
+      // Invite input
+      if (myClan.leader === uid && myClan.members.length < 10) {
+        const invDiv = document.createElement('div');
+        invDiv.style.cssText = 'margin-top:12px;';
+        invDiv.innerHTML = `<input type="text" id="clan-invite-uid" placeholder="Player UID to invite" style="width:100%;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:13px;margin-bottom:8px"><button class="btn btn-primary" style="font-size:12px">Invite</button>`;
+        invDiv.querySelector('.btn').addEventListener('click', async () => {
+          const toUid = document.getElementById('clan-invite-uid').value.trim();
+          if (toUid) {
+            await inviteToClan(myClan.clanId, myClan.name, uid, displayName, toUid);
+            invDiv.querySelector('.btn').textContent = 'Invited!';
+          }
+        });
+        content.appendChild(invDiv);
+      }
+
+      // Leave button
+      const leaveBtn = document.createElement('button');
+      leaveBtn.className = 'btn btn-secondary';
+      leaveBtn.style.cssText = 'margin-top:12px;';
+      leaveBtn.textContent = 'Leave Clan';
+      leaveBtn.addEventListener('click', async () => {
+        await leaveClan(myClan.clanId, uid);
+        economy.clanId = null;
+        economy.save();
+        this.showClan(uid, displayName, economy);
+      });
+      content.appendChild(leaveBtn);
+    } else {
+      // Create clan form
+      const form = document.createElement('div');
+      form.innerHTML = `
+        <h3 style="color:var(--accent-gold);font-size:14px;margin-bottom:8px">Create a Clan</h3>
+        <input type="text" id="clan-name-input" placeholder="Clan Name (2-20 chars)" style="width:100%;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:14px;margin-bottom:8px">
+        <input type="text" id="clan-tag-input" placeholder="Tag (3-4 chars, e.g. APEX)" maxlength="4" style="width:100%;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:14px;margin-bottom:8px">
+        <button class="btn btn-primary" id="btn-create-clan">Create Clan</button>
+        <div id="clan-create-error" style="color:#ff4444;font-size:12px;margin-top:6px"></div>
+      `;
+      content.appendChild(form);
+      document.getElementById('btn-create-clan').addEventListener('click', async () => {
+        const name = document.getElementById('clan-name-input').value.trim();
+        const tag = document.getElementById('clan-tag-input').value.trim();
+        const result = await createClan(uid, displayName, name, tag);
+        if (result.error) {
+          document.getElementById('clan-create-error').textContent = result.error;
+        } else {
+          economy.clanId = result.clanId;
+          economy.save();
+          this.showClan(uid, displayName, economy);
+        }
+      });
+    }
+
+    this.showScreen('clan');
   }
 
   // ─── Story UI Methods ────────────────────────

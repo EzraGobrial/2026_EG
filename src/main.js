@@ -199,6 +199,24 @@ class Game {
       }
     };
 
+    this.ui.onFriends = () => {
+      const uid = this.auth.getUid();
+      const displayName = this.auth.getDisplayName();
+      if (uid) this.ui.showFriends(uid, displayName);
+    };
+
+    this.ui.onTournament = () => {
+      const uid = this.auth.getUid();
+      const displayName = this.auth.getDisplayName();
+      if (uid) this.ui.showTournament(uid, displayName, this.economy);
+    };
+
+    this.ui.onClan = () => {
+      const uid = this.auth.getUid();
+      const displayName = this.auth.getDisplayName();
+      if (uid) this.ui.showClan(uid, displayName, this.economy);
+    };
+
     // ─── Initial state ─────────────────────
     this.sky.setPreset('backyard');
     this.ui.showScreen('login');
