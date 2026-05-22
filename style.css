@@ -1231,21 +1231,8 @@ body {
   max-width: 800px;
 }
 
-.btn-back {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  background: transparent;
-  border: 1px solid rgba(255,255,255,0.2);
-  color: var(--text-secondary);
-  font-size: 13px;
-  padding: 6px 14px;
-  cursor: pointer;
-  border-radius: 8px;
-}
-.btn-back:hover {
-  background: rgba(255,255,255,0.08);
-}
+
+
 
 .trade-layout {
   display: grid;

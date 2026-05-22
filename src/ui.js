@@ -61,7 +61,7 @@ export class UI {
     bind('btn-continue', () => { this.audio.playUIClick(); if (this.onContinueAfterWin) this.onContinueAfterWin(); });
     bind('btn-restart', () => { this.audio.playUIClick(); if (this.onRestart) this.onRestart(); });
     bind('btn-trade', () => { this.audio.playUIClick(); if (this.onTrade) this.onTrade(); });
-    bind('btn-trade-back', () => { this.audio.playUIClick(); this.showShop(); });
+    bind('btn-trade-back', () => { this.audio.playUIClick(); this.showScreen('results'); });
   }
 
   _bindAuth() {
