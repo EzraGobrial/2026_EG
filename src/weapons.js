@@ -167,21 +167,29 @@ function buildGunModel(weaponKey) {
       gun.add(cam);
     }
 
-    // ── Bowstring ─────────────────────────────
-    // Left string (cam to trigger area)
-    const lStr = new THREE.CylinderGeometry(0.001, 0.001, 0.22, 4);
+    // ── Bowstring (V-shape from cams to nock point) ──
+    // Cams are at x=±0.145, z=-0.31
+    // Nock point (where bolt sits) at x=0, z=-0.08
+    const nockZ = -0.08;
+    const camX = 0.17 * 0.85; // ±0.1445
+    const camZ = -0.31;
+    const strLen = Math.sqrt(camX * camX + (camZ - nockZ) * (camZ - nockZ)); // ~0.27
+    const strAngleY = Math.atan2(camX, nockZ - camZ); // angle in XZ plane
+
+    // Left string (left cam → nock)
+    const lStr = new THREE.CylinderGeometry(0.001, 0.001, strLen, 4);
+    lStr.rotateX(Math.PI / 2);
     const leftString = new THREE.Mesh(lStr, stringMat);
-    leftString.position.set(-0.06, 0.005, -0.2);
-    leftString.rotation.x = Math.PI / 2 + 0.15;
-    leftString.rotation.z = 0.55;
+    leftString.position.set(-camX / 2, 0.005, (camZ + nockZ) / 2);
+    leftString.rotation.y = -strAngleY;
     gun.add(leftString);
 
-    // Right string
-    const rStr = new THREE.CylinderGeometry(0.001, 0.001, 0.22, 4);
+    // Right string (right cam → nock)
+    const rStr = new THREE.CylinderGeometry(0.001, 0.001, strLen, 4);
+    rStr.rotateX(Math.PI / 2);
     const rightString = new THREE.Mesh(rStr, stringMat);
-    rightString.position.set(0.06, 0.005, -0.2);
-    rightString.rotation.x = Math.PI / 2 + 0.15;
-    rightString.rotation.z = -0.55;
+    rightString.position.set(camX / 2, 0.005, (camZ + nockZ) / 2);
+    rightString.rotation.y = strAngleY;
     gun.add(rightString);
 
     // ── Bolt (arrow) loaded on top ───────────
