@@ -5,6 +5,30 @@
 
 import { Economy, BIRDS, RARITY_COLORS, DIMENSIONS, WEAPONS, BANNERS, CONSUMABLES, WEAPON_SKINS, PETS, RANKS } from './economy.js';
 
+/**
+ * Generate HTML for a rank badge (CSS-styled, not emoji)
+ * @param {number} level - Rank level (1-5)
+ * @param {boolean} large - Whether to use large variant (for morning screen)
+ */
+function getRankBadgeHTML(level, large = false) {
+  const wrap = large ? 'rank-badge-large' : '';
+
+  switch (level) {
+    case 1: // Bronze
+      return `<span class="rank-badge ${wrap}" title="Bronze"><div class="rank-badge-medal rank-badge-bronze"><span class="medal-star">★</span></div></span>`;
+    case 2: // Silver
+      return `<span class="rank-badge ${wrap}" title="Silver"><div class="rank-badge-medal rank-badge-silver"><span class="medal-star">★</span></div></span>`;
+    case 3: // Gold
+      return `<span class="rank-badge ${wrap}" title="Gold"><div class="rank-badge-medal rank-badge-gold"><span class="medal-star">★</span></div></span>`;
+    case 4: // Diamond
+      return `<span class="rank-badge ${wrap}" title="Diamond"><span class="rank-badge-diamond-wrap"><div class="rank-badge-diamond"></div></span></span>`;
+    case 5: // Apex
+      return `<span class="rank-badge ${wrap}" title="Apex"><div class="rank-badge-apex"><div class="rank-badge-apex-points"><div class="rank-badge-apex-point"></div><div class="rank-badge-apex-point"></div><div class="rank-badge-apex-point"></div><div class="rank-badge-apex-point"></div><div class="rank-badge-apex-point"></div></div><div class="rank-badge-apex-base"><div class="rank-badge-apex-gem"></div></div></div></span>`;
+    default:
+      return '';
+  }
+}
+
 export class UI {
   constructor(economy, audio) {
     this.economy = economy;
@@ -199,13 +223,13 @@ export class UI {
         }
       }
     }
-    const glowStyle = rank.glow ? `text-shadow: 0 0 8px ${rank.color}, 0 0 16px ${rank.color}40;` : '';
-    const holoStyle = rank.holographic ? 'animation: holoShift 2s ease-in-out infinite;' : '';
     rankEl.innerHTML = `
-      <span style="font-size:20px;${glowStyle}${holoStyle}">${rank.icon}</span>
-      <span style="color:${rank.color};font-weight:700;margin-left:6px;font-size:14px">${rank.name}</span>
-      <span style="color:var(--text-secondary);font-size:12px;margin-left:8px">${eco.xp} XP</span>
-      ${xpInfo.needed > 0 ? `<div style="width:120px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;margin:6px auto 0;overflow:hidden"><div style="height:100%;background:${rank.color};width:${xpInfo.progress * 100}%;border-radius:2px;transition:width 0.3s"></div></div>` : '<div style="font-size:11px;color:var(--accent-gold);margin-top:4px">MAX RANK</div>'}
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px">
+        ${getRankBadgeHTML(rank.level, true)}
+        <span style="color:${rank.color};font-weight:700;font-size:16px">${rank.name}</span>
+        <span style="color:var(--text-secondary);font-size:12px">${eco.xp} XP</span>
+      </div>
+      ${xpInfo.needed > 0 ? `<div style="width:120px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;margin:4px auto 0;overflow:hidden"><div style="height:100%;background:${rank.color};width:${xpInfo.progress * 100}%;border-radius:2px;transition:width 0.3s"></div></div>` : '<div style="font-size:11px;color:var(--accent-gold);margin-top:4px">MAX RANK</div>'}
     `;
 
     // Build location list, grouped by dimension
@@ -402,9 +426,7 @@ export class UI {
         // Rank badge
         let rankBadge = '';
         if (entry.rank) {
-          const rankData = RANKS.find(r => r.level === entry.rank) || RANKS[0];
-          const badgeClass = rankData.holographic ? 'rank-badge holographic' : (rankData.glow ? 'rank-badge glow' : 'rank-badge');
-          rankBadge = `<span class="${badgeClass}" title="${rankData.name}">${rankData.icon}</span>`;
+          rankBadge = getRankBadgeHTML(entry.rank, false);
         }
 
         div.innerHTML = `
