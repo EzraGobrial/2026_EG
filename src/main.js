@@ -941,13 +941,11 @@ class Game {
       if (!wd.noReload) this.weapons.startReload();
     }
 
-    // Admin cheat: type qwerty in the first 5 seconds of a day
-    // Ignore held-down key repeats so movement keys don't reset the buffer
-    if (!e.repeat && this.huntTimer >= 55) {
+    // Admin cheat: type 'gg' in the first 10 seconds of a day for $500
+    if (!e.repeat && this.huntTimer >= 50) {
       const letter = e.key.toLowerCase();
-      // Only process single printable characters (ignore Shift, Control, etc.)
       if (letter.length === 1 && letter >= 'a' && letter <= 'z') {
-        const target = 'qwerty';
+        const target = 'gg';
         if (target[this._cheatBuffer.length] === letter) {
           this._cheatBuffer += letter;
           if (this._cheatBuffer === target) {
@@ -958,7 +956,6 @@ class Game {
             this._cheatBuffer = '';
           }
         } else {
-          // Wrong letter, restart
           this._cheatBuffer = letter === target[0] ? letter : '';
         }
       }
