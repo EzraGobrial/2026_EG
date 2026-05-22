@@ -10,6 +10,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 import { Economy, BIRDS, RARITY_COLORS } from './economy.js';
+import { checkChallenges } from './challenges.js';
 import { AudioSystem } from './audio.js';
 import { SkySystem } from './skybox.js';
 import { ParticleSystem } from './particles.js';
@@ -507,6 +508,18 @@ class Game {
     this.particles.clear();
     this.hud.clearKillFeed();
     this._cheatBuffer = '';
+    this._bossSpawned = false;
+    this.huntStats = { totalKills: 0, maxCombo: 0, missCount: 0, bossKills: 0, earlyKills: 0, moneyEarned: 0 };
+    this.hud.hideBossHP();
+
+    // Apply consumable effects
+    const consumables = this.economy.activeConsumables || [];
+    if (consumables.includes('extra_time')) {
+      this.huntTimer = 75;
+    }
+    if (consumables.includes('bird_magnet')) {
+      this.spawnInterval = 1;
+    }
 
     // HUD initial values
     this.hud.setDay(this.economy.day);
@@ -514,7 +527,7 @@ class Game {
     this.hud.setMoney(this.economy.money);
     this.hud.setAmmo(weaponData.ammo, weaponData.ammo);
     this.hud.setWeaponName(weaponData.name);
-    this.hud.setTimer(60);
+    this.hud.setTimer(this.huntTimer);
     this.hud.setCrosshairForWeapon(weaponData);
 
     // Build weapon slot bar
@@ -545,10 +558,24 @@ class Game {
     this.state = STATE.RESULTS;
     this.player.unlock();
     this.hud.hide();
+    this.hud.hideBossHP();
     this.audio.stopAmbience();
+
+    // Clear active consumables after hunt
+    this.economy.clearActiveConsumables();
 
     // Show results — the UI will handle adding money
     this.ui.showResults(this.huntBag, this.auth.getDisplayName());
+
+    // Check daily challenges
+    if (this.economy.dailyChallenges && this.economy.dailyChallenges.length > 0) {
+      const challengeReward = checkChallenges(this.economy.dailyChallenges, this.huntStats);
+      if (challengeReward > 0) {
+        this.economy.money += challengeReward;
+        this.economy.totalMoneyEarned += challengeReward;
+        this.economy.save();
+      }
+    }
 
     // Check for pending trades (async, non-blocking)
     import('./trading.js').then(({ hasPendingTrades }) => {
@@ -644,8 +671,20 @@ class Game {
         this.particles.spawnFeatherBurst(point, birdData.bodyColor, birdData.wingColor);
         this.audio.playBirdHit();
 
-    // Kill the bird
-        this.birds.kill(bird);
+        // Hit the bird (boss birds take multiple hits)
+        const killed = this.birds.hit(bird);
+
+        if (!killed) {
+          // Boss took a hit but isn't dead — show HP bar
+          this.hud.showBossHP(bird.hp, birdData.hp || 1);
+          break;
+        }
+
+        // Bird is dead — hide boss HP if it was a boss
+        if (this.birds.isBoss(bird)) {
+          this.hud.hideBossHP();
+          this.huntStats.bossKills++;
+        }
 
         // Story XP for bird kills
         if (this.story.getPhase() === 'assembling') {
@@ -670,6 +709,11 @@ class Game {
         this.huntBag.push({ key: bird.birdKey, combo: comboMultiplier });
         this.economy.totalBirdsKilled++;
 
+        // Hunt stats tracking
+        this.huntStats.totalKills++;
+        if (this.huntTimer >= 40) this.huntStats.earlyKills++;
+        if (this.comboCount > this.huntStats.maxCombo) this.huntStats.maxCombo = this.comboCount;
+
         // HUD feedback with combo
         const rarityColor = RARITY_COLORS[birdData.rarity] || '#aaa';
         const fluctuation = 0.85 + Math.random() * 0.3;
@@ -691,6 +735,7 @@ class Game {
       this.comboCount = 0;
       this.comboTimer = 0;
       this.hud.hideCombo();
+      this.huntStats.missCount++;
       const wd = this.economy.getWeapon();
       if (!wd.noReload) {
         this.weapons.ammo--;
@@ -854,7 +899,19 @@ class Game {
     this.spawnTimer += dt;
     if (this.spawnTimer >= this.spawnInterval && this.birds.getLivingCount() < this.maxActiveBirds) {
       this.spawnTimer = 0;
-      const birdKey = this.economy.spawnRandomBird();
+
+      // Boss spawn logic — after 30s mark, 15% chance, once per hunt
+      let birdKey;
+      if (this.huntTimer <= 30 && Math.random() < 0.15 && !this._bossSpawned) {
+        const bossBirds = ['thunderhawk', 'storm_phoenix', 'frost_wyrm', 'sun_dragon'];
+        birdKey = bossBirds[Math.min(this.economy.dimension - 1, bossBirds.length - 1)];
+        this._bossSpawned = true;
+        const bossData = BIRDS[birdKey];
+        if (bossData) this.hud.showBossAlert(bossData.name);
+      } else {
+        birdKey = this.economy.spawnRandomBird();
+      }
+
       this.birds.spawn(birdKey);
       this.spawnInterval = 2 + Math.random() * 3; // randomize next spawn
     }

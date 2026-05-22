@@ -332,6 +332,12 @@ export class BirdSystem {
     if (!data) return null;
 
     const mesh = createBirdModel(data);
+
+    // Boss birds are much larger
+    if (data.size > 2) {
+      mesh.scale.setScalar(data.size / 1.5);
+    }
+
     const entryPath = this._buildEntryPath(data.speed);
 
     // Start at the first waypoint (off-screen)
@@ -342,6 +348,7 @@ export class BirdSystem {
       mesh,
       data,
       birdKey,
+      hp: data.hp || 1,
       waypoints: entryPath,
       waypointIndex: 0,
       pathT: 0,
@@ -367,6 +374,40 @@ export class BirdSystem {
     birdObj.state = 'FALLING';
     birdObj.fallVelocity = 0;
     birdObj.fallRotation = (Math.random() - 0.5) * 8;
+  }
+
+  /**
+   * Hit a bird — decrements HP, returns true if killed
+   */
+  hit(birdObj) {
+    birdObj.hp--;
+    if (birdObj.hp <= 0) {
+      this.kill(birdObj);
+      return true; // dead
+    }
+    // Hit flash — briefly make bird white
+    birdObj.mesh.traverse(child => {
+      if (child.isMesh && child.material) {
+        child.userData._origColor = child.material.color.getHex();
+        child.material.color.setHex(0xffffff);
+      }
+    });
+    setTimeout(() => {
+      birdObj.mesh.traverse(child => {
+        if (child.isMesh && child.material && child.userData._origColor !== undefined) {
+          child.material.color.setHex(child.userData._origColor);
+          delete child.userData._origColor;
+        }
+      });
+    }, 150);
+    return false; // still alive
+  }
+
+  /**
+   * Check if a bird is a boss (multi-HP)
+   */
+  isBoss(birdObj) {
+    return birdObj.data && (birdObj.data.hp || 1) > 1;
   }
 
   /**

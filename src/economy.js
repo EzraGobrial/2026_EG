@@ -6,6 +6,7 @@
 
 import { doc, setDoc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from './firebase.js';
+import { serializeChallenges, deserializeChallenges, generateDailyChallenges } from './challenges.js';
 
 export const BIRDS = {
   // ─── Dimension 1: Earth ─────────────────────
@@ -629,6 +630,8 @@ export class Economy {
     this.equippedBanner = null;
     this.equippedSkins = {}; // { weaponKey: skinKey }
     this.activeConsumables = []; // consumed for current hunt
+    this.dailyChallenges = [];
+    this.challengeDay = 0;
   }
 
   setUid(uid) {
@@ -659,6 +662,8 @@ export class Economy {
       ownedConsumables: this.ownedConsumables || {},
       equippedBanner: this.equippedBanner || null,
       equippedSkins: this.equippedSkins || {},
+      dailyChallenges: serializeChallenges(this.dailyChallenges || []),
+      challengeDay: this.challengeDay || 0,
       weaponOwned: {},
       locationUnlocked: {}
     };
@@ -702,6 +707,8 @@ export class Economy {
       if (data.ownedConsumables) this.ownedConsumables = data.ownedConsumables;
       if (data.equippedBanner) this.equippedBanner = data.equippedBanner;
       if (data.equippedSkins) this.equippedSkins = data.equippedSkins;
+      if (data.challengeDay) this.challengeDay = data.challengeDay;
+      if (data.dailyChallenges) this.dailyChallenges = deserializeChallenges(data.dailyChallenges);
 
       // Rebuild locations from all unlocked dimensions
       this.locations = {};
@@ -745,6 +752,8 @@ export class Economy {
     this.equippedBanner = null;
     this.equippedSkins = {};
     this.activeConsumables = [];
+    this.dailyChallenges = [];
+    this.challengeDay = 0;
     this.save();
   }
 
@@ -1010,6 +1019,14 @@ export class Economy {
     this.equippedSkins[weaponKey] = skinKey;
     this.save();
     return true;
+  }
+
+  refreshChallenges() {
+    if (this.day !== this.challengeDay) {
+      this.dailyChallenges = generateDailyChallenges(this.day, this.dimension);
+      this.challengeDay = this.day;
+      this.save();
+    }
   }
 
   selectLocation(key) {

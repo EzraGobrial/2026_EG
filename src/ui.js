@@ -3,7 +3,7 @@
 // Menu screens: title, morning, results, shop, sleep, win
 // ═══════════════════════════════════════════════
 
-import { Economy, BIRDS, RARITY_COLORS, DIMENSIONS, WEAPONS } from './economy.js';
+import { Economy, BIRDS, RARITY_COLORS, DIMENSIONS, WEAPONS, BANNERS, CONSUMABLES, WEAPON_SKINS } from './economy.js';
 
 export class UI {
   constructor(economy, audio) {
@@ -218,6 +218,55 @@ export class UI {
       }
     }
 
+    // Daily Challenges
+    eco.refreshChallenges();
+    let challengeEl = document.getElementById('morning-challenges');
+    if (!challengeEl) {
+      challengeEl = document.createElement('div');
+      challengeEl.id = 'morning-challenges';
+      challengeEl.style.cssText = 'margin-top:16px;';
+      const morningPanel = document.querySelector('#screen-morning .panel');
+      if (morningPanel) morningPanel.appendChild(challengeEl);
+    }
+    challengeEl.innerHTML = '<h3 style="color:var(--accent-gold);margin-bottom:8px;font-size:14px">Daily Challenges</h3>';
+    for (const c of eco.dailyChallenges) {
+      const row = document.createElement('div');
+      row.style.cssText = `display:flex;justify-content:space-between;align-items:center;padding:6px 10px;margin-bottom:4px;border-radius:6px;font-size:13px;background:${c.completed ? 'rgba(90,181,90,0.15)' : 'rgba(255,255,255,0.05)'};color:${c.completed ? '#5ab55a' : 'var(--text-secondary)'};`;
+      row.innerHTML = `<span>${c.completed ? '\u2713 ' : ''}${c.desc}</span><span style="color:var(--accent-gold)">$${c.reward}</span>`;
+      challengeEl.appendChild(row);
+    }
+
+    // Consumables activation
+    const ownedConsumables = eco.ownedConsumables || {};
+    const hasConsumables = Object.keys(ownedConsumables).length > 0;
+    if (hasConsumables) {
+      let consumEl = document.getElementById('morning-consumables');
+      if (!consumEl) {
+        consumEl = document.createElement('div');
+        consumEl.id = 'morning-consumables';
+        consumEl.style.cssText = 'margin-top:16px;';
+        const morningPanel = document.querySelector('#screen-morning .panel');
+        if (morningPanel) morningPanel.appendChild(consumEl);
+      }
+      consumEl.innerHTML = '<h3 style="color:var(--accent-gold);margin-bottom:8px;font-size:14px">Consumables</h3>';
+      for (const [key, count] of Object.entries(ownedConsumables)) {
+        if (count <= 0) continue;
+        const cons = CONSUMABLES[key];
+        if (!cons) continue;
+        const isActive = (eco.activeConsumables || []).includes(key);
+        const row = document.createElement('div');
+        row.style.cssText = `display:flex;justify-content:space-between;align-items:center;padding:6px 10px;margin-bottom:4px;border-radius:6px;font-size:13px;background:${isActive ? 'rgba(90,181,90,0.15)' : 'rgba(255,255,255,0.05)'};cursor:pointer;`;
+        row.innerHTML = `<span>${cons.name} <span style="color:var(--text-secondary)">(x${count})</span></span><span style="color:${isActive ? '#5ab55a' : 'var(--accent-gold)'}">${isActive ? 'ACTIVE' : 'Use'}</span>`;
+        if (!isActive) {
+          row.addEventListener('click', () => {
+            eco.useConsumable(key);
+            this.showMorning();
+          });
+        }
+        consumEl.appendChild(row);
+      }
+    }
+
     this.showScreen('morning');
   }
 
@@ -390,17 +439,37 @@ export class UI {
       if (weapon.owned) {
         item.classList.add('owned');
         const isEquipped = key === eco.currentWeapon;
+        const upgradeLevel = eco.getUpgradeLevel(key);
+        const upgradeCost = eco.getUpgradeCost(key);
+        const maxed = upgradeLevel >= 3;
+        const canAffordUpgrade = eco.money >= upgradeCost;
+        const stars = '\u2605'.repeat(upgradeLevel) + '\u2606'.repeat(3 - upgradeLevel);
+
         item.innerHTML = `
-          <div class="shop-item-name">${weapon.name}</div>
+          <div class="shop-item-name">${weapon.name} <span style="color:var(--accent-gold);font-size:12px">${stars}</span></div>
           <div class="shop-item-desc">${weapon.description || ''}</div>
           <div class="shop-item-price">${isEquipped ? 'EQUIPPED' : 'OWNED'}</div>
+          ${!maxed && weapon.cost > 0 ? `<button class="btn btn-upgrade ${canAffordUpgrade ? '' : 'cant-afford'}" style="margin-top:6px;font-size:11px;padding:4px 8px">Upgrade Lv${upgradeLevel + 1} \u2014 $${upgradeCost}</button>` : (maxed && weapon.cost > 0 ? '<div style="color:var(--accent-gold);font-size:11px;margin-top:4px">MAX LEVEL</div>' : '')}
         `;
         if (!isEquipped) {
           item.style.cursor = 'pointer';
-          item.addEventListener('click', () => {
+          item.addEventListener('click', (e) => {
+            if (e.target.classList.contains('btn-upgrade')) return;
             this.audio.playUIClick();
             eco.selectWeapon(key);
             this._renderShopTab('weapons');
+          });
+        }
+        const upgradeBtn = item.querySelector('.btn-upgrade');
+        if (upgradeBtn && canAffordUpgrade) {
+          upgradeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.audio.playUIClick();
+            if (eco.upgradeWeapon(key)) {
+              this.audio.playCashRegister();
+              document.getElementById('shop-money').textContent = `$${eco.money}`;
+              this._renderShopTab('weapons');
+            }
           });
         }
       } else if (eco.money < weapon.cost) {
@@ -428,6 +497,69 @@ export class UI {
       grid.appendChild(item);
     }
     container.appendChild(grid);
+
+    // Consumables section
+    const consumableHeader = document.createElement('h3');
+    consumableHeader.style.cssText = 'color:var(--accent-gold);margin:20px 0 10px;font-size:14px;';
+    consumableHeader.textContent = 'Consumables';
+    container.appendChild(consumableHeader);
+
+    const cGrid = document.createElement('div');
+    cGrid.className = 'shop-grid';
+    for (const [key, cons] of Object.entries(CONSUMABLES)) {
+      const owned = eco.ownedConsumables[key] || 0;
+      const item = document.createElement('div');
+      item.className = `shop-item ${eco.money < cons.cost ? 'cant-afford' : ''}`;
+      item.innerHTML = `
+        <div class="shop-item-name">${cons.name}${owned > 0 ? ` <span style="color:var(--accent-gold)">(x${owned})</span>` : ''}</div>
+        <div class="shop-item-desc">${cons.desc}</div>
+        <div class="shop-item-price">$${cons.cost}</div>
+      `;
+      if (eco.money >= cons.cost) {
+        item.addEventListener('click', () => {
+          this.audio.playUIClick();
+          if (eco.buyConsumable(key)) {
+            this.audio.playCashRegister();
+            document.getElementById('shop-money').textContent = `$${eco.money}`;
+            this._renderShopTab('weapons');
+          }
+        });
+      }
+      cGrid.appendChild(item);
+    }
+    container.appendChild(cGrid);
+
+    // Weapon Skins section
+    const skinHeader = document.createElement('h3');
+    skinHeader.style.cssText = 'color:var(--accent-gold);margin:20px 0 10px;font-size:14px;';
+    skinHeader.textContent = 'Weapon Skins';
+    container.appendChild(skinHeader);
+
+    const sGrid = document.createElement('div');
+    sGrid.className = 'shop-grid';
+    for (const [key, skin] of Object.entries(WEAPON_SKINS)) {
+      if (key === 'default' || skin.tournamentOnly) continue;
+      const owned = eco.ownedSkins.includes(key);
+      const item = document.createElement('div');
+      item.className = `shop-item ${owned ? 'owned' : (eco.money < skin.cost ? 'cant-afford' : '')}`;
+      const colorPreview = skin.colors ? `<div style="display:inline-flex;gap:3px;vertical-align:middle"><div style="width:14px;height:14px;border-radius:3px;background:#${skin.colors.stock.toString(16).padStart(6,'0')}"></div><div style="width:14px;height:14px;border-radius:3px;background:#${skin.colors.metal.toString(16).padStart(6,'0')}"></div></div>` : '';
+      item.innerHTML = `
+        <div class="shop-item-name">${skin.name} ${colorPreview}</div>
+        <div class="shop-item-price">${owned ? 'OWNED' : `$${skin.cost}`}</div>
+      `;
+      if (!owned && eco.money >= skin.cost) {
+        item.addEventListener('click', () => {
+          this.audio.playUIClick();
+          if (eco.buyWeaponSkin(key)) {
+            this.audio.playCashRegister();
+            document.getElementById('shop-money').textContent = `$${eco.money}`;
+            this._renderShopTab('weapons');
+          }
+        });
+      }
+      sGrid.appendChild(item);
+    }
+    container.appendChild(sGrid);
   }
 
   _renderShopLocations(container) {
@@ -494,7 +626,44 @@ export class UI {
   }
 
   _renderShopBanners(container) {
-    container.innerHTML = '<div class="locker-coming-soon">Banners Coming Soon</div>';
+    const eco = this.economy;
+    const grid = document.createElement('div');
+    grid.className = 'shop-grid';
+
+    for (const [key, banner] of Object.entries(BANNERS)) {
+      if (banner.tournamentOnly) continue;
+      if (banner.dimension && banner.dimension > eco.dimension) continue;
+
+      const owned = eco.ownedBanners.includes(key);
+      const isEquipped = eco.equippedBanner === key;
+      const item = document.createElement('div');
+      item.className = `shop-item ${owned ? 'owned' : (eco.money < banner.cost ? 'cant-afford' : '')}`;
+
+      item.innerHTML = `
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:24px;height:24px;border-radius:4px;background:${banner.color};border:1px solid rgba(255,255,255,0.2)"></div>
+          <div class="shop-item-name">${banner.name}</div>
+        </div>
+        <div class="shop-item-price">${owned ? (isEquipped ? 'EQUIPPED' : 'OWNED') : `$${banner.cost}`}</div>
+      `;
+
+      item.addEventListener('click', () => {
+        this.audio.playUIClick();
+        if (owned) {
+          eco.equippedBanner = isEquipped ? null : key;
+          eco.save();
+          this._renderShopTab('banners');
+        } else if (eco.money >= banner.cost) {
+          if (eco.buyBanner(key)) {
+            this.audio.playCashRegister();
+            document.getElementById('shop-money').textContent = `$${eco.money}`;
+            this._renderShopTab('banners');
+          }
+        }
+      });
+      grid.appendChild(item);
+    }
+    container.appendChild(grid);
   }
 
   _renderShopQuests(container) {
@@ -973,6 +1142,61 @@ export class UI {
 
       content.appendChild(grid);
       content.appendChild(clearBtn);
+    } else if (tab === 'banners') {
+      content.innerHTML = '';
+      if (eco.ownedBanners.length === 0) {
+        content.innerHTML = '<div class="locker-coming-soon">No banners owned. Buy them in the Shop!</div>';
+        return;
+      }
+      const grid = document.createElement('div');
+      grid.className = 'locker-items';
+      for (const key of eco.ownedBanners) {
+        const banner = BANNERS[key];
+        if (!banner) continue;
+        const isEquipped = eco.equippedBanner === key;
+        const item = document.createElement('div');
+        item.className = `locker-item${isEquipped ? ' equipped' : ''}`;
+        item.innerHTML = `
+          <div class="locker-item-icon" style="background:${banner.color};width:30px;height:30px;border-radius:6px"></div>
+          <div class="locker-item-name">${banner.name}</div>
+          <button class="btn ${isEquipped ? 'btn-secondary' : 'btn-primary'}">${isEquipped ? 'Unequip' : 'Equip'}</button>
+        `;
+        item.querySelector('.btn').addEventListener('click', () => {
+          eco.equippedBanner = isEquipped ? null : key;
+          eco.save();
+          this._renderLockerTab('banners');
+        });
+        grid.appendChild(item);
+      }
+      content.appendChild(grid);
+    } else if (tab === 'skins') {
+      content.innerHTML = '';
+      if (eco.ownedSkins.length <= 1) {
+        content.innerHTML = '<div class="locker-coming-soon">No skins owned. Buy them in the Shop!</div>';
+        return;
+      }
+      const grid = document.createElement('div');
+      grid.className = 'locker-items';
+      const ownedWeapons = eco.getOwnedWeaponKeys();
+      for (const wKey of ownedWeapons) {
+        const weapon = eco.weapons[wKey];
+        const currentSkin = eco.equippedSkins[wKey] || 'default';
+        const item = document.createElement('div');
+        item.className = 'locker-item';
+        let skinOptions = eco.ownedSkins.map(sk => {
+          const s = WEAPON_SKINS[sk];
+          return `<option value="${sk}" ${sk === currentSkin ? 'selected' : ''}>${s ? s.name : sk}</option>`;
+        }).join('');
+        item.innerHTML = `
+          <div class="locker-item-name">${weapon.name}</div>
+          <select class="skin-select" style="background:var(--surface);color:var(--text-primary);border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:12px">${skinOptions}</select>
+        `;
+        item.querySelector('.skin-select').addEventListener('change', (e) => {
+          eco.equipSkin(wKey, e.target.value);
+        });
+        grid.appendChild(item);
+      }
+      content.appendChild(grid);
     } else {
       content.innerHTML = `<div class="locker-coming-soon">Coming Soon</div>`;
     }
