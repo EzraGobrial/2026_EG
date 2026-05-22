@@ -167,30 +167,33 @@ function buildGunModel(weaponKey) {
       gun.add(cam);
     }
 
-    // ── Bowstring (V-shape from cams to nock point) ──
-    // Cams are at x=±0.145, z=-0.31
-    // Nock point (where bolt sits) at x=0, z=-0.08
-    const nockZ = -0.08;
-    const camX = 0.17 * 0.85; // ±0.1445
-    const camZ = -0.31;
-    const strLen = Math.sqrt(camX * camX + (camZ - nockZ) * (camZ - nockZ)); // ~0.27
-    const strAngleY = Math.atan2(camX, nockZ - camZ); // angle in XZ plane
+    // ── Bowstring (V-shape from nock point to each cam) ──
+    // Cam positions: x=±0.145, y=0.005, z=-0.31 (at limb tips)
+    // Nock point: x=0, y=0.005, z=-0.08 (where bolt is held)
+    const camXPos = 0.17 * 0.85;
+    const camZPos = -0.31;
+    const nockPos = new THREE.Vector3(0, 0.005, -0.08);
+    const leftCam = new THREE.Vector3(-camXPos, 0.005, camZPos);
+    const rightCam = new THREE.Vector3(camXPos, 0.005, camZPos);
 
-    // Left string (left cam → nock)
-    const lStr = new THREE.CylinderGeometry(0.001, 0.001, strLen, 4);
-    lStr.rotateX(Math.PI / 2);
-    const leftString = new THREE.Mesh(lStr, stringMat);
-    leftString.position.set(-camX / 2, 0.005, (camZ + nockZ) / 2);
-    leftString.rotation.y = -strAngleY;
-    gun.add(leftString);
+    // Helper: create a string from point A to point B
+    function makeString(from, to, mat) {
+      const len = from.distanceTo(to);
+      const mid = new THREE.Vector3().addVectors(from, to).multiplyScalar(0.5);
+      const geo = new THREE.CylinderGeometry(0.0015, 0.0015, len, 4);
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.copy(mid);
+      // CylinderGeometry extends along Y — point Y axis toward 'to'
+      const dir = new THREE.Vector3().subVectors(to, from).normalize();
+      const quat = new THREE.Quaternion().setFromUnitVectors(
+        new THREE.Vector3(0, 1, 0), dir
+      );
+      mesh.quaternion.copy(quat);
+      return mesh;
+    }
 
-    // Right string (right cam → nock)
-    const rStr = new THREE.CylinderGeometry(0.001, 0.001, strLen, 4);
-    rStr.rotateX(Math.PI / 2);
-    const rightString = new THREE.Mesh(rStr, stringMat);
-    rightString.position.set(camX / 2, 0.005, (camZ + nockZ) / 2);
-    rightString.rotation.y = strAngleY;
-    gun.add(rightString);
+    gun.add(makeString(nockPos, leftCam, stringMat));
+    gun.add(makeString(nockPos, rightCam, stringMat));
 
     // ── Bolt (arrow) loaded on top ───────────
     const boltMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.3, metalness: 0.8 });
