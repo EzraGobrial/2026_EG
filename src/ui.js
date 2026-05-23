@@ -1436,7 +1436,7 @@ export class UI {
         const isFriend = friends.find(f => f.uid === p.uid);
         const row = document.createElement('div');
         row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:6px 10px;margin-bottom:4px;background:rgba(255,255,255,0.03);border-radius:4px;font-size:13px;';
-        row.innerHTML = `<span>${p.name} <span style="color:var(--text-secondary)">(Dim ${p.dimension})</span></span>${isFriend ? '<span style="color:#5ab55a">Friend</span>' : `<button class="btn btn-primary" style="font-size:11px;padding:3px 8px">Add</button>`}`;
+        row.innerHTML = `<span>${p.name} <span style="color:var(--text-secondary)">(Dimension ${p.dimension})</span></span>${isFriend ? '<span style="color:#5ab55a">Friend</span>' : `<button class="btn btn-primary" style="font-size:11px;padding:3px 8px">Add</button>`}`;
         if (!isFriend) {
           row.querySelector('.btn').addEventListener('click', async () => {
             await sendFriendRequest(uid, displayName, p.uid, p.name);
