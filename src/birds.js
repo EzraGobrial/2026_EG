@@ -771,29 +771,56 @@ export class BirdSystem {
 
       bird.mesh.position.copy(newPos);
 
-      // ─── Wing flap ─────────────────────
+      // ─── Realistic wing flap ──────────────
       bird.flapPhase += dt * bird.data.flapSpeed;
-      const flapAngle = Math.sin(bird.flapPhase) * bird.data.flapAmplitude;
-      const flapMul = bird.startled ? 1.5 : 1.0;
+      const flapMul = bird.startled ? 1.6 : 1.0;
+      const amp = bird.data.flapAmplitude * flapMul;
+
+      // Asymmetric wingbeat: fast downstroke, slow upstroke
+      // Uses a shaped sine wave — downstroke is ~40% of cycle, upstroke ~60%
+      const phase = bird.flapPhase % (Math.PI * 2);
+      let flapRaw;
+      if (phase < Math.PI * 0.8) {
+        // Downstroke (fast, powerful) — compressed into 40% of cycle
+        flapRaw = Math.sin(phase / 0.8 * Math.PI);
+      } else {
+        // Upstroke (slower, wing folds slightly) — spans 60% of cycle
+        const upPhase = (phase - Math.PI * 0.8) / (Math.PI * 1.2);
+        flapRaw = -Math.sin(upPhase * Math.PI) * 0.7;
+      }
+      const flapAngle = flapRaw * amp;
 
       const leftWing = bird.mesh.userData.leftWingPivot;
       const rightWing = bird.mesh.userData.rightWingPivot;
       if (leftWing && rightWing) {
-        leftWing.rotation.z = flapAngle * flapMul;
-        rightWing.rotation.z = -flapAngle * flapMul;
-        const secondaryFlap = Math.sin(bird.flapPhase * 1.5) * 0.15;
-        leftWing.rotation.x = secondaryFlap;
-        rightWing.rotation.x = secondaryFlap;
+        // Primary flap (Z rotation)
+        leftWing.rotation.z = flapAngle;
+        rightWing.rotation.z = -flapAngle;
+
+        // Wing sweep forward/back during stroke
+        const sweepAngle = Math.sin(bird.flapPhase * 0.5) * 0.08;
+        leftWing.rotation.y = sweepAngle;
+        rightWing.rotation.y = -sweepAngle;
+
+        // Slight wing fold on upstroke (X rotation tucks wingtips)
+        const foldAmount = flapRaw < 0 ? Math.abs(flapRaw) * 0.2 : 0;
+        leftWing.rotation.x = foldAmount;
+        rightWing.rotation.x = foldAmount;
       }
 
-      // Tail bob
+      // Tail movement — gentle follow-through + turn response
       const tail = bird.mesh.userData.tailGroup;
       if (tail) {
-        tail.rotation.x = 0.3 + Math.sin(bird.flapPhase * 0.5) * 0.1;
+        // Gentle pitch with wingbeat
+        tail.rotation.x = 0.25 + Math.sin(bird.flapPhase * 0.5) * 0.08;
+        // Slight fan spread on downstroke
+        const spread = flapRaw > 0.5 ? 0.05 : 0;
+        tail.rotation.y = spread * Math.sin(bird.flapPhase * 0.3);
       }
 
-      // Body bob
-      bird.mesh.position.y += Math.sin(bird.flapPhase * 0.8) * 0.02;
+      // Body pitch — nose dips slightly on downstroke, lifts on upstroke
+      const pitchOffset = flapRaw * 0.03;
+      bird.mesh.position.y += Math.sin(bird.flapPhase * 0.8) * 0.015 + pitchOffset * 0.1;
 
       // ─── Boids flocking behavior for flock members ───
       if (bird.flockId && !bird.startled && bird.state === 'FLYING') {
