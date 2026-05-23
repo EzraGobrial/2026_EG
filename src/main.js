@@ -929,14 +929,46 @@ class Game {
     if (this.spawnTimer >= this.spawnInterval && this.birds.getLivingCount() < this.maxActiveBirds) {
       this.spawnTimer = 0;
 
-      // Boss spawn logic — after 30s mark, 15% chance, once per hunt
+      // Boss spawn logic — rarity scales with dimension
+      // Dim 1: 5%, Dim 2: 10%, Dim 3: 18%, Dim 4: 25%
       let birdKey;
-      if (this.huntTimer <= 30 && Math.random() < 0.15 && !this._bossSpawned) {
-        const bossBirds = ['thunderhawk', 'storm_phoenix', 'frost_wyrm', 'sun_dragon'];
-        birdKey = bossBirds[Math.min(this.economy.dimension - 1, bossBirds.length - 1)];
-        this._bossSpawned = true;
-        const bossData = BIRDS[birdKey];
-        if (bossData) this.hud.showBossAlert(bossData.name);
+      const dim = this.economy.dimension;
+      const bossChance = [0.05, 0.10, 0.18, 0.25][Math.min(dim - 1, 3)];
+      const elapsed = this.huntTimer;
+
+      // Must be past 20s mark, and roll the chance
+      if (elapsed <= 40 && Math.random() < bossChance) {
+        // Build boss pool for current dimension
+        const allBosses = Object.entries(BIRDS).filter(([, b]) => b.bossTier && b.bossDimension <= dim);
+        if (allBosses.length > 0) {
+          // Weight by tier — lower tiers more common
+          // Tier 1: 60%, Tier 2: 30%, Tier 3: 10%
+          const tierRoll = Math.random();
+          let targetTier;
+          if (tierRoll < 0.10 && allBosses.some(([, b]) => b.bossTier === 3)) {
+            targetTier = 3;
+          } else if (tierRoll < 0.40 && allBosses.some(([, b]) => b.bossTier === 2)) {
+            targetTier = 2;
+          } else {
+            targetTier = 1;
+          }
+
+          // Pick a boss from the selected tier that matches current dimension (prefer) or lower
+          const tierBosses = allBosses.filter(([, b]) => b.bossTier === targetTier);
+          if (tierBosses.length > 0) {
+            // Prefer bosses from current dimension
+            const dimBosses = tierBosses.filter(([, b]) => b.bossDimension === dim);
+            const pool = dimBosses.length > 0 ? dimBosses : tierBosses;
+            const pick = pool[Math.floor(Math.random() * pool.length)];
+            birdKey = pick[0];
+            const bossData = BIRDS[birdKey];
+            if (bossData) this.hud.showBossAlert(bossData.name);
+          } else {
+            birdKey = this.economy.spawnRandomBird();
+          }
+        } else {
+          birdKey = this.economy.spawnRandomBird();
+        }
       } else {
         birdKey = this.economy.spawnRandomBird();
       }

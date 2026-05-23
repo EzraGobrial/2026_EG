@@ -209,25 +209,43 @@
 
   <!-- Morning Screen -->
   <div id="screen-morning" class="screen hidden">
-    <div class="panel morning-panel">
-      <h2 class="panel-title">Good Morning, Gary!</h2>
-      <div id="morning-day" class="morning-day">Day 1</div>
-      <div id="morning-dimension" class="shop-dimension">Dimension 1 -- Earth</div>
-      <div class="morning-stats">
-        <div class="stat-card">
-          <div class="stat-label">Wallet</div>
-          <div class="stat-value" id="morning-money">$0</div>
+    <div class="morning-layout">
+      <!-- Left: Main morning content -->
+      <div class="panel morning-panel">
+        <h2 class="panel-title">Good Morning, Gary!</h2>
+        <div id="morning-day" class="morning-day">Day 1</div>
+        <div id="morning-dimension" class="shop-dimension">Dimension 1 -- Earth</div>
+        <div class="morning-stats">
+          <div class="stat-card">
+            <div class="stat-label">Wallet</div>
+            <div class="stat-value" id="morning-money">$0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Weapon</div>
+            <div class="stat-value" id="morning-weapon">Grandpa's Old Rifle</div>
+          </div>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">Weapon</div>
-          <div class="stat-value" id="morning-weapon">Grandpa's Old Rifle</div>
+        <div class="location-select">
+          <h3>Choose Hunting Spot</h3>
+          <div id="location-list" class="location-grid"></div>
         </div>
+        <button id="btn-hunt" class="btn btn-primary">Go Hunting!</button>
       </div>
-      <div class="location-select">
-        <h3>Choose Hunting Spot</h3>
-        <div id="location-list" class="location-grid"></div>
+
+      <!-- Right: Daily Challenges -->
+      <div class="panel challenges-panel">
+        <h2 class="panel-title">Daily Challenges</h2>
+        <div id="challenges-date" class="challenges-date"></div>
+        <div id="challenges-list" class="challenges-list"></div>
+        <div class="challenges-progress-track">
+          <div id="challenge-dots" class="challenge-dots"></div>
+          <div id="challenge-chest" class="challenge-chest">
+            <div class="chest-icon">🎁</div>
+            <div class="chest-label">Chest</div>
+          </div>
+        </div>
+        <div id="challenge-reward-area" class="challenge-reward-area"></div>
       </div>
-      <button id="btn-hunt" class="btn btn-primary">Go Hunting!</button>
     </div>
   </div>
 

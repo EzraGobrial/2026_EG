@@ -6,7 +6,7 @@
 
 import { doc, setDoc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from './firebase.js';
-import { serializeChallenges, deserializeChallenges, generateDailyChallenges } from './challenges.js';
+import { serializeChallenges, deserializeChallenges, generateDailyChallenges, getRealDayKey } from './challenges.js';
 
 export const BIRDS = {
   // ─── Dimension 1: Earth ─────────────────────
@@ -87,12 +87,80 @@ export const BIRDS = {
     beakColor: 0x333333, bellyColor: 0x8B6914,
     flapSpeed: 3.5, flapAmplitude: 1.1
   },
+  // ─── Boss Birds: Tier 1 (Mini-Bosses, 2 HP) ──
+  shadow_raven: {
+    name: 'Shadow Raven', value: 60, speed: 2.0, size: 2.0,
+    rarity: 'legendary', weight: 0, hp: 2, bossTier: 1, bossDimension: 1,
+    bodyColor: 0x1a1a2a, wingColor: 0x222244, headColor: 0x2a2a3a,
+    beakColor: 0x444444, bellyColor: 0x333355,
+    flapSpeed: 2.0, flapAmplitude: 0.7
+  },
+  jungle_warden: {
+    name: 'Jungle Warden', value: 120, speed: 2.2, size: 2.2,
+    rarity: 'legendary', weight: 0, hp: 2, bossTier: 1, bossDimension: 2,
+    bodyColor: 0x226622, wingColor: 0x115511, headColor: 0x338833,
+    beakColor: 0xccaa00, bellyColor: 0x44aa44,
+    flapSpeed: 2.0, flapAmplitude: 0.75
+  },
+  blizzard_hawk: {
+    name: 'Blizzard Hawk', value: 180, speed: 2.4, size: 2.3,
+    rarity: 'legendary', weight: 0, hp: 2, bossTier: 1, bossDimension: 3,
+    bodyColor: 0xbbccdd, wingColor: 0x99aabb, headColor: 0xccddee,
+    beakColor: 0x556677, bellyColor: 0xddeeff,
+    flapSpeed: 2.0, flapAmplitude: 0.75
+  },
+  dust_devil: {
+    name: 'Dust Devil', value: 250, speed: 2.5, size: 2.3,
+    rarity: 'legendary', weight: 0, hp: 2, bossTier: 1, bossDimension: 4,
+    bodyColor: 0xaa7733, wingColor: 0x886622, headColor: 0xbb8844,
+    beakColor: 0x554422, bellyColor: 0xcc9955,
+    flapSpeed: 2.2, flapAmplitude: 0.7
+  },
+
+  // ─── Boss Birds: Tier 2 (Bosses, 3 HP) ────────
   thunderhawk: {
     name: 'Thunderhawk', value: 100, speed: 1.8, size: 2.5,
-    rarity: 'legendary', weight: 0, hp: 3,
+    rarity: 'legendary', weight: 0, hp: 3, bossTier: 2, bossDimension: 1,
     bodyColor: 0x2a2a3a, wingColor: 0x4444aa, headColor: 0x3333aa,
     beakColor: 0xddaa22, bellyColor: 0x5555cc,
     flapSpeed: 1.5, flapAmplitude: 0.7
+  },
+  storm_phoenix: {
+    name: 'Storm Phoenix', value: 200, speed: 2.0, size: 2.8,
+    rarity: 'legendary', weight: 0, hp: 3, bossTier: 2, bossDimension: 2,
+    bodyColor: 0x553399, wingColor: 0x7744cc, headColor: 0x6633bb,
+    beakColor: 0xffcc00, bellyColor: 0x8855dd,
+    flapSpeed: 1.8, flapAmplitude: 0.8
+  },
+  frost_wyrm: {
+    name: 'Frost Wyrm', value: 300, speed: 1.5, size: 3.0,
+    rarity: 'legendary', weight: 0, hp: 3, bossTier: 2, bossDimension: 3,
+    bodyColor: 0x88bbdd, wingColor: 0xaaddff, headColor: 0x99ccee,
+    beakColor: 0x4488aa, bellyColor: 0xbbddff,
+    flapSpeed: 1.2, flapAmplitude: 0.9
+  },
+  sun_dragon: {
+    name: 'Sun Dragon', value: 400, speed: 1.6, size: 3.0,
+    rarity: 'legendary', weight: 0, hp: 3, bossTier: 2, bossDimension: 4,
+    bodyColor: 0xcc5500, wingColor: 0xff7722, headColor: 0xdd6611,
+    beakColor: 0xffaa00, bellyColor: 0xff9933,
+    flapSpeed: 1.3, flapAmplitude: 0.85
+  },
+
+  // ─── Boss Birds: Tier 3 (Mega-Bosses, 5 HP) ───
+  void_reaper: {
+    name: 'Void Reaper', value: 500, speed: 1.4, size: 3.5,
+    rarity: 'legendary', weight: 0, hp: 5, bossTier: 3, bossDimension: 3,
+    bodyColor: 0x110022, wingColor: 0x220044, headColor: 0x1a0033,
+    beakColor: 0x8800ff, bellyColor: 0x330066,
+    flapSpeed: 1.0, flapAmplitude: 1.0
+  },
+  inferno_titan: {
+    name: 'Inferno Titan', value: 750, speed: 1.2, size: 4.0,
+    rarity: 'legendary', weight: 0, hp: 5, bossTier: 3, bossDimension: 4,
+    bodyColor: 0x881100, wingColor: 0xaa2200, headColor: 0xcc3300,
+    beakColor: 0xff6600, bellyColor: 0xff4400,
+    flapSpeed: 0.9, flapAmplitude: 1.1
   },
 
   // ─── Dimension 2: Tropics ──────────────────
@@ -152,13 +220,6 @@ export const BIRDS = {
     beakColor: 0x333333, bellyColor: 0xFFAA00,
     flapSpeed: 8, flapAmplitude: 0.7
   },
-  storm_phoenix: {
-    name: 'Storm Phoenix', value: 200, speed: 2.0, size: 2.8,
-    rarity: 'legendary', weight: 0, hp: 3,
-    bodyColor: 0x553399, wingColor: 0x7744cc, headColor: 0x6633bb,
-    beakColor: 0xffcc00, bellyColor: 0x8855dd,
-    flapSpeed: 1.8, flapAmplitude: 0.8
-  },
 
   // ─── Dimension 3: Arctic ───────────────────
   snow_bunting: {
@@ -210,13 +271,6 @@ export const BIRDS = {
     beakColor: 0x4488AA, bellyColor: 0xCCEEFF,
     flapSpeed: 5, flapAmplitude: 0.9
   },
-  frost_wyrm: {
-    name: 'Frost Wyrm', value: 300, speed: 1.5, size: 3.0,
-    rarity: 'legendary', weight: 0, hp: 3,
-    bodyColor: 0x88bbdd, wingColor: 0xaaddff, headColor: 0x99ccee,
-    beakColor: 0x4488aa, bellyColor: 0xbbddff,
-    flapSpeed: 1.2, flapAmplitude: 0.9
-  },
 
   // ─── Dimension 4: Desert ───────────────────
   sandgrouse: {
@@ -267,13 +321,6 @@ export const BIRDS = {
     bodyColor: 0xFF6600, wingColor: 0xDD4400, headColor: 0xFFAA00,
     beakColor: 0xCC4400, bellyColor: 0xFFCC00,
     flapSpeed: 5, flapAmplitude: 0.9
-  },
-  sun_dragon: {
-    name: 'Sun Dragon', value: 400, speed: 1.6, size: 3.0,
-    rarity: 'legendary', weight: 0, hp: 3,
-    bodyColor: 0xcc5500, wingColor: 0xff7722, headColor: 0xdd6611,
-    beakColor: 0xffaa00, bellyColor: 0xff9933,
-    flapSpeed: 1.3, flapAmplitude: 0.85
   }
 };
 
@@ -481,11 +528,11 @@ export const PETS = {
 };
 
 export const RANKS = [
-  { level: 1, name: 'Bronze',  icon: '🥉', xpRequired: 0,    color: '#CD7F32', glow: false },
-  { level: 2, name: 'Silver',  icon: '🥈', xpRequired: 500,  color: '#E5E4E2', glow: false },
-  { level: 3, name: 'Gold',    icon: '🥇', xpRequired: 2000, color: '#FFD700', glow: false },
-  { level: 4, name: 'Diamond', icon: '💎', xpRequired: 5000, color: '#00E5FF', glow: true },
-  { level: 5, name: 'Savage',  icon: '👑', xpRequired: 15000, color: '#FFD700', glow: true, holographic: true },
+  { level: 1, name: 'Bronze',  icon: '🥉', xpRequired: 0,     color: '#CD7F32', glow: false },
+  { level: 2, name: 'Silver',  icon: '🥈', xpRequired: 500,   color: '#E5E4E2', glow: false },
+  { level: 3, name: 'Gold',    icon: '🥇', xpRequired: 2500,  color: '#FFD700', glow: false },
+  { level: 4, name: 'Diamond', icon: '💎', xpRequired: 8000,  color: '#00E5FF', glow: true },
+  { level: 5, name: 'Savage',  icon: '👑', xpRequired: 25000, color: '#FFD700', glow: true, holographic: true },
 ];
 
 // ═══════════════════════════════════════════════
@@ -658,6 +705,7 @@ export class Economy {
     this.activeConsumables = []; // consumed for current hunt
     this.dailyChallenges = [];
     this.challengeDay = 0;
+    this.challengeChestClaimed = false;
     this.ownedPets = [];
     this.activePet = null;
     this.clanId = null;
@@ -695,6 +743,7 @@ export class Economy {
       equippedSkins: this.equippedSkins || {},
       dailyChallenges: serializeChallenges(this.dailyChallenges || []),
       challengeDay: this.challengeDay || 0,
+      challengeChestClaimed: this.challengeChestClaimed || false,
       ownedPets: this.ownedPets || [],
       activePet: this.activePet || null,
       clanId: this.clanId || null,
@@ -745,6 +794,7 @@ export class Economy {
       if (data.equippedSkins) this.equippedSkins = data.equippedSkins;
       if (data.challengeDay) this.challengeDay = data.challengeDay;
       if (data.dailyChallenges) this.dailyChallenges = deserializeChallenges(data.dailyChallenges);
+      if (data.challengeChestClaimed !== undefined) this.challengeChestClaimed = data.challengeChestClaimed;
       if (data.ownedPets) this.ownedPets = data.ownedPets;
       if (data.activePet) this.activePet = data.activePet;
       if (data.clanId) this.clanId = data.clanId;
@@ -1072,11 +1122,28 @@ export class Economy {
   }
 
   refreshChallenges() {
-    if (this.day !== this.challengeDay) {
-      this.dailyChallenges = generateDailyChallenges(this.day, this.dimension);
-      this.challengeDay = this.day;
+    const dayKey = getRealDayKey();
+    if (dayKey !== this.challengeDay) {
+      this.dailyChallenges = generateDailyChallenges(this.dimension);
+      this.challengeDay = dayKey;
+      this.challengeChestClaimed = false;
       this.save();
     }
+  }
+
+  allChallengesCompleted() {
+    if (!this.dailyChallenges || this.dailyChallenges.length === 0) return false;
+    return this.dailyChallenges.every(c => c.completed);
+  }
+
+  claimChallengeChest() {
+    if (!this.allChallengesCompleted() || this.challengeChestClaimed) return 0;
+    this.challengeChestClaimed = true;
+    const chestReward = 200;
+    this.money += chestReward;
+    this.totalMoneyEarned += chestReward;
+    this.save();
+    return chestReward;
   }
 
   buyPet(key) {

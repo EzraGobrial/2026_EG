@@ -281,22 +281,94 @@ export class UI {
       }
     }
 
-    // Daily Challenges
+    // ─── Daily Challenges Panel (right side) ───
     eco.refreshChallenges();
-    let challengeEl = document.getElementById('morning-challenges');
-    if (!challengeEl) {
-      challengeEl = document.createElement('div');
-      challengeEl.id = 'morning-challenges';
-      challengeEl.style.cssText = 'margin-top:16px;';
-      const morningPanel = document.querySelector('#screen-morning .panel');
-      if (morningPanel) morningPanel.appendChild(challengeEl);
+    const challenges = eco.dailyChallenges || [];
+    const completedCount = challenges.filter(c => c.completed).length;
+    const allDone = completedCount === challenges.length && challenges.length > 0;
+
+    // Date display
+    const dateEl = document.getElementById('challenges-date');
+    if (dateEl) {
+      const now = new Date();
+      dateEl.textContent = now.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
     }
-    challengeEl.innerHTML = '<h3 style="color:var(--accent-gold);margin-bottom:8px;font-size:14px">Daily Challenges</h3>';
-    for (const c of eco.dailyChallenges) {
-      const row = document.createElement('div');
-      row.style.cssText = `display:flex;justify-content:space-between;align-items:center;padding:6px 10px;margin-bottom:4px;border-radius:6px;font-size:13px;background:${c.completed ? 'rgba(90,181,90,0.15)' : 'rgba(255,255,255,0.05)'};color:${c.completed ? '#5ab55a' : 'var(--text-secondary)'};`;
-      row.innerHTML = `<span>${c.completed ? '\u2713 ' : ''}${c.desc}</span><span style="color:var(--accent-gold)">$${c.reward}</span>`;
-      challengeEl.appendChild(row);
+
+    // Challenge list
+    const listEl = document.getElementById('challenges-list');
+    if (listEl) {
+      listEl.innerHTML = '';
+      for (const c of challenges) {
+        const item = document.createElement('div');
+        item.className = `challenge-item${c.completed ? ' completed' : ''}`;
+        item.innerHTML = `
+          <div class="challenge-check${c.completed ? ' done' : ''}">${c.completed ? '✓' : ''}</div>
+          <div class="challenge-desc">${c.desc}</div>
+          <div class="challenge-reward">+$${c.reward}</div>
+        `;
+        listEl.appendChild(item);
+      }
+    }
+
+    // Progress dots + line + chest
+    const dotsEl = document.getElementById('challenge-dots');
+    if (dotsEl) {
+      dotsEl.innerHTML = '';
+      for (let i = 0; i < challenges.length; i++) {
+        const filled = challenges[i].completed;
+        // Dot
+        const dot = document.createElement('div');
+        dot.className = `challenge-dot${filled ? ' filled' : ''}`;
+        dotsEl.appendChild(dot);
+        // Line after dot (except last)
+        const line = document.createElement('div');
+        line.className = `challenge-dot-line${filled ? ' filled' : ''}`;
+        dotsEl.appendChild(line);
+      }
+    }
+
+    // Chest state
+    const chestEl = document.getElementById('challenge-chest');
+    if (chestEl) {
+      chestEl.className = 'challenge-chest';
+      if (eco.challengeChestClaimed) {
+        chestEl.classList.add('claimed');
+        chestEl.querySelector('.chest-icon').textContent = '✅';
+        chestEl.querySelector('.chest-label').textContent = 'Claimed';
+      } else if (allDone) {
+        chestEl.classList.add('ready');
+      }
+    }
+
+    // Claim button
+    const rewardArea = document.getElementById('challenge-reward-area');
+    if (rewardArea) {
+      rewardArea.innerHTML = '';
+      if (allDone && !eco.challengeChestClaimed) {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-primary';
+        btn.style.cssText = 'font-size:13px;padding:8px 20px;';
+        btn.textContent = '🎁 Claim Chest — $200';
+        btn.addEventListener('click', () => {
+          this.audio.playCashRegister();
+          const reward = eco.claimChallengeChest();
+          if (reward > 0) {
+            btn.textContent = `Claimed! +$${reward}`;
+            btn.disabled = true;
+            document.getElementById('morning-money').textContent = `$${eco.money}`;
+            if (chestEl) {
+              chestEl.className = 'challenge-chest claimed';
+              chestEl.querySelector('.chest-icon').textContent = '✅';
+              chestEl.querySelector('.chest-label').textContent = 'Claimed';
+            }
+          }
+        });
+        rewardArea.appendChild(btn);
+      } else if (eco.challengeChestClaimed) {
+        rewardArea.innerHTML = '<div style="font-size:12px;color:var(--accent-green)">Chest claimed! New challenges tomorrow.</div>';
+      } else {
+        rewardArea.innerHTML = `<div style="font-size:12px;color:var(--text-muted)">${completedCount}/${challenges.length} completed</div>`;
+      }
     }
 
     // Consumables activation

@@ -63,8 +63,30 @@ function seededRandom(seed) {
   };
 }
 
-export function generateDailyChallenges(day, dimension) {
-  const rng = seededRandom(day * 7919 + dimension * 31);
+/**
+ * Get a consistent key for today's real-life date (YYYY-MM-DD)
+ */
+export function getRealDayKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * Get a numeric seed from a date string
+ */
+function dateSeed(dateStr) {
+  let hash = 0;
+  for (let i = 0; i < dateStr.length; i++) {
+    hash = ((hash << 5) - hash) + dateStr.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+export function generateDailyChallenges(dimension) {
+  const dayKey = getRealDayKey();
+  const seed = dateSeed(dayKey) + dimension * 31;
+  const rng = seededRandom(seed);
   const available = [...CHALLENGE_GENERATORS];
   const challenges = [];
 
