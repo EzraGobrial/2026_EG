@@ -500,6 +500,12 @@ export class WeaponSystem {
     this.isReloading = false;
     this.recoilAmount = 0;
     this.hasScope = !!(weaponData.hasScope);
+
+    // Reset ADS and animation state
+    this.isADS = false;
+    this._adsLerp = 0;
+    this.bobPhase = 0;
+    this.bobIntensity = 0;
   }
 
   /**
