@@ -236,7 +236,7 @@ class Game {
       await this.economy.load();
       // Restore story state from cloud save
       if (this.economy.story) this.story.deserialize(this.economy.story);
-      this._grantOGTag();
+
       this.economy.updateLeaderboard(this.auth.getDisplayName());
       this.ui.showTitle(this.auth.getDisplayName());
       this.state = STATE.TITLE;
@@ -250,7 +250,7 @@ class Game {
     if (result.success) {
       this.economy.setUid(this.auth.getUid());
       this.economy.setDisplayName(this.auth.getDisplayName());
-      this._grantOGTag();
+
       this.economy.updateLeaderboard(this.auth.getDisplayName());
       this.ui.showTitle(this.auth.getDisplayName());
       this.state = STATE.TITLE;
@@ -259,15 +259,7 @@ class Game {
     }
   }
 
-  _grantOGTag() {
-    // For testing: give OG tag to everyone who logs in
-    // TODO: Later, check if within first 30 days of game launch
-    if (!this.economy.inventory) this.economy.inventory = { tags: [] };
-    if (!this.economy.inventory.tags.includes('og')) {
-      this.economy.inventory.tags.push('og');
-      this.economy.save();
-    }
-  }
+
 
   async _handleLogout() {
     await this.auth.logout();
