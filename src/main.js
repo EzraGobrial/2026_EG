@@ -930,10 +930,10 @@ class Game {
       this.spawnTimer = 0;
 
       // Boss spawn logic — rarity scales with dimension
-      // Dim 1: 5%, Dim 2: 10%, Dim 3: 18%, Dim 4: 25%
+      // Dim 1: 2%, Dim 2: 5%, Dim 3: 10%, Dim 4: 15%
       let birdKey;
       const dim = this.economy.dimension;
-      const bossChance = [0.05, 0.10, 0.18, 0.25][Math.min(dim - 1, 3)];
+      const bossChance = [0.02, 0.05, 0.10, 0.15][Math.min(dim - 1, 3)];
       const elapsed = this.huntTimer;
 
       // Must be past 20s mark, and roll the chance

@@ -109,13 +109,7 @@ export const BIRDS = {
     beakColor: 0x556677, bellyColor: 0xddeeff,
     flapSpeed: 2.0, flapAmplitude: 0.75
   },
-  dust_devil: {
-    name: 'Dust Devil', value: 250, speed: 2.5, size: 2.3,
-    rarity: 'legendary', weight: 0, hp: 2, bossTier: 1, bossDimension: 4,
-    bodyColor: 0xaa7733, wingColor: 0x886622, headColor: 0xbb8844,
-    beakColor: 0x554422, bellyColor: 0xcc9955,
-    flapSpeed: 2.2, flapAmplitude: 0.7
-  },
+
 
   // ─── Boss Birds: Tier 2 (Bosses, 3 HP) ────────
   thunderhawk: {
