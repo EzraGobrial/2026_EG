@@ -22,7 +22,7 @@ function getRankBadgeHTML(level, large = false) {
       return `<span class="rank-badge ${wrap}" title="Gold"><div class="rank-badge-medal rank-badge-gold"><span class="medal-star">★</span></div></span>`;
     case 4: // Diamond
       return `<span class="rank-badge ${wrap}" title="Diamond"><span class="rank-badge-diamond-wrap"><div class="rank-badge-diamond"></div></span></span>`;
-    case 5: // Apex
+    case 5: // Savage
       return `<span class="rank-badge ${wrap}" title="Savage"><div class="rank-badge-apex"><div class="rank-badge-apex-points"><div class="rank-badge-apex-point"></div><div class="rank-badge-apex-point"></div><div class="rank-badge-apex-point"></div><div class="rank-badge-apex-point"></div><div class="rank-badge-apex-point"></div></div><div class="rank-badge-apex-base"><div class="rank-badge-apex-gem"></div></div></div></span>`;
     default:
       return '';
@@ -187,7 +187,7 @@ export class UI {
 
   hideAll() {
     for (const el of Object.values(this.screens)) {
-      el.classList.add('hidden');
+      if (el) el.classList.add('hidden');
     }
   }
 

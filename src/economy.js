@@ -846,6 +846,7 @@ export class Economy {
     this.clanId = null;
     this.xp = 0;
     this.rank = 1;
+    this.story = null;
     this.save();
   }
 
