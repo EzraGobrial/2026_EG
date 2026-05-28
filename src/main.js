@@ -518,7 +518,6 @@ class Game {
     this.particles.clear();
     this.hud.clearKillFeed();
     this._cheatBuffer = '';
-    this._bossSpawned = false;
     this.huntStats = { totalKills: 0, maxCombo: 0, missCount: 0, bossKills: 0, earlyKills: 0, moneyEarned: 0 };
     this.hud.hideBossHP();
 

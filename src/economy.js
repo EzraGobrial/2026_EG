@@ -839,6 +839,8 @@ export class Economy {
     this.activeConsumables = [];
     this.dailyChallenges = [];
     this.challengeDay = 0;
+    this.challengeChestClaimed = false;
+    this.loadout = [];
     this.ownedPets = [];
     this.activePet = null;
     this.clanId = null;
