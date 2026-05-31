@@ -1186,10 +1186,11 @@ export class UI {
   }
 
   showLocker() {
-    // Reset to tags tab
+    // Reset to loadout tab
     document.querySelectorAll('.locker-tab').forEach(t => t.classList.remove('active'));
-    document.querySelector('.locker-tab[data-tab="tags"]').classList.add('active');
-    this._renderLockerTab('tags');
+    const defaultTab = document.querySelector('.locker-tab[data-tab="loadout"]');
+    if (defaultTab) defaultTab.classList.add('active');
+    this._renderLockerTab('loadout');
     this.showScreen('locker');
   }
 
@@ -1197,39 +1198,7 @@ export class UI {
     const content = document.getElementById('locker-content');
     const eco = this.economy;
 
-    if (tab === 'tags') {
-      content.innerHTML = '';
-      const grid = document.createElement('div');
-      grid.className = 'locker-items';
-
-      // OG Tag
-      if (eco.inventory && eco.inventory.tags && eco.inventory.tags.includes('og')) {
-        const isEquipped = eco.equipped && eco.equipped.tag === 'og';
-        const item = document.createElement('div');
-        item.className = `locker-item${isEquipped ? ' equipped' : ''}`;
-        item.innerHTML = `
-          <div class="locker-item-icon">OG</div>
-          <div class="locker-item-name">OG Tag</div>
-          <div class="locker-item-desc">Played in the first 30 days</div>
-          <button class="btn ${isEquipped ? 'btn-secondary' : 'btn-primary'}">${isEquipped ? 'Unequip' : 'Equip'}</button>
-        `;
-        item.querySelector('.btn').addEventListener('click', () => {
-          if (isEquipped) {
-            eco.equipped.tag = null;
-          } else {
-            eco.equipped.tag = 'og';
-          }
-          eco.save();
-          this._renderLockerTab('tags');
-        });
-        grid.appendChild(item);
-      } else {
-        content.innerHTML = '<div class="locker-coming-soon">No tags earned yet</div>';
-        return;
-      }
-
-      content.appendChild(grid);
-    } else if (tab === 'loadout') {
+    if (tab === 'loadout') {
       content.innerHTML = '';
       const allOwned = eco.getOwnedWeaponKeys();
       const currentLoadout = eco.loadout || [];
@@ -1284,37 +1253,6 @@ export class UI {
 
       content.appendChild(grid);
       content.appendChild(clearBtn);
-    } else if (tab === 'pets') {
-      content.innerHTML = '';
-      const grid = document.createElement('div');
-      grid.className = 'locker-items';
-      for (const [key, pet] of Object.entries(PETS)) {
-        const owned = eco.ownedPets.includes(key);
-        const isActive = eco.activePet === key;
-        const item = document.createElement('div');
-        item.className = `locker-item${isActive ? ' equipped' : ''}`;
-        item.innerHTML = `
-          <div class="locker-item-icon" style="font-size:24px">${key === 'hunting_dog' ? '🐕' : key === 'scout_hawk' ? '🦅' : '🦅'}</div>
-          <div class="locker-item-name">${pet.name}</div>
-          <div class="locker-item-desc" style="font-size:11px;color:var(--text-secondary)">${pet.desc}</div>
-          ${owned
-            ? `<button class="btn ${isActive ? 'btn-secondary' : 'btn-primary'}">${isActive ? 'Unequip' : 'Equip'}</button>`
-            : `<button class="btn btn-primary ${eco.money < pet.cost ? 'cant-afford' : ''}">Buy $${pet.cost}</button>`
-          }
-        `;
-        item.querySelector('.btn').addEventListener('click', () => {
-          this.audio.playUIClick();
-          if (owned) {
-            eco.equipPet(isActive ? null : key);
-          } else if (eco.money >= pet.cost) {
-            eco.buyPet(key);
-            this.audio.playCashRegister();
-          }
-          this._renderLockerTab('pets');
-        });
-        grid.appendChild(item);
-      }
-      content.appendChild(grid);
     } else if (tab === 'banners') {
       content.innerHTML = '';
       if (eco.ownedBanners.length === 0) {
@@ -1338,34 +1276,6 @@ export class UI {
           eco.equippedBanner = isEquipped ? null : key;
           eco.save();
           this._renderLockerTab('banners');
-        });
-        grid.appendChild(item);
-      }
-      content.appendChild(grid);
-    } else if (tab === 'skins') {
-      content.innerHTML = '';
-      if (eco.ownedSkins.length <= 1) {
-        content.innerHTML = '<div class="locker-coming-soon">No skins owned. Buy them in the Shop!</div>';
-        return;
-      }
-      const grid = document.createElement('div');
-      grid.className = 'locker-items';
-      const ownedWeapons = eco.getOwnedWeaponKeys();
-      for (const wKey of ownedWeapons) {
-        const weapon = eco.weapons[wKey];
-        const currentSkin = eco.equippedSkins[wKey] || 'default';
-        const item = document.createElement('div');
-        item.className = 'locker-item';
-        let skinOptions = eco.ownedSkins.map(sk => {
-          const s = WEAPON_SKINS[sk];
-          return `<option value="${sk}" ${sk === currentSkin ? 'selected' : ''}>${s ? s.name : sk}</option>`;
-        }).join('');
-        item.innerHTML = `
-          <div class="locker-item-name">${weapon.name}</div>
-          <select class="skin-select" style="background:var(--surface);color:var(--text-primary);border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:12px">${skinOptions}</select>
-        `;
-        item.querySelector('.skin-select').addEventListener('change', (e) => {
-          eco.equipSkin(wKey, e.target.value);
         });
         grid.appendChild(item);
       }
