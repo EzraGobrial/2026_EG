@@ -8,7 +8,7 @@ import * as THREE from 'three';
 /**
  * Build a procedural gun model from Three.js geometry
  */
-function buildGunModel(weaponKey) {
+function buildGunModel(weaponKey, skinColors = null) {
   const gun = new THREE.Group();
   
   const woodMat = new THREE.MeshStandardMaterial({
@@ -281,6 +281,12 @@ function buildGunModel(weaponKey) {
       break;
   }
 
+  // Apply skin color overrides if a skin is equipped
+  if (skinColors) {
+    stockColor = skinColors.stock;
+    metalMat.color.setHex(skinColors.metal);
+    darkMetalMat.color.setHex(skinColors.metal);
+  }
   woodMat.color.setHex(stockColor);
 
   // ─── Stock (wooden body) ──────────────
@@ -472,7 +478,7 @@ export class WeaponSystem {
     this.raycaster.far = 200;
   }
 
-  equipWeapon(weaponKey, weaponData) {
+  equipWeapon(weaponKey, weaponData, skinColors = null) {
     // Remove old gun
     if (this.currentGun) {
       this.gunGroup.remove(this.currentGun);
@@ -486,7 +492,7 @@ export class WeaponSystem {
 
     this.currentWeaponKey = weaponKey;
     this.weaponData = weaponData;
-    this.currentGun = buildGunModel(weaponKey);
+    this.currentGun = buildGunModel(weaponKey, skinColors);
 
     // Position in camera space
     this.currentGun.position.copy(this.restPosition);

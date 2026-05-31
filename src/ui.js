@@ -501,6 +501,13 @@ export class UI {
           rankBadge = getRankBadgeHTML(entry.rank, false);
         }
 
+        // Banner accent
+        let bannerStyle = '';
+        if (entry.banner && BANNERS[entry.banner]) {
+          bannerStyle = `border-left:3px solid ${BANNERS[entry.banner].color};padding-left:10px;`;
+        }
+
+        div.style.cssText += bannerStyle;
         div.innerHTML = `
           <span class="lb-rank">${i + 1}</span>
           <span class="lb-name">${rankBadge}${entry.name}${entry.tag ? ' <span class="og-badge">OG</span>' : ''}${isYou ? ' (you)' : ''}</span>
@@ -1280,6 +1287,74 @@ export class UI {
         grid.appendChild(item);
       }
       content.appendChild(grid);
+    } else if (tab === 'skins') {
+      content.innerHTML = '';
+      if (eco.ownedSkins.length <= 1) {
+        content.innerHTML = '<div class="locker-coming-soon">No skins owned yet. Buy them in the Shop!</div>';
+        return;
+      }
+
+      const desc = document.createElement('div');
+      desc.className = 'loadout-desc';
+      desc.textContent = 'Assign skins to your weapons. Each weapon can have its own skin.';
+      content.appendChild(desc);
+
+      const grid = document.createElement('div');
+      grid.className = 'locker-items';
+      const ownedWeapons = eco.getOwnedWeaponKeys();
+      for (const wKey of ownedWeapons) {
+        const weapon = eco.weapons[wKey];
+        const currentSkin = eco.equippedSkins[wKey] || 'default';
+        const item = document.createElement('div');
+        item.className = `locker-item${currentSkin !== 'default' ? ' equipped' : ''}`;
+
+        // Build skin options from owned skins
+        let skinOptions = eco.ownedSkins.map(sk => {
+          const s = WEAPON_SKINS[sk];
+          return `<option value="${sk}" ${sk === currentSkin ? 'selected' : ''}>${s ? s.name : sk}</option>`;
+        }).join('');
+
+        // Color preview swatch
+        const skinData = WEAPON_SKINS[currentSkin];
+        const previewColor = skinData && skinData.colors ? `#${skinData.colors.stock.toString(16).padStart(6, '0')}` : 'var(--text-muted)';
+
+        item.innerHTML = `
+          <div class="locker-item-icon" style="width:30px;height:30px;border-radius:6px;background:${previewColor};margin:0 auto 8px;border:2px solid rgba(255,255,255,0.1)"></div>
+          <div class="locker-item-name">${weapon.name}</div>
+          <select class="skin-select" style="width:100%;background:var(--surface);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:12px;margin-top:8px;cursor:pointer">${skinOptions}</select>
+        `;
+        item.querySelector('.skin-select').addEventListener('change', (e) => {
+          eco.equipSkin(wKey, e.target.value);
+          this._renderLockerTab('skins');
+        });
+        grid.appendChild(item);
+      }
+      content.appendChild(grid);
+    } else if (tab === 'tags') {
+      content.innerHTML = '';
+      const grid = document.createElement('div');
+      grid.className = 'locker-items';
+
+      if (eco.inventory && eco.inventory.tags && eco.inventory.tags.includes('og')) {
+        const isEquipped = eco.equipped && eco.equipped.tag === 'og';
+        const item = document.createElement('div');
+        item.className = `locker-item${isEquipped ? ' equipped' : ''}`;
+        item.innerHTML = `
+          <div class="locker-item-icon" style="font-family:var(--font-display);font-size:24px;color:var(--accent-gold)">OG</div>
+          <div class="locker-item-name">OG Tag</div>
+          <div class="locker-item-desc">Played in the first 30 days</div>
+          <button class="btn ${isEquipped ? 'btn-secondary' : 'btn-primary'}">${isEquipped ? 'Unequip' : 'Equip'}</button>
+        `;
+        item.querySelector('.btn').addEventListener('click', () => {
+          eco.equipped.tag = isEquipped ? null : 'og';
+          eco.save();
+          this._renderLockerTab('tags');
+        });
+        grid.appendChild(item);
+        content.appendChild(grid);
+      } else {
+        content.innerHTML = '<div class="locker-coming-soon">No tags earned yet</div>';
+      }
     } else {
       content.innerHTML = `<div class="locker-coming-soon">Coming Soon</div>`;
     }

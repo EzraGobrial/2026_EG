@@ -9,7 +9,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-import { Economy, BIRDS, RARITY_COLORS } from './economy.js';
+import { Economy, BIRDS, RARITY_COLORS, WEAPON_SKINS } from './economy.js';
 import { checkChallenges } from './challenges.js';
 import { AudioSystem } from './audio.js';
 import { SkySystem } from './skybox.js';
@@ -507,8 +507,9 @@ class Game {
     this.player.reset();
     this.maxActiveBirds = locData.maxBirds;
 
-    // Equip weapon
-    this.weapons.equipWeapon(this.economy.currentWeapon, weaponData);
+    // Equip weapon with skin
+    const skinColors = this._getSkinColors(this.economy.currentWeapon);
+    this.weapons.equipWeapon(this.economy.currentWeapon, weaponData, skinColors);
 
     // Reset hunt
     this.huntTimer = 60;
@@ -996,7 +997,8 @@ class Game {
 
     this.economy.selectWeapon(weaponKey);
     const weaponData = this.economy.getWeapon();
-    this.weapons.equipWeapon(weaponKey, weaponData);
+    const skinColors = this._getSkinColors(weaponKey);
+    this.weapons.equipWeapon(weaponKey, weaponData, skinColors);
 
     // Double-pump: always full ammo, no reload, ready to fire
     this.weapons.ammo = weaponData.ammo;
@@ -1009,6 +1011,13 @@ class Game {
     this.hud.setCrosshairForWeapon(weaponData);
     this._buildWeaponSlots();
     this.audio.playReload();
+  }
+
+  _getSkinColors(weaponKey) {
+    const skinKey = this.economy.equippedSkins[weaponKey];
+    if (!skinKey || skinKey === 'default') return null;
+    const skin = WEAPON_SKINS[skinKey];
+    return skin ? skin.colors : null;
   }
 
   _onKeyDown(e) {
