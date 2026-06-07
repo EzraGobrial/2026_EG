@@ -1209,16 +1209,26 @@ export class Economy {
   /**
    * Pick a random bird based on location rarity weights
    */
-  spawnRandomBird() {
+  spawnRandomBird(luckyCharm = false) {
     const available = this.getAvailableBirds();
     let totalWeight = 0;
+    const weights = [];
     for (const key of available) {
-      totalWeight += BIRDS[key].weight;
+      let w = BIRDS[key].weight;
+      // Lucky Charm: double weight of rare, epic, and legendary birds
+      if (luckyCharm) {
+        const rarity = BIRDS[key].rarity;
+        if (rarity === 'rare' || rarity === 'epic' || rarity === 'legendary') {
+          w *= 2;
+        }
+      }
+      weights.push(w);
+      totalWeight += w;
     }
     let roll = Math.random() * totalWeight;
-    for (const key of available) {
-      roll -= BIRDS[key].weight;
-      if (roll <= 0) return key;
+    for (let i = 0; i < available.length; i++) {
+      roll -= weights[i];
+      if (roll <= 0) return available[i];
     }
     return available[available.length - 1];
   }

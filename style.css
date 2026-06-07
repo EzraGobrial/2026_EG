@@ -11,6 +11,9 @@
   --text-primary: #f5e6d0;
   --text-secondary: #b8a48c;
   --text-muted: #7a6b5a;
+  --text-warm: #e8d5b5;
+  --surface: #2a2520;
+  --border: #4a3f35;
   --accent-gold: #d4a853;
   --accent-gold-bright: #f0c556;
   --accent-green: #5ab55a;
@@ -1176,6 +1179,9 @@ body {
   width: 90%;
   max-height: 85vh;
   overflow-y: auto;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 .locker-tabs {
@@ -1214,12 +1220,7 @@ body {
 .locker-content {
   min-height: 200px;
   margin-bottom: 16px;
-}
-
-.locker-panel {
-  background: transparent;
-  border: none;
-  box-shadow: none;
+  animation: fadeSlideIn 0.2s ease;
 }
 
 .locker-items {
@@ -2275,5 +2276,112 @@ body {
 .rank-badge-large .rank-badge-apex-gem {
   width: 6px;
   height: 6px;
+}
+
+/* ═══════════════════════════════════════════════
+   Hover States
+   ═══════════════════════════════════════════════ */
+
+.lb-entry:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+.challenge-item:hover {
+  background: rgba(255,255,255,0.05);
+  transform: translateX(4px);
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.result-row:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+.location-card.locked {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.location-card.locked:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* ═══════════════════════════════════════════════
+   Tab Transitions
+   ═══════════════════════════════════════════════ */
+
+.shop-tab-content {
+  animation: fadeSlideIn 0.2s ease;
+}
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ═══════════════════════════════════════════════
+   Kill Feed Rarity Colors
+   ═══════════════════════════════════════════════ */
+
+.kill-entry.rarity-common { color: #c8b89a; }
+.kill-entry.rarity-uncommon { color: #5aff5a; }
+.kill-entry.rarity-rare { color: #5a9eff; }
+.kill-entry.rarity-epic { color: #c45aff; }
+.kill-entry.rarity-legendary { color: #ffaa00; }
+.kill-entry.rarity-boss { color: #ff4444; }
+
+/* ═══════════════════════════════════════════════
+   Mobile Breakpoint (600px)
+   ═══════════════════════════════════════════════ */
+
+@media (max-width: 600px) {
+  .title-text { font-size: 48px; }
+  .panel { width: 95%; padding: 16px; }
+  .shop-tab { font-size: 11px; padding: 6px 10px; }
+  .locker-tab { font-size: 11px; padding: 6px 10px; }
+  .locker-panel { max-width: 95%; }
+  .weapon-slots { bottom: 8px; gap: 4px; }
+  .weapon-slot { width: 48px; height: 48px; font-size: 10px; }
+}
+
+/* ═══════════════════════════════════════════════
+   Tournament Button (inline style replacement)
+   ═══════════════════════════════════════════════ */
+
+.btn-tournament {
+  background: linear-gradient(135deg, #d4a853, #b8860b);
+  color: #1a1a1a;
+  font-weight: 700;
+  border: none;
+}
+
+.btn-tournament:hover {
+  background: linear-gradient(135deg, #f0c556, #d4a853);
+  transform: translateY(-1px);
+}
+
+/* ═══════════════════════════════════════════════
+   Friend Search Input (inline style replacement)
+   ═══════════════════════════════════════════════ */
+
+.friend-search-input {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: var(--font-body);
+  transition: border-color 0.2s ease;
+}
+
+.friend-search-input:focus {
+  border-color: var(--accent-gold);
+  outline: none;
 }
 

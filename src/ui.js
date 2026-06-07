@@ -125,18 +125,38 @@ export class UI {
     });
 
     // Login
-    document.getElementById('btn-login').addEventListener('click', () => {
+    const loginBtn = document.getElementById('btn-login');
+    loginBtn.addEventListener('click', async () => {
       const username = document.getElementById('login-username').value;
       const password = document.getElementById('login-password').value;
-      if (this.onLogin) this.onLogin(username, password);
+      if (!this.onLogin) return;
+      loginBtn.disabled = true;
+      const origText = loginBtn.textContent;
+      loginBtn.textContent = 'Logging in...';
+      try {
+        await this.onLogin(username, password);
+      } finally {
+        loginBtn.disabled = false;
+        loginBtn.textContent = origText;
+      }
     });
 
     // Signup
-    document.getElementById('btn-signup').addEventListener('click', () => {
+    const signupBtn = document.getElementById('btn-signup');
+    signupBtn.addEventListener('click', async () => {
       const username = document.getElementById('signup-username').value;
       const password = document.getElementById('signup-password').value;
       const confirm = document.getElementById('signup-confirm').value;
-      if (this.onSignup) this.onSignup(username, password, confirm);
+      if (!this.onSignup) return;
+      signupBtn.disabled = true;
+      const origText = signupBtn.textContent;
+      signupBtn.textContent = 'Signing up...';
+      try {
+        await this.onSignup(username, password, confirm);
+      } finally {
+        signupBtn.disabled = false;
+        signupBtn.textContent = origText;
+      }
     });
 
     // Enter key
@@ -407,7 +427,7 @@ export class UI {
 
   // ─── Results Screen ─────────────────────────
 
-  showResults(huntBag, displayName) {
+  showResults(huntBag, displayName, xpEarned = 0) {
     const summary = document.getElementById('results-summary');
     summary.innerHTML = '';
 
@@ -418,8 +438,8 @@ export class UI {
       const key = typeof entry === 'string' ? entry : entry.key;
       const combo = typeof entry === 'string' ? 1 : (entry.combo || 1);
       if (!counts[key]) counts[key] = { count: 0, totalValue: 0 };
-      const fluctuation = 0.85 + Math.random() * 0.3;
-      const baseValue = Math.round(BIRDS[key].value * fluctuation);
+      // Use pre-calculated earnedValue if available (no re-roll)
+      const baseValue = (entry.earnedValue) ? entry.earnedValue : Math.round(BIRDS[key].value * (0.85 + Math.random() * 0.3));
       const value = Math.round(baseValue * combo);
       counts[key].count++;
       counts[key].totalValue += value;
@@ -449,6 +469,22 @@ export class UI {
     this.economy.money += total;
     this.economy.totalMoneyEarned += total;
     this.economy.huntBag = [];
+
+    // Rank / XP progress section
+    const rank = this.economy.getRank();
+    const xpInfo = this.economy.getXPToNextRank();
+    const xpSection = document.createElement('div');
+    xpSection.style.cssText = 'margin-top:16px;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px;text-align:center;';
+    xpSection.innerHTML = `
+      <div style="color:var(--text-secondary);font-size:12px;margin-bottom:4px">Rank Progress</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px">
+        ${getRankBadgeHTML(rank.level, false)}
+        <span style="color:${rank.color};font-weight:700;font-size:16px">${rank.name}</span>
+      </div>
+      <div style="color:var(--text-muted);font-size:11px;margin-top:4px">${this.economy.xp} XP</div>
+      ${xpInfo.needed > 0 ? `<div style="width:120px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;margin:6px auto 0;overflow:hidden"><div style="height:100%;background:${rank.color};width:${xpInfo.progress * 100}%;border-radius:2px;transition:width 0.3s"></div></div>` : '<div style="font-size:11px;color:var(--accent-gold);margin-top:4px">MAX RANK</div>'}
+    `;
+    summary.appendChild(xpSection);
 
     // Update leaderboard
     if (displayName) {
@@ -1156,7 +1192,15 @@ export class UI {
     document.getElementById('sleep-text').textContent = `Day ${eco.day} Complete`;
     this.showScreen('sleep');
 
+    // Progress bar
+    const bar = document.createElement('div');
+    bar.style.cssText = 'width:0%;height:3px;background:var(--accent-gold);border-radius:2px;margin-top:20px;transition:width 2.8s linear;';
+    const container = document.getElementById('screen-sleep').querySelector('.panel') || document.getElementById('screen-sleep');
+    container.appendChild(bar);
+    requestAnimationFrame(() => { bar.style.width = '100%'; });
+
     setTimeout(() => {
+      bar.remove();
       eco.day++;
       eco.save();
       if (callback) callback();
@@ -1233,7 +1277,14 @@ export class UI {
           if (inLoadout) {
             eco.loadout = currentLoadout.filter(k => k !== key);
           } else {
-            if (currentLoadout.length >= 5) return; // max 5
+            if (currentLoadout.length >= 5) {
+              const toast = document.createElement('div');
+              toast.textContent = 'Loadout full! (max 5 weapons)';
+              toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--accent-red, #ff4444);color:white;padding:8px 20px;border-radius:8px;font-size:13px;z-index:9999;animation:fadeIn 0.2s ease;';
+              document.body.appendChild(toast);
+              setTimeout(() => toast.remove(), 2000);
+              return;
+            }
             eco.loadout = [...currentLoadout, key];
           }
           eco.save();
@@ -1412,25 +1463,29 @@ export class UI {
     const searchResults = document.getElementById('friend-search-results');
     searchInput.value = '';
     searchResults.innerHTML = '';
-    searchInput.oninput = async () => {
+    let searchTimeout = null;
+    searchInput.oninput = () => {
+      clearTimeout(searchTimeout);
       const q = searchInput.value.trim();
       if (q.length < 2) { searchResults.innerHTML = ''; return; }
-      const results = await searchPlayers(q, uid);
-      searchResults.innerHTML = '';
-      for (const p of results) {
-        const isFriend = friends.find(f => f.uid === p.uid);
-        const row = document.createElement('div');
-        row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:6px 10px;margin-bottom:4px;background:rgba(255,255,255,0.03);border-radius:4px;font-size:13px;';
-        row.innerHTML = `<span>${p.name} <span style="color:var(--text-secondary)">(Dimension ${p.dimension})</span></span>${isFriend ? '<span style="color:#5ab55a">Friend</span>' : `<button class="btn btn-primary" style="font-size:11px;padding:3px 8px">Add</button>`}`;
-        if (!isFriend) {
-          row.querySelector('.btn').addEventListener('click', async () => {
-            await sendFriendRequest(uid, displayName, p.uid, p.name);
-            row.querySelector('.btn').textContent = 'Sent!';
-            row.querySelector('.btn').disabled = true;
-          });
+      searchTimeout = setTimeout(async () => {
+        const results = await searchPlayers(q, uid);
+        searchResults.innerHTML = '';
+        for (const p of results) {
+          const isFriend = friends.find(f => f.uid === p.uid);
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:6px 10px;margin-bottom:4px;background:rgba(255,255,255,0.03);border-radius:4px;font-size:13px;';
+          row.innerHTML = `<span>${p.name} <span style="color:var(--text-secondary)">(Dimension ${p.dimension})</span></span>${isFriend ? '<span style="color:#5ab55a">Friend</span>' : `<button class="btn btn-primary" style="font-size:11px;padding:3px 8px">Add</button>`}`;
+          if (!isFriend) {
+            row.querySelector('.btn').addEventListener('click', async () => {
+              await sendFriendRequest(uid, displayName, p.uid, p.name);
+              row.querySelector('.btn').textContent = 'Sent!';
+              row.querySelector('.btn').disabled = true;
+            });
+          }
+          searchResults.appendChild(row);
         }
-        searchResults.appendChild(row);
-      }
+      }, 300);
     };
 
     this.showScreen('friends');

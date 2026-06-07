@@ -264,8 +264,8 @@
         <button id="btn-to-locker" class="btn btn-accent">Locker</button>
         <button id="btn-trade" class="btn btn-secondary">Trade<span id="trade-dot" class="trade-dot hidden"></span></button>
         <button id="btn-friends" class="btn btn-secondary">Friends<span id="friends-dot" class="trade-dot hidden"></span></button>
-        <button id="btn-tournament" class="btn btn-secondary" style="background:linear-gradient(135deg,#d4a853,#b8860b);color:#1a1a1a;font-weight:700">Tournament</button>
-        <button id="btn-clan" class="btn btn-secondary">Clan</button>
+        <button id="btn-tournament" class="btn btn-tournament" style="display:none">Tournament</button>
+        <button id="btn-clan" class="btn btn-secondary" style="display:none">Clan</button>
         <button id="btn-skip-shop" class="btn btn-secondary">Skip to Sleep</button>
       </div>
 
@@ -307,7 +307,7 @@
     <div class="panel shop-panel">
       <h2 class="panel-title">Friends</h2>
       <div style="margin-bottom:12px">
-        <input type="text" id="friend-search-input" placeholder="Search players..." style="width:100%;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:14px">
+        <input type="text" id="friend-search-input" class="friend-search-input" placeholder="Search players...">
         <div id="friend-search-results" style="margin-top:8px"></div>
       </div>
       <h3 style="color:var(--accent-gold);font-size:14px;margin-bottom:8px">Friend Requests</h3>

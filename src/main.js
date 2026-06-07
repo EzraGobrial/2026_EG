@@ -509,7 +509,8 @@ class Game {
 
     // Equip weapon with skin
     const skinColors = this._getSkinColors(this.economy.currentWeapon);
-    this.weapons.equipWeapon(this.economy.currentWeapon, weaponData, skinColors);
+    const steadyHands = consumables.includes('steady_hands');
+    this.weapons.equipWeapon(this.economy.currentWeapon, weaponData, skinColors, steadyHands);
 
     // Reset hunt
     this.huntTimer = 60;
@@ -530,6 +531,9 @@ class Game {
     if (consumables.includes('bird_magnet')) {
       this.spawnInterval = 1;
     }
+    this._doubleMoneyActive = consumables.includes('double_money');
+    this._steadyHandsActive = steadyHands;
+    this._luckyCharmActive = consumables.includes('lucky_charm');
 
     // HUD initial values
     this.hud.setDay(this.economy.day);
@@ -559,7 +563,7 @@ class Game {
 
     // Spawn initial birds
     for (let i = 0; i < 2; i++) {
-      const birdKey = this.economy.spawnRandomBird();
+      const birdKey = this.economy.spawnRandomBird(this._luckyCharmActive);
       this.birds.spawn(birdKey);
     }
   }
@@ -574,8 +578,11 @@ class Game {
     // Clear active consumables after hunt
     this.economy.clearActiveConsumables();
 
+    // Calculate XP earned from hunt (10 per kill, 50 per boss)
+    const huntXP = (this.huntStats.totalKills * 10) + (this.huntStats.bossKills * 50);
+
     // Show results — the UI will handle adding money
-    this.ui.showResults(this.huntBag, this.auth.getDisplayName());
+    this.ui.showResults(this.huntBag, this.auth.getDisplayName(), huntXP);
 
     // Check daily challenges
     if (this.economy.dailyChallenges && this.economy.dailyChallenges.length > 0) {
@@ -587,8 +594,7 @@ class Game {
       }
     }
 
-    // Award XP based on hunt performance (10 per kill, 50 per boss)
-    const huntXP = (this.huntStats.totalKills * 10) + (this.huntStats.bossKills * 50);
+    // Award XP
     if (huntXP > 0) {
       const result = this.economy.addXP(huntXP);
       if (result.ranked) {
@@ -726,44 +732,46 @@ class Game {
         this.comboTimer = this.comboTimeout;
         const comboMultiplier = this._getComboMultiplier();
 
-        // Add to bag with combo info
-        this.huntBag.push({ key: bird.birdKey, combo: comboMultiplier });
+        // Add to bag with combo info and pre-calculated value
+        const fluctuation = 0.85 + Math.random() * 0.3;
+        let earnedValue = Math.round(birdData.value * fluctuation);
+        if (this._doubleMoneyActive) earnedValue *= 2;
+        this.huntBag.push({ key: bird.birdKey, combo: comboMultiplier, earnedValue: earnedValue });
         this.economy.totalBirdsKilled++;
+        this.huntStats.moneyEarned += earnedValue;
 
         // Hunt stats tracking
         this.huntStats.totalKills++;
         if (this.huntTimer >= 40) this.huntStats.earlyKills++;
         if (this.comboCount > this.huntStats.maxCombo) this.huntStats.maxCombo = this.comboCount;
 
-        // HUD feedback with combo
+        // HUD feedback with combo (use stored earnedValue, no re-roll)
         const rarityColor = RARITY_COLORS[birdData.rarity] || '#aaa';
-        const fluctuation = 0.85 + Math.random() * 0.3;
-        const value = Math.round(birdData.value * fluctuation);
-        this.hud.addKill(birdData.name, value, rarityColor, this.comboCount, comboMultiplier);
-        this.hud.showMoneyPopup(value, comboMultiplier);
+        this.hud.addKill(birdData.name, earnedValue, rarityColor, this.comboCount, comboMultiplier);
+        this.hud.showMoneyPopup(earnedValue, comboMultiplier);
         this.hud.showHitFlash();
+        this.hud.showHitMarker();
         this.hud.showCombo(this.comboCount, comboMultiplier);
 
         break; // One hit per shot
       }
     }
 
-    // Hit = keep shooting (ammo untouched). Miss = lose a bullet.
-    if (hitSomething) {
-      // Nothing to do — ammo stays full, gun stays ready
-    } else {
-      // Missed — reset combo, lose ammo (unless grandpas_rifle: no reload)
+    // Deduct ammo for ALL shots (hit or miss), unless noReload weapon
+    const wd = this.economy.getWeapon();
+    if (!wd.noReload) {
+      this.weapons.ammo--;
+      if (this.weapons.ammo <= 0) {
+        this.weapons.startReload();
+      }
+    }
+
+    // Missed — reset combo
+    if (!hitSomething) {
       this.comboCount = 0;
       this.comboTimer = 0;
       this.hud.hideCombo();
       this.huntStats.missCount++;
-      const wd = this.economy.getWeapon();
-      if (!wd.noReload) {
-        this.weapons.ammo--;
-        if (this.weapons.ammo <= 0) {
-          this.weapons.startReload();
-        }
-      }
     }
 
     // Startle nearby birds
@@ -780,6 +788,7 @@ class Game {
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.composer.setSize(window.innerWidth, window.innerHeight);
+    this.bloomPass.resolution.set(window.innerWidth, window.innerHeight);
   }
 
   // ─── Main Loop ─────────────────────────────
@@ -956,13 +965,13 @@ class Game {
             const bossData = BIRDS[birdKey];
             if (bossData) this.hud.showBossAlert(bossData.name);
           } else {
-            birdKey = this.economy.spawnRandomBird();
+            birdKey = this.economy.spawnRandomBird(this._luckyCharmActive);
           }
         } else {
-          birdKey = this.economy.spawnRandomBird();
+          birdKey = this.economy.spawnRandomBird(this._luckyCharmActive);
         }
       } else {
-        birdKey = this.economy.spawnRandomBird();
+        birdKey = this.economy.spawnRandomBird(this._luckyCharmActive);
       }
 
       // Flock spawn: 25% chance, max 2 active flocks, not for bosses

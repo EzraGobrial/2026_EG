@@ -75,6 +75,12 @@ function buildGunModel(weaponKey, skinColors = null) {
       barrelLength = 0.4;
       barrelRadius = 0.013;
       break;
+    case 'grandpas_rifle':
+      stockColor = 0x8B6914; // rich aged gold wood
+      stockLength = 0.32;
+      barrelLength = 0.55;
+      barrelRadius = 0.013;
+      break;
     // ─── Dimension 2: Tropics ──────────────
     case 'crossbow':
       stockColor = 0x3a3530;
@@ -478,7 +484,7 @@ export class WeaponSystem {
     this.raycaster.far = 200;
   }
 
-  equipWeapon(weaponKey, weaponData, skinColors = null) {
+  equipWeapon(weaponKey, weaponData, skinColors = null, steadyHands = false) {
     // Remove old gun
     if (this.currentGun) {
       this.gunGroup.remove(this.currentGun);
@@ -491,7 +497,11 @@ export class WeaponSystem {
     }
 
     this.currentWeaponKey = weaponKey;
-    this.weaponData = weaponData;
+    this.weaponData = { ...weaponData };
+    // Steady Hands consumable: halve weapon spread
+    if (steadyHands) {
+      this.weaponData.spread = this.weaponData.spread / 2;
+    }
     this.currentGun = buildGunModel(weaponKey, skinColors);
 
     // Position in camera space
@@ -505,6 +515,7 @@ export class WeaponSystem {
     this.canShoot = true;
     this.isReloading = false;
     this.recoilAmount = 0;
+    this.fireCooldown = 0;
     this.hasScope = !!(weaponData.hasScope);
 
     // Reset ADS and animation state
@@ -552,9 +563,13 @@ export class WeaponSystem {
         rc.ray.direction.add(s).normalize();
         casters.push(rc);
       }
+      this.fireCooldown = this.weaponData.fireRate;
+      this.canShoot = false;
       return casters;
     }
 
+    this.fireCooldown = this.weaponData.fireRate;
+    this.canShoot = false;
     return [this.raycaster];
   }
 
@@ -580,6 +595,12 @@ export class WeaponSystem {
     // Fire cooldown
     if (this.fireCooldown > 0) {
       this.fireCooldown -= dt;
+      if (this.fireCooldown <= 0) {
+        this.fireCooldown = 0;
+        if (!this.isReloading) {
+          this.canShoot = true;
+        }
+      }
     }
 
     // Reload

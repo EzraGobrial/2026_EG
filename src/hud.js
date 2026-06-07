@@ -182,6 +182,16 @@ export class HUD {
   }
 
   /**
+   * Flash the crosshair red briefly on a successful hit
+   */
+  showHitMarker() {
+    const ch = this.crosshair;
+    if (!ch) return;
+    ch.style.borderColor = '#ff4444';
+    setTimeout(() => { ch.style.borderColor = ''; }, 100);
+  }
+
+  /**
    * Show hit flash overlay
    */
   showHitFlash() {
