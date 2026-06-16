@@ -9,7 +9,8 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-import { Economy, BIRDS, RARITY_COLORS } from './economy.js';
+import { Economy, BIRDS, RARITY_COLORS, WEAPON_SKINS, CONSUMABLES } from './economy.js';
+import { checkChallenges } from './challenges.js';
 import { AudioSystem } from './audio.js';
 import { SkySystem } from './skybox.js';
 import { ParticleSystem } from './particles.js';
@@ -23,7 +24,9 @@ import { Auth } from './auth.js';
 import { Story } from './story.js';
 import { TrailWorld } from './trail_world.js';
 import { ShedInterior } from './shed.js';
+import { MarketWorld } from './market.js';
 import { BikeController } from './bike.js';
+import { Settings } from './settings.js';
 
 // ─── Game States ─────────────────────────────
 const STATE = {
@@ -38,7 +41,9 @@ const STATE = {
   WIN:        'WIN',
   TRAIL_WALK: 'TRAIL_WALK',
   SHED:       'SHED',
-  BIKE_RIDE:  'BIKE_RIDE'
+  BIKE_RIDE:  'BIKE_RIDE',
+  MARKET:     'MARKET',
+  PAUSED:     'PAUSED'
 };
 
 class Game {
@@ -81,6 +86,9 @@ class Game {
 
     this.outputPass = new OutputPass();
     this.composer.addPass(this.outputPass);
+
+    // ─── Settings (persisted) ───────────────
+    this.settings = new Settings();
 
     // ─── Systems ───────────────────────────
     this.auth = new Auth();
@@ -131,6 +139,16 @@ class Game {
     this._currentFOV = 70;
     this._normalSens = this.player.mouseSensitivity;
 
+    // ─── Pause state ───────────────────────
+    this._pauseReturnState = null;
+    this._settingsFromPause = false;
+    this.player.onUnlock = () => this._onPointerUnlock();
+
+    // Apply saved settings
+    this.audio.setMasterVolume(this.settings.get('masterVolume'));
+    this.player.sensitivityMultiplier = this.settings.get('mouseSensitivity');
+    this._applyGraphicsQuality(this.settings.get('graphicsQuality'));
+
     // Slo-Mo Gun state
     this._slomoTimer = 0;        // how long scoped (max 3s)
     this._slomoCooldown = 0;     // cooldown before can scope again
@@ -163,7 +181,7 @@ class Game {
         this._startHunt();
       }
     };
-    this.ui.onGoToShop = () => this._goToShop();
+    this.ui.onGoToShop = () => this._goToMarket();
     this.ui.onGoToLocker = () => {
       this.ui.showLocker();
       this.state = STATE.LOCKER;
@@ -173,6 +191,7 @@ class Game {
       this.state = STATE.RESULTS;
     };
     this.ui.onSkipToSleep = () => this._goToSleep();
+    this.ui.onShopBack = () => this._exitShop();
     this.ui.onSleep = () => this._goToSleep();
     this.ui.onContinueAfterWin = () => {
       this.winShown = true;
@@ -185,13 +204,47 @@ class Game {
     };
 
     this.ui.onTrade = async () => {
-      const { getPendingTrades, getPlayersInDimension } = await import('./trading.js');
+      try {
+        const { getPendingTrades, getPlayersInDimension } = await import('./trading.js');
+        const uid = this.auth.getUid();
+        const displayName = this.auth.getDisplayName();
+        const pending = await getPendingTrades(uid);
+        const players = await getPlayersInDimension(this.economy.dimension, uid);
+        this.ui.showTradeScreen(uid, displayName, pending, players);
+      } catch (e) {
+        console.warn('Trade screen failed:', e);
+      }
+    };
+
+    this.ui.onFriends = () => {
       const uid = this.auth.getUid();
       const displayName = this.auth.getDisplayName();
-      const pending = await getPendingTrades(uid);
-      const players = await getPlayersInDimension(this.economy.dimension, uid);
-      this.ui.showTradeScreen(uid, displayName, pending, players);
+      if (uid) this.ui.showFriends(uid, displayName);
     };
+
+    this.ui.onTournament = () => {
+      const uid = this.auth.getUid();
+      const displayName = this.auth.getDisplayName();
+      if (uid) this.ui.showTournament(uid, displayName, this.economy);
+    };
+
+    this.ui.onClan = () => {
+      const uid = this.auth.getUid();
+      const displayName = this.auth.getDisplayName();
+      if (uid) this.ui.showClan(uid, displayName, this.economy);
+    };
+
+    // ─── Pause / Settings / Credits Callbacks
+    this.ui.onResume = () => this._resumeGame();
+    this.ui.onQuitToTitle = () => this._quitToTitle();
+    this.ui.onPauseSettings = () => this._openSettings(true);
+    this.ui.onPauseCredits = () => this._openCredits(true);
+    this.ui.onTitleSettings = () => this._openSettings(false);
+    this.ui.onTitleCredits = () => this._openCredits(false);
+    this.ui.onSettingsBack = () => this._closeSettings();
+    this.ui.onCreditsBack = () => this._closeCredits();
+    this.ui.onSettingChange = (key, value) => this._applySetting(key, value);
+    this.ui.onFullscreenToggle = () => this._toggleFullscreen();
 
     // ─── Initial state ─────────────────────
     this.sky.setPreset('backyard');
@@ -212,7 +265,7 @@ class Game {
       await this.economy.load();
       // Restore story state from cloud save
       if (this.economy.story) this.story.deserialize(this.economy.story);
-      this._grantOGTag();
+
       this.economy.updateLeaderboard(this.auth.getDisplayName());
       this.ui.showTitle(this.auth.getDisplayName());
       this.state = STATE.TITLE;
@@ -226,7 +279,7 @@ class Game {
     if (result.success) {
       this.economy.setUid(this.auth.getUid());
       this.economy.setDisplayName(this.auth.getDisplayName());
-      this._grantOGTag();
+
       this.economy.updateLeaderboard(this.auth.getDisplayName());
       this.ui.showTitle(this.auth.getDisplayName());
       this.state = STATE.TITLE;
@@ -235,15 +288,7 @@ class Game {
     }
   }
 
-  _grantOGTag() {
-    // For testing: give OG tag to everyone who logs in
-    // TODO: Later, check if within first 30 days of game launch
-    if (!this.economy.inventory) this.economy.inventory = { tags: [] };
-    if (!this.economy.inventory.tags.includes('og')) {
-      this.economy.inventory.tags.push('og');
-      this.economy.save();
-    }
-  }
+
 
   async _handleLogout() {
     await this.auth.logout();
@@ -467,10 +512,38 @@ class Game {
     if (this.bikeController) this.bikeController.update(dt);
   }
 
+  /**
+   * Compute currently-active potion effects, accounting for potions whose
+   * duration is "half" (only active during the first half of the hunt).
+   */
+  _getActivePotionEffects() {
+    const consumables = this.economy.activeConsumables || [];
+    const startTimer = this._huntStartTimer || this.huntTimer || 60;
+    const pastHalfway = this.huntTimer <= startTimer / 2;
+
+    let luckMult = 1;
+    let legendaryBoost = 0;
+    let birdSwarm = false;
+
+    for (const key of consumables) {
+      const cons = CONSUMABLES[key];
+      if (!cons) continue;
+      const isActiveNow = cons.duration === 'full' || (cons.duration === 'half' && !pastHalfway);
+      if (!isActiveNow) continue;
+
+      if (cons.luckMult) luckMult = Math.max(luckMult, cons.luckMult);
+      if (cons.legendaryBoost) legendaryBoost = Math.max(legendaryBoost, cons.legendaryBoost);
+      if (cons.doubleBirds) birdSwarm = true;
+    }
+
+    return { luckMult, legendaryBoost, birdSwarm };
+  }
+
   _startHunt() {
     this.state = STATE.HUNTING;
     this.ui.hideAll();
     this.hud.show();
+    this.ui.showControlsHint();
 
     const locKey = this.economy.currentLocation;
     const locData = this.economy.getLocation();
@@ -491,17 +564,46 @@ class Game {
     this.player.reset();
     this.maxActiveBirds = locData.maxBirds;
 
-    // Equip weapon
-    this.weapons.equipWeapon(this.economy.currentWeapon, weaponData);
+    // Apply consumable effects (declared early — used below for steadyHands)
+    const consumables = this.economy.activeConsumables || [];
+
+    // Equip weapon with skin
+    const skinColors = this._getSkinColors(this.economy.currentWeapon);
+    const steadyHands = consumables.includes('steady_hands');
+    this.weapons.equipWeapon(this.economy.currentWeapon, weaponData, skinColors, steadyHands);
 
     // Reset hunt
     this.huntTimer = 60;
     this.huntBag = [];
     this.spawnTimer = 0;
+    this._huntEnded = false;
     this.birds.clear();
     this.particles.clear();
     this.hud.clearKillFeed();
     this._cheatBuffer = '';
+    this.huntStats = { totalKills: 0, maxCombo: 0, missCount: 0, bossKills: 0, earlyKills: 0, moneyEarned: 0 };
+    this.hud.hideBossHP();
+
+    // Apply consumable effects
+    if (consumables.includes('extra_time')) {
+      this.huntTimer = 75;
+    }
+    if (consumables.includes('bird_magnet')) {
+      this.spawnInterval = 1;
+    }
+    this._doubleMoneyActive = consumables.includes('double_money');
+    this._steadyHandsActive = steadyHands;
+
+    // Track hunt duration so "first half" potions know when to wear off
+    this._huntStartTimer = this.huntTimer;
+
+    // 2x Birds potion: doubles max active birds & spawns faster all hunt
+    const startEffects = this._getActivePotionEffects();
+    this._birdSwarmActive = startEffects.birdSwarm;
+    if (this._birdSwarmActive) {
+      this.maxActiveBirds = Math.max(1, this.maxActiveBirds * 2);
+      this.spawnInterval = Math.max(0.5, this.spawnInterval * 0.5);
+    }
 
     // HUD initial values
     this.hud.setDay(this.economy.day);
@@ -509,7 +611,7 @@ class Game {
     this.hud.setMoney(this.economy.money);
     this.hud.setAmmo(weaponData.ammo, weaponData.ammo);
     this.hud.setWeaponName(weaponData.name);
-    this.hud.setTimer(60);
+    this.hud.setTimer(this.huntTimer);
     this.hud.setCrosshairForWeapon(weaponData);
 
     // Build weapon slot bar
@@ -529,34 +631,233 @@ class Game {
     // Start ambient audio
     this.audio.startAmbience();
 
-    // Spawn initial birds
-    for (let i = 0; i < 2; i++) {
-      const birdKey = this.economy.spawnRandomBird();
+    // Spawn initial birds (2x Birds potion doubles the starting flock)
+    const initialBirdCount = this._birdSwarmActive ? 4 : 2;
+    for (let i = 0; i < initialBirdCount; i++) {
+      const effects = this._getActivePotionEffects();
+      const birdKey = this.economy.spawnRandomBird(effects.luckMult, effects.legendaryBoost);
       this.birds.spawn(birdKey);
+    }
+
+    // Rebuild weapon slot bar on the next frame too — pointer-lock can
+    // suppress the initial paint of newly-added HUD elements in some
+    // browsers, so this ensures it's visible immediately rather than
+    // only after the first keypress/interaction.
+    requestAnimationFrame(() => this._buildWeaponSlots());
+
+    // First-ever hunt: show scope-in hint until the player scopes in once
+    if (!this.economy.seenScopeHint) {
+      this.hud.showScopeHint();
+    } else {
+      this.hud.hideScopeHint();
     }
   }
 
   _endHunt() {
-    this.state = STATE.RESULTS;
-    this.player.unlock();
-    this.hud.hide();
-    this.audio.stopAmbience();
+    let rankUpResult = null;
+    try {
+      console.log('[endHunt] step 1 - setting state');
+      this.state = STATE.RESULTS;
+      this.player.unlock();
+      this.hud.hide();
+      this.hud.hideBossHP();
+      this.hud.hideScopeHint();
+      this.ui.hideControlsHint();
+      this.audio.stopAmbience();
 
-    // Show results — the UI will handle adding money
-    this.ui.showResults(this.huntBag, this.auth.getDisplayName());
-  }
+      console.log('[endHunt] step 2 - clearing consumables');
+      // Clear active consumables after hunt
+      this.economy.clearActiveConsumables();
 
-  _goToShop() {
-    this.state = STATE.SHOP;
-    this.ui.showShop();
+      // Calculate XP earned from hunt (10 per kill, 50 per boss)
+      const huntXP = (this.huntStats.totalKills * 10) + (this.huntStats.bossKills * 50);
+
+      console.log('[endHunt] step 3 - awarding XP:', huntXP);
+      // Award XP FIRST so the results screen shows the updated rank
+      if (huntXP > 0) {
+        rankUpResult = this.economy.addXP(huntXP);
+      }
+
+      console.log('[endHunt] step 4 - showing results');
+      // Show results — the UI will handle adding money
+      try {
+        this.ui.showResults(this.huntBag, this.auth.getDisplayName(), huntXP);
+      } catch (err) {
+        console.error('[endHunt] showResults error:', err);
+        // Fallback: force results screen visible so player is never stuck
+        this.ui.showScreen('results');
+      }
+      console.log('[endHunt] step 5 - done');
+    } catch (fatalErr) {
+      console.error('[endHunt] FATAL ERROR:', fatalErr);
+      // Last resort: force results screen
+      this.state = STATE.RESULTS;
+      try { this.player.unlock(); } catch(_) {}
+      try { this.hud.hide(); } catch(_) {}
+      try { this.ui.showScreen('results'); } catch(_) {}
+    }
+
+    // Show rank-up notification after the screen settles
+    if (rankUpResult && rankUpResult.ranked) {
+      setTimeout(() => {
+        this.ui.showSpeechBubble(`🎖️ RANK UP! ${rankUpResult.newRank.icon} ${rankUpResult.newRank.name}`, 5000);
+      }, 1500);
+    }
+
+    // Check daily challenges
+    if (this.economy.dailyChallenges && this.economy.dailyChallenges.length > 0) {
+      const challengeReward = checkChallenges(this.economy.dailyChallenges, this.huntStats);
+      if (challengeReward > 0) {
+        this.economy.money += challengeReward;
+        this.economy.totalMoneyEarned += challengeReward;
+        this.economy.save();
+      }
+    }
 
     // Check for pending trades (async, non-blocking)
     import('./trading.js').then(({ hasPendingTrades }) => {
       const uid = this.auth.getUid();
       if (uid) {
-        hasPendingTrades(uid).then(has => this.ui.setTradeNotification(has));
+        hasPendingTrades(uid).then(has => this.ui.setTradeNotification(has)).catch(() => {});
       }
-    });
+    }).catch(e => console.warn('Trading module load failed:', e));
+  }
+
+  // ─── Market Plaza ───────────────────────────
+
+  _goToMarket() {
+    this._startMarket();
+  }
+
+  _startMarket() {
+    this.state = STATE.MARKET;
+    this.ui.hideAll();
+    this.hud.hide();
+    this.audio.stopAmbience();
+
+    // Clear existing world
+    this.world.clear && this.world.clear();
+    this.world.unload();
+    this.birds.clear();
+    this.particles.clear();
+
+    // Build market plaza
+    this.marketWorld = new MarketWorld(this.scene);
+
+    if (this.pmremGenerator && this.scene.background) {
+      this.scene.environment = this.pmremGenerator.fromScene(this.scene).texture;
+    }
+
+    // First-person controls, spawn near the edge facing the center
+    this.player.reset();
+    this.player.position.set(0, 1.6, 11);
+    this.player.moveSpeed = 6;
+    this.player.setBounds(this.marketWorld.size); // 24 — walls block at ~13.5
+    this.player.setObstacles(this.marketWorld.obstacles);
+    this.camera.position.copy(this.player.position);
+    this.player.lock();
+
+    this._eHeld = false;
+    this._eHoldTimer = 0;
+    this._returnHoldTimer = 0;
+    this._shopReturnsToMarket = false;
+    this.ui.hideInteractPrompt();
+  }
+
+  _updateMarket(dt) {
+    if (!this.marketWorld) return;
+
+    this.player.update(dt);
+    this.camera.position.copy(this.player.position);
+
+    const playerPos = this.player.position;
+
+    // Billboard the EXIT sign toward the player
+    this.marketWorld.update(playerPos);
+
+    // Nearby stand -- hold E to enter that section of the shop
+    const stand = this.marketWorld.getNearestStand(playerPos);
+    if (stand) {
+      if (this._eHeld) {
+        this._eHoldTimer += dt;
+        const progress = Math.min(this._eHoldTimer / 1.0, 1);
+        this.ui.showInteractPrompt(stand.label);
+        this.ui.setInteractProgress(progress);
+        if (progress >= 1) {
+          this._eHoldTimer = 0;
+          this._eHeld = false;
+          this._enterShopFromStand(stand.category);
+          return;
+        }
+      } else {
+        this._eHoldTimer = 0;
+        this.ui.showInteractPrompt(stand.label);
+        this.ui.setInteractProgress(0);
+      }
+    } else {
+      this._eHoldTimer = 0;
+      this.ui.hideInteractPrompt();
+    }
+
+    // Center pad -- stand for 2 seconds to return home
+    if (this.marketWorld.isInReturnPad(playerPos)) {
+      this._returnHoldTimer += dt;
+      const progress = Math.min(this._returnHoldTimer / 2.0, 1);
+      this.ui.showReturnPrompt('RETURN TO HOME');
+      this.ui.setReturnProgress(progress);
+      if (progress >= 1) {
+        this._exitMarket();
+        return;
+      }
+    } else {
+      this._returnHoldTimer = 0;
+      this.ui.hideReturnPrompt();
+    }
+  }
+
+  _enterShopFromStand(category) {
+    this.player.unlock();
+    this.ui.hideInteractPrompt();
+    this.ui.hideReturnPrompt();
+    this.state = STATE.SHOP;
+    this._shopReturnsToMarket = true;
+    // 'all' = open full shop with no section filter
+    this.ui.showShop(category);
+  }
+
+  _exitShop() {
+    if (this._shopReturnsToMarket) {
+      this._shopReturnsToMarket = false;
+      this.ui.hideAll();
+      this.state = STATE.MARKET;
+      this._eHeld = false;
+      this._eHoldTimer = 0;
+      this._returnHoldTimer = 0;
+      this.player.lock();
+    } else {
+      this.ui.showScreen('results');
+    }
+  }
+
+  _exitMarket() {
+    this.player.unlock();
+    this.ui.hideInteractPrompt();
+    this.ui.hideReturnPrompt();
+
+    if (this.marketWorld) {
+      this.marketWorld.dispose();
+      this.marketWorld = null;
+    }
+    this._shopReturnsToMarket = false;
+
+    // Restore the regular world behind the results screen
+    const locKey = this.economy.currentLocation;
+    this.world.load(locKey);
+    this.sky.setPreset(locKey);
+    this.player.setObstacles(this.world.obstacles);
+
+    this.ui.showScreen('results');
+    this.state = STATE.RESULTS;
   }
 
   _goToSleep() {
@@ -639,8 +940,20 @@ class Game {
         this.particles.spawnFeatherBurst(point, birdData.bodyColor, birdData.wingColor);
         this.audio.playBirdHit();
 
-    // Kill the bird
-        this.birds.kill(bird);
+        // Hit the bird (boss birds take multiple hits)
+        const killed = this.birds.hit(bird);
+
+        if (!killed) {
+          // Boss took a hit but isn't dead — show HP bar
+          this.hud.showBossHP(bird.hp, birdData.hp || 1);
+          break;
+        }
+
+        // Bird is dead — hide boss HP if it was a boss
+        if (this.birds.isBoss(bird)) {
+          this.hud.hideBossHP();
+          this.huntStats.bossKills++;
+        }
 
         // Story XP for bird kills
         if (this.story.getPhase() === 'assembling') {
@@ -661,38 +974,46 @@ class Game {
         this.comboTimer = this.comboTimeout;
         const comboMultiplier = this._getComboMultiplier();
 
-        // Add to bag with combo info
-        this.huntBag.push({ key: bird.birdKey, combo: comboMultiplier });
-        this.economy.totalBirdsKilled++;
-
-        // HUD feedback with combo
-        const rarityColor = RARITY_COLORS[birdData.rarity] || '#aaa';
+        // Add to bag with combo info and pre-calculated value
         const fluctuation = 0.85 + Math.random() * 0.3;
-        const value = Math.round(birdData.value * fluctuation);
-        this.hud.addKill(birdData.name, value, rarityColor, this.comboCount, comboMultiplier);
-        this.hud.showMoneyPopup(value, comboMultiplier);
+        let earnedValue = Math.round(birdData.value * fluctuation);
+        if (this._doubleMoneyActive) earnedValue *= 2;
+        this.huntBag.push({ key: bird.birdKey, combo: comboMultiplier, earnedValue: earnedValue });
+        this.economy.totalBirdsKilled++;
+        this.huntStats.moneyEarned += earnedValue;
+
+        // Hunt stats tracking
+        this.huntStats.totalKills++;
+        if (this.huntTimer >= 40) this.huntStats.earlyKills++;
+        if (this.comboCount > this.huntStats.maxCombo) this.huntStats.maxCombo = this.comboCount;
+
+        // HUD feedback with combo (use stored earnedValue, no re-roll)
+        const rarityColor = RARITY_COLORS[birdData.rarity] || '#aaa';
+        this.hud.addKill(birdData.name, earnedValue, rarityColor, this.comboCount, comboMultiplier);
+        this.hud.showMoneyPopup(earnedValue, comboMultiplier);
         this.hud.showHitFlash();
+        this.hud.showHitMarker();
         this.hud.showCombo(this.comboCount, comboMultiplier);
 
         break; // One hit per shot
       }
     }
 
-    // Hit = keep shooting (ammo untouched). Miss = lose a bullet.
-    if (hitSomething) {
-      // Nothing to do — ammo stays full, gun stays ready
-    } else {
-      // Missed — reset combo, lose ammo (unless grandpas_rifle: no reload)
+    // Deduct ammo for ALL shots (hit or miss), unless noReload weapon
+    const wd = this.economy.getWeapon();
+    if (!wd.noReload) {
+      this.weapons.ammo--;
+      if (this.weapons.ammo <= 0) {
+        this.weapons.startReload();
+      }
+    }
+
+    // Missed — reset combo
+    if (!hitSomething) {
       this.comboCount = 0;
       this.comboTimer = 0;
       this.hud.hideCombo();
-      const wd = this.economy.getWeapon();
-      if (!wd.noReload) {
-        this.weapons.ammo--;
-        if (this.weapons.ammo <= 0) {
-          this.weapons.startReload();
-        }
-      }
+      this.huntStats.missCount++;
     }
 
     // Startle nearby birds
@@ -709,6 +1030,7 @@ class Game {
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.composer.setSize(window.innerWidth, window.innerHeight);
+    this.bloomPass.resolution.set(window.innerWidth, window.innerHeight);
   }
 
   // ─── Main Loop ─────────────────────────────
@@ -725,6 +1047,8 @@ class Game {
       this._updateShed(dt);
     } else if (this.state === STATE.BIKE_RIDE) {
       this._updateBikeRide(dt);
+    } else if (this.state === STATE.MARKET) {
+      this._updateMarket(dt);
     }
 
     // Always update visual systems
@@ -740,8 +1064,10 @@ class Game {
     this.huntTimer -= dt;
     this.hud.setTimer(this.huntTimer);
 
-    if (this.huntTimer <= 0) {
-      this._endHunt();
+    if (this.huntTimer <= 0 && !this._huntEnded) {
+      this._huntEnded = true;
+      // Defer out of the animation frame to avoid blocking the renderer
+      setTimeout(() => this._endHunt(), 0);
       return;
     }
 
@@ -849,8 +1175,66 @@ class Game {
     this.spawnTimer += dt;
     if (this.spawnTimer >= this.spawnInterval && this.birds.getLivingCount() < this.maxActiveBirds) {
       this.spawnTimer = 0;
-      const birdKey = this.economy.spawnRandomBird();
-      this.birds.spawn(birdKey);
+
+      // Boss spawn logic — rarity scales with dimension
+      // Dim 1: 5%, Dim 2: 10%, Dim 3: 18%, Dim 4: 25%
+      let birdKey;
+      const dim = this.economy.dimension;
+      const bossChance = [0.05, 0.10, 0.18, 0.25][Math.min(dim - 1, 3)];
+      const elapsed = this.huntTimer;
+      const potionEffects = this._getActivePotionEffects();
+
+      // Must be past 20s mark, and roll the chance
+      if (elapsed <= 40 && Math.random() < bossChance) {
+        // Build boss pool for current dimension
+        const allBosses = Object.entries(BIRDS).filter(([, b]) => b.bossTier && b.bossDimension <= dim);
+        if (allBosses.length > 0) {
+          // Weight by tier — lower tiers more common
+          // Tier 1: 60%, Tier 2: 30%, Tier 3: 10%
+          const tierRoll = Math.random();
+          let targetTier;
+          if (tierRoll < 0.10 && allBosses.some(([, b]) => b.bossTier === 3)) {
+            targetTier = 3;
+          } else if (tierRoll < 0.40 && allBosses.some(([, b]) => b.bossTier === 2)) {
+            targetTier = 2;
+          } else {
+            targetTier = 1;
+          }
+
+          // Pick a boss from the selected tier that matches current dimension (prefer) or lower
+          const tierBosses = allBosses.filter(([, b]) => b.bossTier === targetTier);
+          if (tierBosses.length > 0) {
+            // Prefer bosses from current dimension
+            const dimBosses = tierBosses.filter(([, b]) => b.bossDimension === dim);
+            const pool = dimBosses.length > 0 ? dimBosses : tierBosses;
+            const pick = pool[Math.floor(Math.random() * pool.length)];
+            birdKey = pick[0];
+            const bossData = BIRDS[birdKey];
+            if (bossData) this.hud.showBossAlert(bossData.name);
+          } else {
+            birdKey = this.economy.spawnRandomBird(potionEffects.luckMult, potionEffects.legendaryBoost);
+          }
+        } else {
+          birdKey = this.economy.spawnRandomBird(potionEffects.luckMult, potionEffects.legendaryBoost);
+        }
+      } else {
+        birdKey = this.economy.spawnRandomBird(potionEffects.luckMult, potionEffects.legendaryBoost);
+      }
+
+      // Flock spawn: 25% chance, max 2 active flocks, not for bosses
+      const isBossSpawn = birdKey && BIRDS[birdKey] && (BIRDS[birdKey].hp || 1) > 1;
+      if (!isBossSpawn && Math.random() < 0.25 && this.birds.getFlockCount() < 2) {
+        this.birds.spawnFlock(birdKey);
+      } else {
+        this.birds.spawn(birdKey);
+      }
+
+      // 2x Birds potion: occasionally spawn a bonus bird alongside this one
+      if (this._birdSwarmActive && Math.random() < 0.5 && this.birds.getLivingCount() < this.maxActiveBirds) {
+        const bonusKey = this.economy.spawnRandomBird(potionEffects.luckMult, potionEffects.legendaryBoost);
+        this.birds.spawn(bonusKey);
+      }
+
       this.spawnInterval = 2 + Math.random() * 3; // randomize next spawn
     }
 
@@ -861,7 +1245,7 @@ class Game {
   // ─── Weapon Switching ─────────────────────────
 
   _buildWeaponSlots() {
-    const ownedKeys = this.economy.getOwnedWeaponKeys();
+    const ownedKeys = this.economy.getLoadoutWeaponKeys();
     const ownedInfo = ownedKeys.map(key => ({
       key,
       name: this.economy.weapons[key].name
@@ -876,7 +1260,8 @@ class Game {
 
     this.economy.selectWeapon(weaponKey);
     const weaponData = this.economy.getWeapon();
-    this.weapons.equipWeapon(weaponKey, weaponData);
+    const skinColors = this._getSkinColors(weaponKey);
+    this.weapons.equipWeapon(weaponKey, weaponData, skinColors);
 
     // Double-pump: always full ammo, no reload, ready to fire
     this.weapons.ammo = weaponData.ammo;
@@ -891,11 +1276,170 @@ class Game {
     this.audio.playReload();
   }
 
+  _getSkinColors(weaponKey) {
+    const skinKey = this.economy.equippedSkins[weaponKey];
+    if (!skinKey || skinKey === 'default') return null;
+    const skin = WEAPON_SKINS[skinKey];
+    return skin ? skin.colors : null;
+  }
+
+  // ─── Pause / Settings / Credits / Fullscreen ────
+
+  _isPausable(state) {
+    return state === STATE.HUNTING || state === STATE.TRAIL_WALK ||
+           state === STATE.SHED || state === STATE.BIKE_RIDE ||
+           state === STATE.MARKET;
+  }
+
+  _pauseGame() {
+    if (!this._isPausable(this.state)) return;
+    this._pauseReturnState = this.state;
+    this.state = STATE.PAUSED;
+    if (this.player.isLocked) this.player.unlock();
+    if (this.audio.ctx && this.audio.ctx.state === 'running') this.audio.ctx.suspend();
+    this.ui.hideInteractPrompt();
+    this.ui.hideReturnPrompt();
+    this.ui.showPauseOverlay();
+  }
+
+  _resumeGame() {
+    if (this.state !== STATE.PAUSED) return;
+    this.ui.hideAll();
+    this.ui.hidePauseOverlay();
+    this.state = this._pauseReturnState || STATE.HUNTING;
+    this._pauseReturnState = null;
+    if (this.audio.ctx && this.audio.ctx.state === 'suspended') this.audio.ctx.resume();
+    this.player.lock();
+  }
+
+  _onPointerUnlock() {
+    // Fired when pointer lock is lost unexpectedly (e.g. browser auto-exits on Escape)
+    if (this._isPausable(this.state)) {
+      this._pauseGame();
+    }
+  }
+
+  _quitToTitle() {
+    this.ui.hidePauseOverlay();
+    this.ui.hideAll();
+    this.audio.stopAmbience();
+    if (this.audio.ctx && this.audio.ctx.state === 'suspended') this.audio.ctx.resume();
+    this.hud.hide();
+    this.hud.hideBossHP();
+    this.hud.hideScopeHint();
+    this.trailWorld = null;
+    this.shedInterior = null;
+    this.bikeController = null;
+    if (this.marketWorld) { this.marketWorld.dispose(); this.marketWorld = null; }
+    this._pauseReturnState = null;
+    this._shopReturnsToMarket = false;
+    this.state = STATE.TITLE;
+    this.ui.showTitle(this.auth.getDisplayName());
+  }
+
+  _openSettings(fromPause) {
+    this._settingsFromPause = fromPause;
+    this.ui.showSettings(this.settings.values);
+  }
+
+  _closeSettings() {
+    this._returnFromSubScreen();
+  }
+
+  _openCredits(fromPause) {
+    this._settingsFromPause = fromPause;
+    this.ui.showCredits();
+  }
+
+  _closeCredits() {
+    this._returnFromSubScreen();
+  }
+
+  _returnFromSubScreen() {
+    this.ui.hideAll();
+    if (this._settingsFromPause) {
+      this.ui.showPauseOverlay();
+    } else {
+      this.ui.showScreen('title');
+    }
+  }
+
+  _applySetting(key, value) {
+    this.settings.set(key, value);
+    switch (key) {
+      case 'masterVolume':
+        this.audio.setMasterVolume(value);
+        break;
+      case 'mouseSensitivity':
+        this.player.sensitivityMultiplier = value;
+        break;
+      case 'graphicsQuality':
+        this._applyGraphicsQuality(value);
+        break;
+    }
+  }
+
+  _applyGraphicsQuality(quality) {
+    switch (quality) {
+      case 'low':
+        this.renderer.shadowMap.enabled = false;
+        this.renderer.setPixelRatio(1);
+        this.bloomPass.enabled = false;
+        break;
+      case 'medium':
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        this.bloomPass.enabled = false;
+        break;
+      default: // 'high'
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.bloomPass.enabled = true;
+        break;
+    }
+  }
+
+  _toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+    } else if (document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
+    }
+  }
+
   _onKeyDown(e) {
+    // Escape -- pause / resume / back out of settings & credits
+    if (e.code === 'Escape') {
+      if (this.state === STATE.PAUSED) {
+        if (this.ui.isSubScreenOpen()) {
+          this._closeSettings();
+        } else {
+          this._resumeGame();
+        }
+      } else if (this._isPausable(this.state)) {
+        this._pauseGame();
+      }
+      return;
+    }
+
     // Spacebar scope (hold)
     if (e.code === 'Space' && this.state === STATE.HUNTING && !e.repeat) {
       e.preventDefault();
       this._scoping = true;
+
+      // First time scoping in: dismiss the hint for good
+      if (!this.economy.seenScopeHint) {
+        this.economy.seenScopeHint = true;
+        this.hud.hideScopeHint();
+        this.economy.save();
+      }
+    }
+
+    // E key -- hold to interact in market
+    if (e.code === 'KeyE' && this.state === STATE.MARKET && !e.repeat) {
+      this._eHeld = true;
     }
 
     // I key -- inspect in shed
@@ -919,12 +1463,32 @@ class Game {
       return;
     }
 
+    // Admin cheat: type 'qwerty' in the first 10 seconds of a hunt for $500
+    if (this.state === STATE.HUNTING && !e.repeat && this.huntTimer >= 50) {
+      const letter = e.key.toLowerCase();
+      const target = 'qwerty';
+      if (letter.length === 1 && letter >= 'a' && letter <= 'z') {
+        if (target[this._cheatBuffer.length] === letter) {
+          this._cheatBuffer += letter;
+          if (this._cheatBuffer === target) {
+            this.economy.money += 500;
+            this.economy.save();
+            this.hud.setMoney(this.economy.money);
+            this.hud.showMoneyPopup(500, 1);
+            this._cheatBuffer = '';
+          }
+        } else {
+          this._cheatBuffer = letter === target[0] ? letter : '';
+        }
+      }
+    }
+
     if (this.state !== STATE.HUNTING) return;
 
     // Number keys 1-9 for weapon switching
     const num = parseInt(e.key);
     if (num >= 1 && num <= 9) {
-      const ownedKeys = this.economy.getOwnedWeaponKeys();
+      const ownedKeys = this.economy.getLoadoutWeaponKeys();
       const idx = num - 1;
       if (idx < ownedKeys.length) {
         this._switchWeapon(ownedKeys[idx]);
@@ -937,28 +1501,6 @@ class Game {
       if (!wd.noReload) this.weapons.startReload();
     }
 
-    // Admin cheat: type qwerty in backyard between 40s and 30s on the timer
-    // Ignore held-down key repeats so movement keys don't reset the buffer
-    if (!e.repeat && this.economy.currentLocation === 'backyard' && this.huntTimer <= 40 && this.huntTimer >= 30) {
-      const letter = e.key.toLowerCase();
-      // Only process single printable characters (ignore Shift, Control, etc.)
-      if (letter.length === 1 && letter >= 'a' && letter <= 'z') {
-        const target = 'qwerty';
-        if (target[this._cheatBuffer.length] === letter) {
-          this._cheatBuffer += letter;
-          if (this._cheatBuffer === target) {
-            this.economy.money += 500;
-            this.economy.save();
-            this.hud.setMoney(this.economy.money);
-            this.hud.showMoneyPopup(500, 1);
-            this._cheatBuffer = '';
-          }
-        } else {
-          // Wrong letter, restart
-          this._cheatBuffer = letter === target[0] ? letter : '';
-        }
-      }
-    }
   }
 
   _onMouseUp(e) {
@@ -970,6 +1512,10 @@ class Game {
   _onKeyUp(e) {
     if (e.code === 'Space') {
       this._scoping = false;
+    }
+    if (e.code === 'KeyE') {
+      this._eHeld = false;
+      this._eHoldTimer = 0;
     }
   }
 }
