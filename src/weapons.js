@@ -8,7 +8,7 @@ import * as THREE from 'three';
 /**
  * Build a procedural gun model from Three.js geometry
  */
-function buildGunModel(weaponKey) {
+function buildGunModel(weaponKey, skinColors = null) {
   const gun = new THREE.Group();
   
   const woodMat = new THREE.MeshStandardMaterial({
@@ -75,13 +75,179 @@ function buildGunModel(weaponKey) {
       barrelLength = 0.4;
       barrelRadius = 0.013;
       break;
+    case 'grandpas_rifle':
+      stockColor = 0x8B6914; // rich aged gold wood
+      stockLength = 0.32;
+      barrelLength = 0.55;
+      barrelRadius = 0.013;
+      break;
     // ─── Dimension 2: Tropics ──────────────
     case 'crossbow':
-      stockColor = 0x5a3a1a;
-      stockLength = 0.2;
-      barrelLength = 0.35;
+      stockColor = 0x3a3530;
+      stockLength = 0.3;
+      barrelLength = 0.4;
       barrelRadius = 0.008;
       break;
+
+  // (rest of cases continue below...)
+  // Reopen switch to continue remaining cases
+  }
+
+  // ── Crossbow: full tactical model override ───
+  if (weaponKey === 'crossbow') {
+    // Remove default gun parts — we build everything custom
+    while (gun.children.length) gun.remove(gun.children[0]);
+
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x3a3530, roughness: 0.6, metalness: 0.4 });
+    const darkMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.4, metalness: 0.7 });
+    const limbMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.5, metalness: 0.6 });
+    const stringMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.3 });
+    const redMat = new THREE.MeshStandardMaterial({ color: 0x882222, roughness: 0.6, metalness: 0.3 });
+
+    // ── Main body / rail ─────────────────────
+    const railGeo = new THREE.BoxGeometry(0.03, 0.035, 0.42);
+    const rail = new THREE.Mesh(railGeo, bodyMat);
+    rail.position.set(0, 0, -0.05);
+    gun.add(rail);
+
+    // Top rail groove
+    const grooveGeo = new THREE.BoxGeometry(0.012, 0.006, 0.35);
+    const groove = new THREE.Mesh(grooveGeo, darkMat);
+    groove.position.set(0, 0.02, -0.07);
+    gun.add(groove);
+
+    // ── Stock / butt ─────────────────────────
+    const stockGeo = new THREE.BoxGeometry(0.032, 0.06, 0.12);
+    const stock = new THREE.Mesh(stockGeo, bodyMat);
+    stock.position.set(0, -0.005, 0.2);
+    gun.add(stock);
+
+    // Butt pad (red/brown rubber)
+    const buttGeo = new THREE.BoxGeometry(0.034, 0.065, 0.015);
+    const butt = new THREE.Mesh(buttGeo, redMat);
+    butt.position.set(0, -0.005, 0.26);
+    gun.add(butt);
+
+    // ── Pistol grip ──────────────────────────
+    const gripGeo = new THREE.BoxGeometry(0.025, 0.09, 0.04);
+    const grip = new THREE.Mesh(gripGeo, bodyMat);
+    grip.position.set(0, -0.06, 0.07);
+    grip.rotation.x = -0.35;
+    gun.add(grip);
+
+    // Trigger guard
+    const guardGeo = new THREE.TorusGeometry(0.015, 0.003, 6, 8, Math.PI);
+    const guard = new THREE.Mesh(guardGeo, darkMat);
+    guard.position.set(0, -0.04, 0.05);
+    guard.rotation.z = Math.PI;
+    gun.add(guard);
+
+    // Trigger
+    const trigGeo = new THREE.BoxGeometry(0.004, 0.014, 0.004);
+    const trig = new THREE.Mesh(trigGeo, darkMat);
+    trig.position.set(0, -0.035, 0.05);
+    gun.add(trig);
+
+    // ── Limbs (curved, angled outward) ───────
+    const limbWidth = 0.17;
+    for (const side of [-1, 1]) {
+      // Inner limb section (angled forward)
+      const innerGeo = new THREE.BoxGeometry(0.08, 0.015, 0.018);
+      const inner = new THREE.Mesh(innerGeo, limbMat);
+      inner.position.set(side * 0.04, 0.005, -0.26);
+      inner.rotation.y = side * 0.3;
+      gun.add(inner);
+
+      // Outer limb section (curved more)
+      const outerGeo = new THREE.BoxGeometry(0.07, 0.012, 0.015);
+      const outer = new THREE.Mesh(outerGeo, limbMat);
+      outer.position.set(side * 0.1, 0.005, -0.28);
+      outer.rotation.y = side * 0.6;
+      gun.add(outer);
+
+      // Cam wheels at limb tips
+      const camGeo = new THREE.CylinderGeometry(0.012, 0.012, 0.012, 8);
+      const cam = new THREE.Mesh(camGeo, darkMat);
+      cam.position.set(side * limbWidth * 0.85, 0.005, -0.31);
+      cam.rotation.x = Math.PI / 2;
+      gun.add(cam);
+    }
+
+    // ── Bowstring (V-shape from nock point to each cam) ──
+    // Cam positions: x=±0.145, y=0.005, z=-0.31 (at limb tips)
+    // Nock point: x=0, y=0.005, z=-0.08 (where bolt is held)
+    const camXPos = 0.17 * 0.85;
+    const camZPos = -0.31;
+    const nockPos = new THREE.Vector3(0, 0.005, -0.08);
+    const leftCam = new THREE.Vector3(-camXPos, 0.005, camZPos);
+    const rightCam = new THREE.Vector3(camXPos, 0.005, camZPos);
+
+    // Helper: create a string from point A to point B
+    function makeString(from, to, mat) {
+      const len = from.distanceTo(to);
+      const mid = new THREE.Vector3().addVectors(from, to).multiplyScalar(0.5);
+      const geo = new THREE.CylinderGeometry(0.0015, 0.0015, len, 4);
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.copy(mid);
+      // CylinderGeometry extends along Y — point Y axis toward 'to'
+      const dir = new THREE.Vector3().subVectors(to, from).normalize();
+      const quat = new THREE.Quaternion().setFromUnitVectors(
+        new THREE.Vector3(0, 1, 0), dir
+      );
+      mesh.quaternion.copy(quat);
+      return mesh;
+    }
+
+    gun.add(makeString(nockPos, leftCam, stringMat));
+    gun.add(makeString(nockPos, rightCam, stringMat));
+
+    // ── Bolt (arrow) loaded on top ───────────
+    const boltMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.3, metalness: 0.8 });
+    const boltGeo = new THREE.CylinderGeometry(0.003, 0.002, 0.3, 4);
+    boltGeo.rotateX(Math.PI / 2);
+    const bolt = new THREE.Mesh(boltGeo, boltMat);
+    bolt.position.set(0, 0.025, -0.12);
+    gun.add(bolt);
+
+    // Bolt fletchings (small fins at back)
+    const fletchMat = new THREE.MeshStandardMaterial({ color: 0x3355cc, roughness: 0.5 });
+    for (const side of [-1, 1]) {
+      const fletchGeo = new THREE.BoxGeometry(0.015 * side, 0.008, 0.02);
+      const fletch = new THREE.Mesh(fletchGeo, fletchMat);
+      fletch.position.set(side * 0.008, 0.025, 0.02);
+      gun.add(fletch);
+    }
+
+    // ── Small red dot sight ──────────────────
+    const sightBase = new THREE.BoxGeometry(0.015, 0.012, 0.03);
+    const sightB = new THREE.Mesh(sightBase, darkMat);
+    sightB.position.set(0, 0.032, -0.04);
+    gun.add(sightB);
+
+    const dotMat = new THREE.MeshStandardMaterial({
+      color: 0xff2222, emissive: 0xff0000, emissiveIntensity: 0.8
+    });
+    const dotGeo = new THREE.SphereGeometry(0.003, 6, 6);
+    const dot = new THREE.Mesh(dotGeo, dotMat);
+    dot.position.set(0, 0.04, -0.04);
+    gun.add(dot);
+
+    // ── Foregrip (front underside) ───────────
+    const fgGeo = new THREE.BoxGeometry(0.022, 0.04, 0.04);
+    const fg = new THREE.Mesh(fgGeo, bodyMat);
+    fg.position.set(0, -0.035, -0.15);
+    gun.add(fg);
+
+    // Position the whole crossbow
+    gun.position.set(0.22, -0.22, -0.35);
+    gun.rotation.set(0, 0, 0);
+
+    return gun;
+  }
+
+  // ── Resume shared gun building for non-crossbow weapons ──
+  switch(weaponKey) {
+    case 'crossbow': break; // already handled above
     case 'auto_shotgun':
       stockColor = 0x2a2a2a;
       stockLength = 0.25;
@@ -121,6 +287,12 @@ function buildGunModel(weaponKey) {
       break;
   }
 
+  // Apply skin color overrides if a skin is equipped
+  if (skinColors) {
+    stockColor = skinColors.stock;
+    metalMat.color.setHex(skinColors.metal);
+    darkMetalMat.color.setHex(skinColors.metal);
+  }
   woodMat.color.setHex(stockColor);
 
   // ─── Stock (wooden body) ──────────────
@@ -210,28 +382,6 @@ function buildGunModel(weaponKey) {
     const mag = new THREE.Mesh(magGeo, darkMetalMat);
     mag.position.set(0, -0.06, 0.01);
     gun.add(mag);
-  }
-
-  // Crossbow: limbs and string
-  if (weaponKey === 'crossbow') {
-    const limbMat = new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.7, metalness: 0.2 });
-    const limbGeo = new THREE.BoxGeometry(0.18, 0.015, 0.015);
-    const limb = new THREE.Mesh(limbGeo, limbMat);
-    limb.position.set(0, 0.01, -0.28);
-    gun.add(limb);
-    // Bowstring
-    const stringMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.5 });
-    const stringGeo = new THREE.CylinderGeometry(0.001, 0.001, 0.18, 4);
-    const string = new THREE.Mesh(stringGeo, stringMat);
-    string.position.set(0, 0.01, -0.2);
-    string.rotation.z = Math.PI / 2;
-    gun.add(string);
-    // Bolt
-    const boltGeo = new THREE.CylinderGeometry(0.003, 0.003, 0.25, 4);
-    boltGeo.rotateX(Math.PI / 2);
-    const bolt = new THREE.Mesh(boltGeo, metalMat);
-    bolt.position.set(0, 0.02, -0.15);
-    gun.add(bolt);
   }
 
   // Rail Gun: glowing blue energy rails
@@ -334,7 +484,7 @@ export class WeaponSystem {
     this.raycaster.far = 200;
   }
 
-  equipWeapon(weaponKey, weaponData) {
+  equipWeapon(weaponKey, weaponData, skinColors = null, steadyHands = false) {
     // Remove old gun
     if (this.currentGun) {
       this.gunGroup.remove(this.currentGun);
@@ -347,8 +497,12 @@ export class WeaponSystem {
     }
 
     this.currentWeaponKey = weaponKey;
-    this.weaponData = weaponData;
-    this.currentGun = buildGunModel(weaponKey);
+    this.weaponData = { ...weaponData };
+    // Steady Hands consumable: halve weapon spread
+    if (steadyHands) {
+      this.weaponData.spread = this.weaponData.spread / 2;
+    }
+    this.currentGun = buildGunModel(weaponKey, skinColors);
 
     // Position in camera space
     this.currentGun.position.copy(this.restPosition);
@@ -361,7 +515,14 @@ export class WeaponSystem {
     this.canShoot = true;
     this.isReloading = false;
     this.recoilAmount = 0;
+    this.fireCooldown = 0;
     this.hasScope = !!(weaponData.hasScope);
+
+    // Reset ADS and animation state
+    this.isADS = false;
+    this._adsLerp = 0;
+    this.bobPhase = 0;
+    this.bobIntensity = 0;
   }
 
   /**
@@ -402,9 +563,13 @@ export class WeaponSystem {
         rc.ray.direction.add(s).normalize();
         casters.push(rc);
       }
+      this.fireCooldown = this.weaponData.fireRate;
+      this.canShoot = false;
       return casters;
     }
 
+    this.fireCooldown = this.weaponData.fireRate;
+    this.canShoot = false;
     return [this.raycaster];
   }
 
@@ -430,6 +595,12 @@ export class WeaponSystem {
     // Fire cooldown
     if (this.fireCooldown > 0) {
       this.fireCooldown -= dt;
+      if (this.fireCooldown <= 0) {
+        this.fireCooldown = 0;
+        if (!this.isReloading) {
+          this.canShoot = true;
+        }
+      }
     }
 
     // Reload

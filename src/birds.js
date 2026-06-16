@@ -15,87 +15,166 @@ function createBirdModel(birdData) {
   const bird = new THREE.Group();
   const s = birdData.size;
 
-  // Materials
+  // Materials — smoother, more realistic
   const bodyMat = new THREE.MeshStandardMaterial({
     color: birdData.bodyColor,
-    roughness: 0.7,
-    metalness: 0.0
+    roughness: 0.55,
+    metalness: 0.05,
+    flatShading: false
   });
   const wingMat = new THREE.MeshStandardMaterial({
     color: birdData.wingColor,
-    roughness: 0.6,
-    metalness: 0.0,
-    side: THREE.DoubleSide
+    roughness: 0.5,
+    metalness: 0.05,
+    side: THREE.DoubleSide,
+    flatShading: false
   });
   const headMat = new THREE.MeshStandardMaterial({
     color: birdData.headColor,
-    roughness: 0.7
+    roughness: 0.5
   });
   const beakMat = new THREE.MeshStandardMaterial({
     color: birdData.beakColor,
-    roughness: 0.4
+    roughness: 0.3,
+    metalness: 0.1
   });
   const bellyMat = new THREE.MeshStandardMaterial({
     color: birdData.bellyColor,
-    roughness: 0.7
+    roughness: 0.55
   });
   const eyeMat = new THREE.MeshStandardMaterial({
     color: 0x111111,
-    roughness: 0.2,
-    metalness: 0.5
+    roughness: 0.1,
+    metalness: 0.7
+  });
+  const eyeHighlightMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    roughness: 0.0,
+    metalness: 0.0,
+    emissive: 0xffffff,
+    emissiveIntensity: 0.3
   });
 
-  // ─── Body (elongated ellipsoid) ──────────
-  const bodyGeo = new THREE.SphereGeometry(s * 0.5, 12, 10);
-  // Stretch along Z to make it elongated
-  bodyGeo.scale(0.8, 0.7, 1.3);
+  // ─── Body (streamlined teardrop) ──────────
+  const bodyGeo = new THREE.SphereGeometry(s * 0.5, 24, 18);
+  // Deform into a teardrop: taper toward the tail (positive Z)
+  const bodyPos = bodyGeo.attributes.position;
+  for (let i = 0; i < bodyPos.count; i++) {
+    let x = bodyPos.getX(i);
+    let y = bodyPos.getY(i);
+    let z = bodyPos.getZ(i);
+
+    // Elongate along Z
+    z *= 1.4;
+
+    // Taper toward tail
+    const zNorm = (z + s * 0.7) / (s * 1.4); // 0 at nose, 1 at tail
+    const taper = 1.0 - Math.pow(Math.max(0, zNorm - 0.5) * 2, 1.5) * 0.45;
+    x *= 0.85 * taper;
+    y *= 0.75 * taper;
+
+    // Slight breast bulge at the front
+    if (zNorm < 0.4) {
+      const bulge = 1.0 + Math.sin(zNorm * Math.PI / 0.4) * 0.08;
+      x *= bulge;
+      y *= bulge;
+    }
+
+    bodyPos.setXYZ(i, x, y, z);
+  }
+  bodyGeo.computeVertexNormals();
   const body = new THREE.Mesh(bodyGeo, bodyMat);
   bird.add(body);
 
-  // ─── Belly (slightly larger bottom half) ─
-  const bellyGeo = new THREE.SphereGeometry(s * 0.48, 10, 8, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.5);
-  bellyGeo.scale(0.75, 0.5, 1.2);
+  // ─── Belly (smooth underside) ─────────────
+  const bellyGeo = new THREE.SphereGeometry(s * 0.47, 20, 12, 0, Math.PI * 2, Math.PI * 0.45, Math.PI * 0.55);
+  bellyGeo.scale(0.8, 0.5, 1.3);
   const belly = new THREE.Mesh(bellyGeo, bellyMat);
-  belly.position.y = -s * 0.05;
+  belly.position.y = -s * 0.06;
   bird.add(belly);
 
-  // ─── Head ────────────────────────────────
-  const headGeo = new THREE.SphereGeometry(s * 0.3, 10, 8);
+  // ─── Neck bridge (smooth transition) ──────
+  const neckGeo = new THREE.SphereGeometry(s * 0.22, 16, 12);
+  neckGeo.scale(0.8, 0.9, 1.1);
+  const neck = new THREE.Mesh(neckGeo, headMat);
+  neck.position.set(0, s * 0.15, -s * 0.45);
+  bird.add(neck);
+
+  // ─── Head (smooth sphere) ─────────────────
+  const headGeo = new THREE.SphereGeometry(s * 0.26, 20, 16);
+  headGeo.scale(1.0, 0.95, 1.05);
   const head = new THREE.Mesh(headGeo, headMat);
-  head.position.set(0, s * 0.25, -s * 0.55);
+  head.position.set(0, s * 0.27, -s * 0.6);
   bird.add(head);
 
-  // ─── Eyes ────────────────────────────────
-  const eyeGeo = new THREE.SphereGeometry(s * 0.06, 6, 6);
+  // ─── Eyes (with highlights) ───────────────
+  const eyeGeo = new THREE.SphereGeometry(s * 0.055, 12, 10);
   const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-  eyeL.position.set(s * 0.15, s * 0.3, -s * 0.72);
+  eyeL.position.set(s * 0.14, s * 0.32, -s * 0.75);
   bird.add(eyeL);
   const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-  eyeR.position.set(-s * 0.15, s * 0.3, -s * 0.72);
+  eyeR.position.set(-s * 0.14, s * 0.32, -s * 0.75);
   bird.add(eyeR);
 
-  // ─── Beak (cone) ────────────────────────
-  const beakGeo = new THREE.ConeGeometry(s * 0.08, s * 0.25, 6);
+  // Eye highlights (small white dots)
+  const hlGeo = new THREE.SphereGeometry(s * 0.018, 6, 6);
+  const hlL = new THREE.Mesh(hlGeo, eyeHighlightMat);
+  hlL.position.set(s * 0.155, s * 0.335, -s * 0.79);
+  bird.add(hlL);
+  const hlR = new THREE.Mesh(hlGeo, eyeHighlightMat);
+  hlR.position.set(-s * 0.125, s * 0.335, -s * 0.79);
+  bird.add(hlR);
+
+  // ─── Beak (tapered cone) ──────────────────
+  const beakGeo = new THREE.ConeGeometry(s * 0.065, s * 0.28, 12);
   beakGeo.rotateX(Math.PI / 2);
+  // Taper the tip
+  const beakPos = beakGeo.attributes.position;
+  for (let i = 0; i < beakPos.count; i++) {
+    const z = beakPos.getZ(i);
+    if (z < -s * 0.1) {
+      const squeeze = 0.6;
+      beakPos.setX(i, beakPos.getX(i) * squeeze);
+      beakPos.setY(i, beakPos.getY(i) * squeeze - s * 0.02);
+    }
+  }
+  beakGeo.computeVertexNormals();
   const beak = new THREE.Mesh(beakGeo, beakMat);
-  beak.position.set(0, s * 0.2, -s * 0.85);
+  beak.position.set(0, s * 0.22, -s * 0.87);
   bird.add(beak);
 
-  // ─── Wings (shaped triangular panels) ───
-  // Custom wing shape
+  // ─── Wings (organic curved shape) ─────────
   const wingShape = new THREE.Shape();
   wingShape.moveTo(0, 0);
-  wingShape.lineTo(s * 0.9, s * 0.15);
-  wingShape.lineTo(s * 1.0, -s * 0.1);
-  wingShape.lineTo(s * 0.6, -s * 0.15);
-  wingShape.lineTo(0, -s * 0.2);
+  wingShape.bezierCurveTo(
+    s * 0.3, s * 0.08,
+    s * 0.7, s * 0.18,
+    s * 1.05, s * 0.08
+  );
+  wingShape.bezierCurveTo(
+    s * 1.1, 0,
+    s * 1.0, -s * 0.08,
+    s * 0.85, -s * 0.12
+  );
+  wingShape.bezierCurveTo(
+    s * 0.5, -s * 0.18,
+    s * 0.2, -s * 0.2,
+    0, -s * 0.15
+  );
   wingShape.lineTo(0, 0);
 
-  const wingGeo = new THREE.ShapeGeometry(wingShape);
+  // Extrude slightly for thickness
+  const wingGeo = new THREE.ExtrudeGeometry(wingShape, {
+    depth: s * 0.015,
+    bevelEnabled: true,
+    bevelThickness: s * 0.005,
+    bevelSize: s * 0.005,
+    bevelSegments: 2
+  });
 
   // Left wing pivot
   const leftWingPivot = new THREE.Group();
-  leftWingPivot.position.set(s * 0.3, s * 0.1, 0);
+  leftWingPivot.position.set(s * 0.32, s * 0.12, 0);
   const leftWing = new THREE.Mesh(wingGeo, wingMat);
   leftWingPivot.add(leftWing);
   bird.add(leftWingPivot);
@@ -103,7 +182,7 @@ function createBirdModel(birdData) {
 
   // Right wing pivot (mirrored)
   const rightWingPivot = new THREE.Group();
-  rightWingPivot.position.set(-s * 0.3, s * 0.1, 0);
+  rightWingPivot.position.set(-s * 0.32, s * 0.12, 0);
   const rightWingGeo = wingGeo.clone();
   rightWingGeo.scale(-1, 1, 1);
   const rightWing = new THREE.Mesh(rightWingGeo, wingMat);
@@ -111,16 +190,30 @@ function createBirdModel(birdData) {
   bird.add(rightWingPivot);
   bird.userData.rightWingPivot = rightWingPivot;
 
-  // ─── Tail (fan of planes) ───────────────
+  // ─── Tail (smooth feather fan) ────────────
   const tailGroup = new THREE.Group();
-  tailGroup.position.set(0, 0, s * 0.6);
-  for (let i = -2; i <= 2; i++) {
-    const tailGeo = new THREE.PlaneGeometry(s * 0.12, s * 0.35);
-    const tail = new THREE.Mesh(tailGeo, wingMat);
-    tail.rotation.y = i * 0.15;
-    tail.rotation.x = 0.3;
-    tail.position.z = s * 0.15;
-    tailGroup.add(tail);
+  tailGroup.position.set(0, -s * 0.02, s * 0.6);
+
+  for (let i = -3; i <= 3; i++) {
+    // Each tail feather is a tapered shape
+    const featherShape = new THREE.Shape();
+    featherShape.moveTo(0, 0);
+    featherShape.bezierCurveTo(
+      s * 0.04, s * 0.12,
+      s * 0.03, s * 0.3,
+      0, s * 0.4
+    );
+    featherShape.bezierCurveTo(
+      -s * 0.03, s * 0.3,
+      -s * 0.04, s * 0.12,
+      0, 0
+    );
+    const featherGeo = new THREE.ShapeGeometry(featherShape, 6);
+    const feather = new THREE.Mesh(featherGeo, wingMat);
+    feather.rotation.y = i * 0.12;
+    feather.rotation.x = 0.25 + Math.abs(i) * 0.03;
+    feather.position.z = s * 0.05;
+    tailGroup.add(feather);
   }
   bird.add(tailGroup);
   bird.userData.tailGroup = tailGroup;
@@ -261,6 +354,7 @@ export class BirdSystem {
   constructor(scene) {
     this.scene = scene;
     this.birds = [];
+    this.flocks = [];       // Active flocks
     this.areaSize = 30;
   }
 
@@ -332,6 +426,12 @@ export class BirdSystem {
     if (!data) return null;
 
     const mesh = createBirdModel(data);
+
+    // Boss birds are much larger
+    if (data.size > 2) {
+      mesh.scale.setScalar(data.size / 1.5);
+    }
+
     const entryPath = this._buildEntryPath(data.speed);
 
     // Start at the first waypoint (off-screen)
@@ -342,6 +442,7 @@ export class BirdSystem {
       mesh,
       data,
       birdKey,
+      hp: data.hp || 1,
       waypoints: entryPath,
       waypointIndex: 0,
       pathT: 0,
@@ -361,12 +462,136 @@ export class BirdSystem {
   }
 
   /**
+   * Spawn a flock — group of 3-6 same-type birds with a designated leader
+   */
+  spawnFlock(birdKey, count) {
+    const data = BIRDS[birdKey];
+    if (!data) return null;
+
+    count = Math.max(2, Math.min(6, count || (3 + Math.floor(Math.random() * 4))));
+    const flockId = `flock_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+
+    const flock = {
+      id: flockId,
+      birdKey,
+      members: [],
+      leader: null,
+      scattered: false
+    };
+
+    // Spawn leader first
+    const leaderBird = this.spawn(birdKey);
+    if (!leaderBird) return null;
+    leaderBird.flockId = flockId;
+    leaderBird.isFlockLeader = true;
+    flock.leader = leaderBird;
+    flock.members.push(leaderBird);
+
+    // Spawn followers in formation around leader
+    for (let i = 1; i < count; i++) {
+      const follower = this.spawn(birdKey);
+      if (!follower) continue;
+      follower.flockId = flockId;
+      follower.isFlockLeader = false;
+
+      // Offset position slightly from leader (V-formation)
+      const side = i % 2 === 0 ? 1 : -1;
+      const row = Math.ceil(i / 2);
+      const offset = new THREE.Vector3(
+        side * row * data.size * 2.5,
+        (Math.random() - 0.5) * 0.5,
+        row * data.size * 2
+      );
+      follower.mesh.position.add(offset);
+
+      flock.members.push(follower);
+    }
+
+    this.flocks.push(flock);
+    return flock;
+  }
+
+  /**
+   * Scatter a flock — called when leader is killed
+   */
+  scatterFlock(flockId) {
+    const flock = this.flocks.find(f => f.id === flockId);
+    if (!flock || flock.scattered) return;
+    flock.scattered = true;
+
+    for (const member of flock.members) {
+      if (!member.alive || member.state === 'FALLING') continue;
+
+      // Each bird startles and flies in a random direction
+      member.startled = true;
+      member.startledTimer = 3 + Math.random() * 2;
+      member.flockId = null; // Leave the flock
+      member.isFlockLeader = false;
+
+      // Build a panic exit path
+      const escapeDir = new THREE.Vector3(
+        (Math.random() - 0.5) * 2,
+        0.5 + Math.random(),
+        (Math.random() - 0.5) * 2
+      ).normalize();
+
+      member.waypoints = [
+        member.mesh.position.clone(),
+        member.mesh.position.clone().add(escapeDir.clone().multiplyScalar(12)).add(new THREE.Vector3(0, 8, 0)),
+        this._getEdgePosition(8 + Math.random() * 6)
+      ];
+      member.waypointIndex = 0;
+      member.pathT = 0;
+      member.state = 'EXITING';
+    }
+  }
+
+  /**
    * Kill a bird — starts falling/tumbling instead of instant removal
    */
   kill(birdObj) {
     birdObj.state = 'FALLING';
     birdObj.fallVelocity = 0;
     birdObj.fallRotation = (Math.random() - 0.5) * 8;
+
+    // If this bird was a flock leader, scatter the flock
+    if (birdObj.isFlockLeader && birdObj.flockId) {
+      this.scatterFlock(birdObj.flockId);
+    }
+  }
+
+  /**
+   * Hit a bird — decrements HP, returns true if killed
+   */
+  hit(birdObj) {
+    birdObj.hp--;
+    if (birdObj.hp <= 0) {
+      this.kill(birdObj);
+      return true; // dead
+    }
+    // Hit flash — briefly make bird white
+    birdObj.mesh.traverse(child => {
+      if (child.isMesh && child.material) {
+        child.userData._origColor = child.material.color.getHex();
+        child.material.color.setHex(0xffffff);
+      }
+    });
+    setTimeout(() => {
+      birdObj.mesh.traverse(child => {
+        if (child.isMesh && child.material && child.userData._origColor !== undefined) {
+          child.material.color.setHex(child.userData._origColor);
+          delete child.userData._origColor;
+        }
+      });
+    }, 150);
+    return false; // still alive
+  }
+
+  /**
+   * Check if a bird is a boss (multi-HP)
+   */
+  isBoss(birdObj) {
+    return birdObj.data && (birdObj.data.hp || 1) > 1;
   }
 
   /**
@@ -546,29 +771,126 @@ export class BirdSystem {
 
       bird.mesh.position.copy(newPos);
 
-      // ─── Wing flap ─────────────────────
+      // ─── Realistic wing flap ──────────────
       bird.flapPhase += dt * bird.data.flapSpeed;
-      const flapAngle = Math.sin(bird.flapPhase) * bird.data.flapAmplitude;
-      const flapMul = bird.startled ? 1.5 : 1.0;
+      const flapMul = bird.startled ? 1.6 : 1.0;
+      const amp = bird.data.flapAmplitude * flapMul;
+
+      // Asymmetric wingbeat: fast downstroke, slow upstroke
+      // Uses a shaped sine wave — downstroke is ~40% of cycle, upstroke ~60%
+      const phase = bird.flapPhase % (Math.PI * 2);
+      let flapRaw;
+      if (phase < Math.PI * 0.8) {
+        // Downstroke (fast, powerful) — compressed into 40% of cycle
+        flapRaw = Math.sin(phase / 0.8 * Math.PI);
+      } else {
+        // Upstroke (slower, wing folds slightly) — spans 60% of cycle
+        const upPhase = (phase - Math.PI * 0.8) / (Math.PI * 1.2);
+        flapRaw = -Math.sin(upPhase * Math.PI) * 0.7;
+      }
+      const flapAngle = flapRaw * amp;
 
       const leftWing = bird.mesh.userData.leftWingPivot;
       const rightWing = bird.mesh.userData.rightWingPivot;
       if (leftWing && rightWing) {
-        leftWing.rotation.z = flapAngle * flapMul;
-        rightWing.rotation.z = -flapAngle * flapMul;
-        const secondaryFlap = Math.sin(bird.flapPhase * 1.5) * 0.15;
-        leftWing.rotation.x = secondaryFlap;
-        rightWing.rotation.x = secondaryFlap;
+        // Primary flap (Z rotation)
+        leftWing.rotation.z = flapAngle;
+        rightWing.rotation.z = -flapAngle;
+
+        // Wing sweep forward/back during stroke
+        const sweepAngle = Math.sin(bird.flapPhase * 0.5) * 0.08;
+        leftWing.rotation.y = sweepAngle;
+        rightWing.rotation.y = -sweepAngle;
+
+        // Slight wing fold on upstroke (X rotation tucks wingtips)
+        const foldAmount = flapRaw < 0 ? Math.abs(flapRaw) * 0.2 : 0;
+        leftWing.rotation.x = foldAmount;
+        rightWing.rotation.x = foldAmount;
       }
 
-      // Tail bob
+      // Tail movement — gentle follow-through + turn response
       const tail = bird.mesh.userData.tailGroup;
       if (tail) {
-        tail.rotation.x = 0.3 + Math.sin(bird.flapPhase * 0.5) * 0.1;
+        // Gentle pitch with wingbeat
+        tail.rotation.x = 0.25 + Math.sin(bird.flapPhase * 0.5) * 0.08;
+        // Slight fan spread on downstroke
+        const spread = flapRaw > 0.5 ? 0.05 : 0;
+        tail.rotation.y = spread * Math.sin(bird.flapPhase * 0.3);
       }
 
-      // Body bob
-      bird.mesh.position.y += Math.sin(bird.flapPhase * 0.8) * 0.02;
+      // Body pitch — nose dips slightly on downstroke, lifts on upstroke
+      const pitchOffset = flapRaw * 0.03;
+      bird.mesh.position.y += Math.sin(bird.flapPhase * 0.8) * 0.015 + pitchOffset * 0.1;
+
+      // ─── Boids flocking behavior for flock members ───
+      if (bird.flockId && !bird.startled && bird.state === 'FLYING') {
+        const flock = this.flocks.find(f => f.id === bird.flockId);
+        if (flock && !flock.scattered && flock.leader && flock.leader.alive) {
+          const leader = flock.leader;
+
+          // Only apply to followers, not the leader
+          if (!bird.isFlockLeader) {
+            const pos = bird.mesh.position;
+            const leaderPos = leader.mesh.position;
+            const separation = new THREE.Vector3();
+            const alignment = new THREE.Vector3();
+            const cohesion = new THREE.Vector3();
+            let neighborCount = 0;
+
+            for (const other of flock.members) {
+              if (other === bird || !other.alive || other.state === 'FALLING') continue;
+              const diff = pos.clone().sub(other.mesh.position);
+              const dist = diff.length();
+
+              if (dist < bird.data.size * 6 && dist > 0.01) {
+                // Separation — avoid getting too close
+                separation.add(diff.normalize().multiplyScalar(1.0 / Math.max(dist, 0.5)));
+
+                // Alignment — match velocity direction
+                const otherVel = other.mesh.position.clone().sub(other._prevPos || other.mesh.position);
+                alignment.add(otherVel);
+
+                // Cohesion — steer toward center of neighbors
+                cohesion.add(other.mesh.position);
+                neighborCount++;
+              }
+            }
+
+            const steer = new THREE.Vector3();
+
+            // Separation force
+            if (separation.lengthSq() > 0) {
+              steer.add(separation.normalize().multiplyScalar(0.8));
+            }
+
+            // Alignment force
+            if (neighborCount > 0) {
+              alignment.divideScalar(neighborCount);
+              if (alignment.lengthSq() > 0) {
+                steer.add(alignment.normalize().multiplyScalar(0.3));
+              }
+
+              // Cohesion force
+              cohesion.divideScalar(neighborCount);
+              const toCenter = cohesion.sub(pos);
+              steer.add(toCenter.normalize().multiplyScalar(0.2));
+            }
+
+            // Follow the leader (strongest force)
+            const toLeader = leaderPos.clone().sub(pos);
+            const leaderDist = toLeader.length();
+            if (leaderDist > bird.data.size * 3) {
+              steer.add(toLeader.normalize().multiplyScalar(1.2));
+            }
+
+            // Apply forces gently
+            bird.mesh.position.add(steer.multiplyScalar(dt * bird.speed * 0.3));
+          }
+        }
+      }
+
+      // Store previous position for alignment calculations
+      bird._prevPos = bird.mesh.position.clone();
     }
 
     // Silent cleanup of exited birds
@@ -598,9 +920,14 @@ export class BirdSystem {
       }
     }
     this.birds = [];
+    this.flocks = [];
   }
 
   getLivingCount() {
     return this.birds.filter(b => b.alive && b.state !== 'EXITING').length;
+  }
+
+  getFlockCount() {
+    return this.flocks.filter(f => !f.scattered && f.members.some(m => m.alive)).length;
   }
 }

@@ -8,15 +8,24 @@ export class AudioSystem {
     this.ctx = null;
     this.masterGain = null;
     this.initialized = false;
+    this._volume = 0.4;
   }
 
   init() {
     if (this.initialized) return;
     this.ctx = new (window.AudioContext || window.webkitAudioContext)();
     this.masterGain = this.ctx.createGain();
-    this.masterGain.gain.value = 0.4;
+    this.masterGain.gain.value = this._volume;
     this.masterGain.connect(this.ctx.destination);
     this.initialized = true;
+  }
+
+  // ─── Master Volume ──────────────────────────
+  setMasterVolume(v) {
+    this._volume = Math.max(0, Math.min(1, v));
+    if (this.masterGain) {
+      this.masterGain.gain.value = this._volume;
+    }
   }
 
   ensureCtx() {

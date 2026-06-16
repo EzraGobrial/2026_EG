@@ -104,6 +104,192 @@ export const SKY_PRESETS = {
     ambientIntensity: 0.6,
     dirLightColor: 0xffffff,
     dirLightIntensity: 1.4
+  },
+
+  // ─── Dimension 2: Tropics ──────────────────
+  beach: {
+    topColor: new THREE.Color(0x2299ee),
+    bottomColor: new THREE.Color(0x66ccff),
+    sunColor: new THREE.Color(0xffee88),
+    sunDirection: new THREE.Vector3(0.6, 0.7, 0.2),
+    sunIntensity: 1.4,
+    fogColor: new THREE.Color(0x88ccdd),
+    ambientColor: 0x88aacc,
+    ambientIntensity: 0.7,
+    dirLightColor: 0xffee88,
+    dirLightIntensity: 1.5
+  },
+  jungle: {
+    topColor: new THREE.Color(0x224422),
+    bottomColor: new THREE.Color(0x446633),
+    sunColor: new THREE.Color(0xccbb66),
+    sunDirection: new THREE.Vector3(0.1, 0.3, 0.4),
+    sunIntensity: 0.4,
+    fogColor: new THREE.Color(0x445533),
+    ambientColor: 0x445533,
+    ambientIntensity: 0.8,
+    dirLightColor: 0xccbb66,
+    dirLightIntensity: 0.6
+  },
+  swamp: {
+    topColor: new THREE.Color(0x334433),
+    bottomColor: new THREE.Color(0x556644),
+    sunColor: new THREE.Color(0xaaaa66),
+    sunDirection: new THREE.Vector3(-0.2, 0.3, 0.4),
+    sunIntensity: 0.5,
+    fogColor: new THREE.Color(0x445544),
+    ambientColor: 0x556644,
+    ambientIntensity: 0.7,
+    dirLightColor: 0xaaaa66,
+    dirLightIntensity: 0.6
+  },
+  volcano: {
+    topColor: new THREE.Color(0x1a1a22),
+    bottomColor: new THREE.Color(0x442222),
+    sunColor: new THREE.Color(0xff4422),
+    sunDirection: new THREE.Vector3(0.3, 0.4, 0.3),
+    sunIntensity: 0.8,
+    fogColor: new THREE.Color(0x332222),
+    ambientColor: 0x553322,
+    ambientIntensity: 0.4,
+    dirLightColor: 0xff6633,
+    dirLightIntensity: 0.9
+  },
+  island: {
+    topColor: new THREE.Color(0x1188dd),
+    bottomColor: new THREE.Color(0x55bbee),
+    sunColor: new THREE.Color(0xffffaa),
+    sunDirection: new THREE.Vector3(0.5, 0.8, 0.1),
+    sunIntensity: 1.5,
+    fogColor: new THREE.Color(0x77bbdd),
+    ambientColor: 0x88bbcc,
+    ambientIntensity: 0.7,
+    dirLightColor: 0xffffaa,
+    dirLightIntensity: 1.6
+  },
+
+  // ─── Dimension 3: Arctic ───────────────────
+  tundra: {
+    topColor: new THREE.Color(0x8899bb),
+    bottomColor: new THREE.Color(0xccddee),
+    sunColor: new THREE.Color(0xddeeff),
+    sunDirection: new THREE.Vector3(0.4, 0.2, 0.3),
+    sunIntensity: 0.7,
+    fogColor: new THREE.Color(0xbbccdd),
+    ambientColor: 0xaabbcc,
+    ambientIntensity: 0.7,
+    dirLightColor: 0xddeeff,
+    dirLightIntensity: 0.8
+  },
+  glacier: {
+    topColor: new THREE.Color(0x5577aa),
+    bottomColor: new THREE.Color(0xaaccee),
+    sunColor: new THREE.Color(0xeeeeff),
+    sunDirection: new THREE.Vector3(0.2, 0.5, 0.4),
+    sunIntensity: 1.0,
+    fogColor: new THREE.Color(0x99bbdd),
+    ambientColor: 0x99aacc,
+    ambientIntensity: 0.6,
+    dirLightColor: 0xeeeeff,
+    dirLightIntensity: 1.1
+  },
+  ice_cave: {
+    topColor: new THREE.Color(0x112244),
+    bottomColor: new THREE.Color(0x334466),
+    sunColor: new THREE.Color(0x6688cc),
+    sunDirection: new THREE.Vector3(0.0, 0.8, 0.1),
+    sunIntensity: 0.3,
+    fogColor: new THREE.Color(0x223355),
+    ambientColor: 0x334466,
+    ambientIntensity: 0.8,
+    dirLightColor: 0x6688cc,
+    dirLightIntensity: 0.4
+  },
+  frozen_lake: {
+    topColor: new THREE.Color(0x112255),
+    bottomColor: new THREE.Color(0x446688),
+    sunColor: new THREE.Color(0x88aaff),
+    sunDirection: new THREE.Vector3(-0.3, 0.3, 0.4),
+    sunIntensity: 0.6,
+    fogColor: new THREE.Color(0x556688),
+    ambientColor: 0x667799,
+    ambientIntensity: 0.5,
+    dirLightColor: 0x88aaff,
+    dirLightIntensity: 0.7
+  },
+  arctic_peak: {
+    topColor: new THREE.Color(0x0a1533),
+    bottomColor: new THREE.Color(0x5577aa),
+    sunColor: new THREE.Color(0xffffff),
+    sunDirection: new THREE.Vector3(0.5, 0.9, 0.0),
+    sunIntensity: 1.5,
+    fogColor: new THREE.Color(0x6688aa),
+    ambientColor: 0x7799bb,
+    ambientIntensity: 0.5,
+    dirLightColor: 0xffffff,
+    dirLightIntensity: 1.6
+  },
+
+  // ─── Dimension 4: Desert ───────────────────
+  oasis: {
+    topColor: new THREE.Color(0x3366aa),
+    bottomColor: new THREE.Color(0xddaa55),
+    sunColor: new THREE.Color(0xffdd66),
+    sunDirection: new THREE.Vector3(0.5, 0.8, 0.2),
+    sunIntensity: 1.5,
+    fogColor: new THREE.Color(0xccaa66),
+    ambientColor: 0xbbaa77,
+    ambientIntensity: 0.6,
+    dirLightColor: 0xffdd66,
+    dirLightIntensity: 1.6
+  },
+  canyon: {
+    topColor: new THREE.Color(0x4477aa),
+    bottomColor: new THREE.Color(0xcc8844),
+    sunColor: new THREE.Color(0xffcc44),
+    sunDirection: new THREE.Vector3(0.3, 0.6, 0.3),
+    sunIntensity: 1.3,
+    fogColor: new THREE.Color(0xbb8855),
+    ambientColor: 0xaa8866,
+    ambientIntensity: 0.5,
+    dirLightColor: 0xffcc44,
+    dirLightIntensity: 1.4
+  },
+  dunes: {
+    topColor: new THREE.Color(0x5588bb),
+    bottomColor: new THREE.Color(0xeebb66),
+    sunColor: new THREE.Color(0xffee44),
+    sunDirection: new THREE.Vector3(0.6, 0.9, 0.1),
+    sunIntensity: 1.8,
+    fogColor: new THREE.Color(0xddbb77),
+    ambientColor: 0xccaa66,
+    ambientIntensity: 0.5,
+    dirLightColor: 0xffee44,
+    dirLightIntensity: 1.7
+  },
+  mesa: {
+    topColor: new THREE.Color(0x4466aa),
+    bottomColor: new THREE.Color(0xdd8833),
+    sunColor: new THREE.Color(0xffaa33),
+    sunDirection: new THREE.Vector3(-0.4, 0.5, 0.3),
+    sunIntensity: 1.4,
+    fogColor: new THREE.Color(0xcc8844),
+    ambientColor: 0xbb7744,
+    ambientIntensity: 0.5,
+    dirLightColor: 0xffaa33,
+    dirLightIntensity: 1.3
+  },
+  ruins: {
+    topColor: new THREE.Color(0x553355),
+    bottomColor: new THREE.Color(0xcc8844),
+    sunColor: new THREE.Color(0xff8833),
+    sunDirection: new THREE.Vector3(-0.3, 0.3, 0.5),
+    sunIntensity: 1.2,
+    fogColor: new THREE.Color(0xaa7744),
+    ambientColor: 0x997755,
+    ambientIntensity: 0.6,
+    dirLightColor: 0xff8833,
+    dirLightIntensity: 1.1
   }
 };
 

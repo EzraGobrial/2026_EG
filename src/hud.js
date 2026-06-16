@@ -182,6 +182,16 @@ export class HUD {
   }
 
   /**
+   * Flash the crosshair red briefly on a successful hit
+   */
+  showHitMarker() {
+    const ch = this.crosshair;
+    if (!ch) return;
+    ch.style.borderColor = '#ff4444';
+    setTimeout(() => { ch.style.borderColor = ''; }, 100);
+  }
+
+  /**
    * Show hit flash overlay
    */
   showHitFlash() {
@@ -261,5 +271,113 @@ export class HUD {
   hideXPBar() {
     const bar = document.getElementById('story-xp-bar');
     if (bar) bar.classList.add('hidden');
+  }
+
+  // ─── Boss Bird HUD ───────────────────────────
+
+  showBossAlert(bossName) {
+    let alert = document.getElementById('boss-alert');
+    if (!alert) {
+      // Inject keyframes once
+      if (!document.getElementById('boss-alert-style')) {
+        const style = document.createElement('style');
+        style.id = 'boss-alert-style';
+        style.textContent = `
+          @keyframes bossAlertPulse {
+            0% { transform: translateX(-50%) scale(2); opacity: 0; }
+            50% { transform: translateX(-50%) scale(1.1); opacity: 1; }
+            100% { transform: translateX(-50%) scale(1); opacity: 1; }
+          }
+          @keyframes bossAlertFade {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+      alert = document.createElement('div');
+      alert.id = 'boss-alert';
+      alert.style.cssText = `
+        position: fixed; top: 20%; left: 50%; transform: translateX(-50%);
+        font-family: var(--font-display, sans-serif); font-size: 28px; font-weight: 900;
+        color: #ff4444; text-shadow: 0 0 20px rgba(255,0,0,0.8), 0 0 40px rgba(255,0,0,0.4);
+        text-transform: uppercase; letter-spacing: 4px;
+        pointer-events: none; z-index: 100;
+      `;
+      document.body.appendChild(alert);
+    }
+    alert.textContent = `⚠ BOSS: ${bossName} ⚠`;
+    alert.style.display = 'block';
+    alert.style.animation = 'bossAlertPulse 0.5s ease-out';
+    setTimeout(() => {
+      alert.style.animation = 'bossAlertFade 0.5s ease-out forwards';
+    }, 2500);
+    setTimeout(() => { alert.style.display = 'none'; }, 3000);
+  }
+
+  showBossHP(current, max) {
+    let bar = document.getElementById('boss-hp-bar');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'boss-hp-bar';
+      bar.style.cssText = `
+        position: fixed; top: 12%; left: 50%; transform: translateX(-50%);
+        width: 200px; height: 8px; background: rgba(0,0,0,0.6);
+        border-radius: 4px; overflow: hidden; z-index: 100;
+        border: 1px solid rgba(255,60,60,0.4);
+      `;
+      const fill = document.createElement('div');
+      fill.id = 'boss-hp-fill';
+      fill.style.cssText = `
+        height: 100%; background: linear-gradient(90deg, #ff2222, #ff6644);
+        border-radius: 4px; transition: width 0.2s ease;
+      `;
+      bar.appendChild(fill);
+      document.body.appendChild(bar);
+    }
+    bar.style.display = 'block';
+    const fill = document.getElementById('boss-hp-fill');
+    if (fill) fill.style.width = `${(current / max) * 100}%`;
+  }
+
+  hideBossHP() {
+    const bar = document.getElementById('boss-hp-bar');
+    if (bar) bar.style.display = 'none';
+  }
+
+  // ─── First-time Scope Hint ──────────────────
+  showScopeHint() {
+    let hint = document.getElementById('scope-hint');
+    if (!hint) {
+      if (!document.getElementById('scope-hint-style')) {
+        const style = document.createElement('style');
+        style.id = 'scope-hint-style';
+        style.textContent = `
+          @keyframes scopeHintFlash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+      hint = document.createElement('div');
+      hint.id = 'scope-hint';
+      hint.textContent = 'PRESS [SPACE] TO SCOPE IN';
+      hint.style.cssText = `
+        position: fixed; top: 72%; left: 50%; transform: translateX(-50%);
+        font-family: var(--font-display, sans-serif); font-size: 22px; font-weight: 900;
+        color: #ffffff; text-shadow: 0 0 10px rgba(0,0,0,0.85), 0 0 20px rgba(255,255,255,0.4);
+        text-transform: uppercase; letter-spacing: 3px; text-align: center;
+        pointer-events: none; z-index: 100;
+        animation: scopeHintFlash 1s ease-in-out infinite;
+      `;
+      document.body.appendChild(hint);
+    }
+    hint.style.display = 'block';
+  }
+
+  hideScopeHint() {
+    const hint = document.getElementById('scope-hint');
+    if (hint) hint.style.display = 'none';
   }
 }

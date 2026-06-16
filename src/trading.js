@@ -80,6 +80,26 @@ export async function acceptTrade(tradeId) {
     const fromWeapons = fromSave.weaponOwned || {};
     const toWeapons = toSave.weaponOwned || {};
 
+    // Validate: reject if receiver already owns what they'd get
+    for (const wk of (trade.offering.weapons || [])) {
+      if (toWeapons[wk]) return false; // recipient already has this weapon
+    }
+    for (const wk of (trade.requesting.weapons || [])) {
+      if (fromWeapons[wk]) return false; // sender already has this weapon
+    }
+
+    // Transfer locations (unlock flags)
+    const fromLocs = fromSave.locationUnlocked || {};
+    const toLocs = toSave.locationUnlocked || {};
+
+    for (const lk of (trade.offering.locations || [])) {
+      if (toLocs[lk]) return false; // recipient already has this location
+    }
+    for (const lk of (trade.requesting.locations || [])) {
+      if (fromLocs[lk]) return false; // sender already has this location
+    }
+
+    // All clear — do the transfers
     for (const wk of (trade.offering.weapons || [])) {
       fromWeapons[wk] = false;
       toWeapons[wk] = true;
@@ -92,10 +112,7 @@ export async function acceptTrade(tradeId) {
     fromSave.weaponOwned = fromWeapons;
     toSave.weaponOwned = toWeapons;
 
-    // Transfer locations (unlock flags)
-    const fromLocs = fromSave.locationUnlocked || {};
-    const toLocs = toSave.locationUnlocked || {};
-
+    // Transfer locations
     for (const lk of (trade.offering.locations || [])) {
       fromLocs[lk] = false;
       toLocs[lk] = true;
@@ -145,13 +162,15 @@ export async function getPlayersInDimension(dimension, excludeUid) {
   try {
     const snap = await getDocs(collection(db, 'leaderboard'));
     const players = [];
+    const targetDim = Number(dimension) || 1;
     snap.forEach(d => {
       const data = d.data();
-      if ((data.dimension || 1) === dimension && d.id !== excludeUid) {
+      const playerDim = Number(data.dimension) || 1;
+      if (playerDim === targetDim && d.id !== excludeUid) {
         players.push({
           uid: d.id,
           name: data.name || 'Unknown',
-          dimension: data.dimension || 1
+          dimension: playerDim
         });
       }
     });
@@ -168,4 +187,18 @@ export async function getPlayersInDimension(dimension, excludeUid) {
 export async function hasPendingTrades(uid) {
   const trades = await getPendingTrades(uid);
   return trades.length > 0;
+}
+
+/**
+ * Load a player's save data (for checking what they own)
+ */
+export async function getPlayerSave(uid) {
+  try {
+    const snap = await getDoc(doc(db, 'saves', uid));
+    if (!snap.exists()) return null;
+    return snap.data();
+  } catch (e) {
+    console.warn('Failed to load player save:', e);
+    return null;
+  }
 }

@@ -19,6 +19,7 @@ export class Player {
     // Settings
     this.moveSpeed = 5.0;
     this.mouseSensitivity = 0.002;
+    this.sensitivityMultiplier = 1.0;
     this.height = 1.6;
     this.boundsSize = 30; // will be set by world
     this.obstacles = [];
@@ -27,6 +28,9 @@ export class Player {
     // Input state
     this.keys = { forward: false, backward: false, left: false, right: false };
     this.isLocked = false;
+
+    // Called when pointer lock is lost unexpectedly (e.g. Escape, alt-tab)
+    this.onUnlock = null;
 
     // Pointer lock
     this._onMouseMove = this._onMouseMove.bind(this);
@@ -54,6 +58,7 @@ export class Player {
       this.isLocked = true;
       document.addEventListener('mousemove', this._onMouseMove);
     } else {
+      const wasLocked = this.isLocked;
       this.isLocked = false;
       document.removeEventListener('mousemove', this._onMouseMove);
       // Reset keys
@@ -61,13 +66,17 @@ export class Player {
       this.keys.backward = false;
       this.keys.left = false;
       this.keys.right = false;
+      if (wasLocked && typeof this.onUnlock === 'function') {
+        this.onUnlock();
+      }
     }
   }
 
   _onMouseMove(e) {
     if (!this.isLocked) return;
-    this.euler.y -= e.movementX * this.mouseSensitivity;
-    this.euler.x -= e.movementY * this.mouseSensitivity;
+    const sens = this.mouseSensitivity * this.sensitivityMultiplier;
+    this.euler.y -= e.movementX * sens;
+    this.euler.x -= e.movementY * sens;
     // Clamp vertical look
     this.euler.x = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, this.euler.x));
   }
