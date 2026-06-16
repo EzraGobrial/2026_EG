@@ -999,9 +999,9 @@ class Game {
       }
     }
 
-    // Deduct ammo for ALL shots (hit or miss), unless noReload weapon
+    // Deduct ammo only on a MISS — hitting a bird doesn't cost a bullet
     const wd = this.economy.getWeapon();
-    if (!wd.noReload) {
+    if (!wd.noReload && !hitSomething) {
       this.weapons.ammo--;
       if (this.weapons.ammo <= 0) {
         this.weapons.startReload();

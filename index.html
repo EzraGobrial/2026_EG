@@ -574,30 +574,77 @@
   </script>
   <script type="module" src="src/main.js"></script>
   <script>
-    // Pixelated censorship effect on "Savage" — render text tiny then scale up
+    // Animated pixelated censorship effect on "Savage"
     (function() {
       const canvas = document.getElementById('censored-savage');
       if (!canvas) return;
-      // Pixel block size in display pixels
-      const BLOCK = 7;
-      // Internal canvas is tiny — text drawn at 1 pixel per block
-      const IW = 18, IH = 4;
+
+      const BLOCK = 4;       // display pixels per internal pixel
+      const IW = 38, IH = 9; // internal resolution
       canvas.width  = IW;
       canvas.height = IH;
-      // Scale up via CSS to get chunky blocks
       canvas.style.width  = (IW * BLOCK) + 'px';
       canvas.style.height = (IH * BLOCK) + 'px';
+      canvas.style.imageRendering = 'pixelated';
+      canvas.style.verticalAlign = 'middle';
 
       const ctx = canvas.getContext('2d');
-      // Fill bg with the game's dark background color
-      ctx.fillStyle = '#0e0e1a';
-      ctx.fillRect(0, 0, IW, IH);
-      // Draw text in subtitle tan color, as small as possible
-      ctx.fillStyle = '#b8a48c';
-      ctx.font = `bold ${IH - 0.5}px monospace`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('SAVAGE', IW / 2, IH / 2);
+
+      // Pre-render the text to an offscreen canvas
+      const offscreen = document.createElement('canvas');
+      offscreen.width = IW;
+      offscreen.height = IH;
+      const octx = offscreen.getContext('2d');
+      octx.fillStyle = '#0d0d18';
+      octx.fillRect(0, 0, IW, IH);
+      octx.fillStyle = '#c8a87a';
+      octx.font = `bold ${IH - 1}px monospace`;
+      octx.textAlign = 'center';
+      octx.textBaseline = 'middle';
+      octx.fillText('SAVAGE', IW / 2, IH / 2);
+      const textData = octx.getImageData(0, 0, IW, IH);
+
+      // Dark color palette for the noise (purple/blue/dark tones)
+      const palette = [
+        [20, 15, 40], [30, 20, 55], [15, 25, 50], [40, 30, 60],
+        [10, 10, 30], [25, 40, 55], [50, 35, 65], [18, 18, 42]
+      ];
+
+      function draw() {
+        const imgData = ctx.createImageData(IW, IH);
+        const d = imgData.data;
+        const td = textData.data;
+
+        for (let i = 0; i < IW * IH; i++) {
+          const px = i * 4;
+          const textBrightness = td[px] + td[px+1] + td[px+2];
+          const isText = textBrightness > 60;
+
+          // Noise color
+          const col = palette[Math.floor(Math.random() * palette.length)];
+          // Occasional bright flash pixel
+          const bright = Math.random() < 0.04;
+
+          if (isText) {
+            // Text pixels: lighter noise so letters ghost through
+            const flash = Math.random() < 0.3;
+            d[px]   = flash ? 180 : col[0] + 60;
+            d[px+1] = flash ? 155 : col[1] + 50;
+            d[px+2] = flash ? 100 : col[2] + 30;
+          } else {
+            // Background pixels: dark noise
+            d[px]   = bright ? 120 : col[0];
+            d[px+1] = bright ? 100 : col[1];
+            d[px+2] = bright ? 140 : col[2];
+          }
+          d[px+3] = 255;
+        }
+
+        ctx.putImageData(imgData, 0, 0);
+        requestAnimationFrame(draw);
+      }
+
+      draw();
     })();
   </script>
 </body>
