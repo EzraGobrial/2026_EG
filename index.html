@@ -604,47 +604,33 @@
       octx.fillText('SAVAGE', IW / 2, IH / 2);
       const textData = octx.getImageData(0, 0, IW, IH);
 
-      // Dark color palette for the noise (purple/blue/dark tones)
-      const palette = [
-        [20, 15, 40], [30, 20, 55], [15, 25, 50], [40, 30, 60],
-        [10, 10, 30], [25, 40, 55], [50, 35, 65], [18, 18, 42]
-      ];
+      // Slow, subtle animation — update every ~120ms (~8fps)
+      let lastTime = 0;
+      function draw(ts) {
+        requestAnimationFrame(draw);
+        if (ts - lastTime < 120) return;
+        lastTime = ts;
 
-      function draw() {
         const imgData = ctx.createImageData(IW, IH);
         const d = imgData.data;
         const td = textData.data;
 
         for (let i = 0; i < IW * IH; i++) {
           const px = i * 4;
-          const textBrightness = td[px] + td[px+1] + td[px+2];
-          const isText = textBrightness > 60;
-
-          // Noise color
-          const col = palette[Math.floor(Math.random() * palette.length)];
-          // Occasional bright flash pixel
-          const bright = Math.random() < 0.04;
-
-          if (isText) {
-            // Text pixels: lighter noise so letters ghost through
-            const flash = Math.random() < 0.3;
-            d[px]   = flash ? 180 : col[0] + 60;
-            d[px+1] = flash ? 155 : col[1] + 50;
-            d[px+2] = flash ? 100 : col[2] + 30;
-          } else {
-            // Background pixels: dark noise
-            d[px]   = bright ? 120 : col[0];
-            d[px+1] = bright ? 100 : col[1];
-            d[px+2] = bright ? 140 : col[2];
-          }
+          const isText = (td[px] + td[px+1] + td[px+2]) > 60;
+          // Subtle dark noise — mostly the same dark bg color with tiny variation
+          const jitter = Math.floor(Math.random() * 18) - 6;
+          const base = isText ? 55 : 18;
+          d[px]   = Math.max(0, base - 5  + jitter);
+          d[px+1] = Math.max(0, base - 8  + jitter);
+          d[px+2] = Math.max(0, base + 10 + jitter);
           d[px+3] = 255;
         }
 
         ctx.putImageData(imgData, 0, 0);
-        requestAnimationFrame(draw);
       }
 
-      draw();
+      requestAnimationFrame(draw);
     })();
   </script>
 </body>
