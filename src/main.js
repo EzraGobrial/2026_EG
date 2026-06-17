@@ -246,6 +246,7 @@ class Game {
     // ─── Pause / Settings / Credits Callbacks
     this.ui.onResume = () => this._resumeGame();
     this.ui.onQuitToTitle = () => this._quitToTitle();
+    this.ui.onEndHunt = () => this._endHuntFromPause();
     this.ui.onPauseSettings = () => this._openSettings(true);
     this.ui.onPauseCredits = () => this._openCredits(true);
     this.ui.onTitleSettings = () => this._openSettings(false);
@@ -1329,6 +1330,16 @@ class Game {
     if (this._isPausable(this.state)) {
       this._pauseGame();
     }
+  }
+
+  _endHuntFromPause() {
+    if (this._pauseReturnState !== STATE.HUNTING) return;
+    this.ui.hidePauseOverlay();
+    this.ui.hideAll();
+    if (this.audio.ctx && this.audio.ctx.state === 'suspended') this.audio.ctx.resume();
+    this._pauseReturnState = null;
+    this._huntEnded = true;
+    this._endHunt();
   }
 
   _quitToTitle() {
