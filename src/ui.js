@@ -218,6 +218,9 @@ export class UI {
 
   showSettings(values) {
     this.showScreen('settings');
+    // Opening Settings clears the "new" notification dot for this player (persisted)
+    if (this._settings) this._settings.set('seenSettings', true);
+    this._updateSettingsDot();
     const volSlider = document.getElementById('setting-volume');
     const sensSlider = document.getElementById('setting-sensitivity');
     const qualitySelect = document.getElementById('setting-quality');
@@ -285,7 +288,7 @@ export class UI {
   }
 
   _updateSettingsDot() {
-    const show = this._settings ? !this._settings.get('seenDevices') : false;
+    const show = this._settings ? !this._settings.get('seenSettings') : false;
     ['btn-title-settings', 'btn-pause-settings'].forEach(id => {
       const btn = document.getElementById(id);
       if (!btn) return;
