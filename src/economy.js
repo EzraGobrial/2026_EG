@@ -159,56 +159,56 @@ export const BIRDS = {
 
   // ─── Dimension 2: Tropics ──────────────────
   parrot: {
-    name: 'Parrot', value: 10, speed: 3.2, size: 0.45,
+    name: 'Parrot', value: 160, speed: 3.2, size: 0.45,
     rarity: 'common', weight: 35, hp: 1,
     bodyColor: 0x22AA22, wingColor: 0x1188DD, headColor: 0xDD2222,
     beakColor: 0x333333, bellyColor: 0x44CC44,
     flapSpeed: 8, flapAmplitude: 0.5
   },
   toucan: {
-    name: 'Toucan', value: 18, speed: 3.0, size: 0.5,
+    name: 'Toucan', value: 180, speed: 3.0, size: 0.5,
     rarity: 'common', weight: 30, hp: 1,
     bodyColor: 0x1a1a1a, wingColor: 0x111111, headColor: 0x1a1a1a,
     beakColor: 0xFF8800, bellyColor: 0xFFDD00,
     flapSpeed: 6, flapAmplitude: 0.55
   },
   flamingo: {
-    name: 'Flamingo', value: 30, speed: 2.8, size: 0.75,
+    name: 'Flamingo', value: 205, speed: 2.8, size: 0.75,
     rarity: 'uncommon', weight: 20, hp: 1,
     bodyColor: 0xFF7799, wingColor: 0xFF5588, headColor: 0xFFAABB,
     beakColor: 0x222222, bellyColor: 0xFF88AA,
     flapSpeed: 4, flapAmplitude: 0.85
   },
   macaw: {
-    name: 'Macaw', value: 50, speed: 4.5, size: 0.55,
+    name: 'Macaw', value: 235, speed: 4.5, size: 0.55,
     rarity: 'uncommon', weight: 15, hp: 1,
     bodyColor: 0xDD2222, wingColor: 0x2266DD, headColor: 0xDD2222,
     beakColor: 0x222222, bellyColor: 0xFFCC00,
     flapSpeed: 9, flapAmplitude: 0.6
   },
   hornbill: {
-    name: 'Hornbill', value: 70, speed: 3.8, size: 0.6,
+    name: 'Hornbill', value: 270, speed: 3.8, size: 0.6,
     rarity: 'rare', weight: 10, hp: 1,
     bodyColor: 0x1a1a1a, wingColor: 0x222222, headColor: 0x1a1a1a,
     beakColor: 0xFFAA00, bellyColor: 0xeeeeee,
     flapSpeed: 5, flapAmplitude: 0.7
   },
   quetzal: {
-    name: 'Quetzal', value: 100, speed: 4.8, size: 0.4,
+    name: 'Quetzal', value: 320, speed: 4.8, size: 0.4,
     rarity: 'rare', weight: 8, hp: 1,
     bodyColor: 0x00AA55, wingColor: 0x008844, headColor: 0xDD2222,
     beakColor: 0xCCAA00, bellyColor: 0x00CC66,
     flapSpeed: 10, flapAmplitude: 0.65
   },
   harpy_eagle: {
-    name: 'Harpy Eagle', value: 160, speed: 4.5, size: 0.85,
+    name: 'Harpy Eagle', value: 360, speed: 4.5, size: 0.85,
     rarity: 'epic', weight: 5, hp: 1,
     bodyColor: 0x4a4a4a, wingColor: 0x333333, headColor: 0xcccccc,
     beakColor: 0x333333, bellyColor: 0xdddddd,
     flapSpeed: 4, flapAmplitude: 1.0
   },
   phoenix_bird: {
-    name: 'Bird of Paradise', value: 250, speed: 5.0, size: 0.5,
+    name: 'Bird of Paradise', value: 450, speed: 5.0, size: 0.5,
     rarity: 'legendary', weight: 2, hp: 1,
     bodyColor: 0xFF4400, wingColor: 0xDD2200, headColor: 0xFF6600,
     beakColor: 0x333333, bellyColor: 0xFFAA00,
@@ -593,27 +593,27 @@ export const DIMENSIONS = [
     fee: 2000,
     locations: {
       beach: {
-        name: 'Beach', cost: 300,
+        name: 'Beach', cost: 1000,
         description: 'Sandy shores with seabirds and tropical flyers.',
         birds: ['parrot', 'toucan'], maxBirds: 5, areaSize: 50, unlocked: false
       },
       jungle: {
-        name: 'Jungle', cost: 600,
+        name: 'Jungle', cost: 2000,
         description: 'Dense canopy. Colorful birds everywhere.',
         birds: ['parrot', 'toucan', 'flamingo', 'macaw'], maxBirds: 7, areaSize: 55, unlocked: false
       },
       swamp: {
-        name: 'Swamp', cost: 1000,
+        name: 'Swamp', cost: 3500,
         description: 'Murky waters hide rare species.',
         birds: ['flamingo', 'macaw', 'hornbill'], maxBirds: 6, areaSize: 45, unlocked: false
       },
       volcano: {
-        name: 'Volcano', cost: 1800,
+        name: 'Volcano', cost: 6000,
         description: 'Volcanic ridges attract fearless hunters.',
         birds: ['hornbill', 'quetzal', 'harpy_eagle'], maxBirds: 5, areaSize: 60, unlocked: false
       },
       island: {
-        name: 'Island', cost: 3000,
+        name: 'Island', cost: 10000,
         description: 'Remote island paradise. Legendary birds nest here.',
         birds: ['quetzal', 'harpy_eagle', 'phoenix_bird'], maxBirds: 5, areaSize: 70, unlocked: false
       }
