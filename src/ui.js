@@ -1768,15 +1768,19 @@ export class UI {
     document.getElementById('sleep-text').textContent = `Day ${eco.day} Complete`;
     this.showScreen('sleep');
 
-    // Progress bar
-    const bar = document.createElement('div');
-    bar.style.cssText = 'width:0%;height:3px;background:var(--accent-gold);border-radius:2px;margin-top:20px;transition:width 2.8s linear;';
-    const container = document.getElementById('screen-sleep').querySelector('.panel') || document.getElementById('screen-sleep');
-    container.appendChild(bar);
-    requestAnimationFrame(() => { bar.style.width = '100%'; });
+    // Progress bar — fixed-width track placed ABOVE the text so the words
+    // stay put and only the gold line fills.
+    const track = document.createElement('div');
+    track.style.cssText = 'width:240px;max-width:60vw;height:3px;background:rgba(255,255,255,0.12);border-radius:2px;margin:0 auto 20px;overflow:hidden;';
+    const fill = document.createElement('div');
+    fill.style.cssText = 'width:0%;height:100%;background:var(--accent-gold);border-radius:2px;transition:width 2.8s linear;';
+    track.appendChild(fill);
+    const content = document.getElementById('screen-sleep').querySelector('.sleep-content') || document.getElementById('screen-sleep');
+    content.insertBefore(track, content.firstChild);
+    requestAnimationFrame(() => { fill.style.width = '100%'; });
 
     setTimeout(() => {
-      bar.remove();
+      track.remove();
       eco.day++;
       eco.save();
       if (callback) callback();
