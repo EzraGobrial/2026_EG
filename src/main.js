@@ -103,7 +103,8 @@ class Game {
     this.world = new WorldSystem(this.scene);
     this.hud = new HUD();
     this.ui = new UI(this.economy, this.audio);
-    this.ui._storyRef = this.story; // give UI access to story for quest shop
+    this.ui._storyRef = this.story;
+    this.ui._settings = this.settings; // give UI access to story for quest shop
 
     // Story-specific active systems (null when inactive)
     this.trailWorld = null;
@@ -181,7 +182,15 @@ class Game {
         this._startHunt();
       }
     };
-    this.ui.onGoToShop = () => this._goToMarket();
+    this.ui.onGoToShop = () => {
+      if (this.settings.get('deviceType') === 'other') {
+        this._goToMarket();
+      } else {
+        this._shopReturnsToMarket = false;
+        this.state = STATE.SHOP;
+        this.ui.showShop();
+      }
+    };
     this.ui.onGoToLocker = () => {
       this.ui.showLocker();
       this.state = STATE.LOCKER;
@@ -563,6 +572,9 @@ class Game {
     this.player.setObstacles(this.world.obstacles);
     this.player.reset();
     this.maxActiveBirds = locData.maxBirds;
+
+    // School Device: stationary - aim & shoot, no walking
+    this.player.moveSpeed = (this.settings.get('deviceType') === 'school') ? 0 : 5;
 
     // Apply consumable effects (declared early — used below for steadyHands)
     const consumables = this.economy.activeConsumables || [];
