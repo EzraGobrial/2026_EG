@@ -669,30 +669,27 @@ class Game {
   _endHunt() {
     let rankUpResult = null;
     try {
-      console.log('[endHunt] step 1 - setting state');
       this.state = STATE.RESULTS;
       this.player.unlock();
       this.hud.hide();
       this.hud.hideBossHP();
       this.hud.hideScopeHint();
       this.hud.hideCombo();
+      this.hud.showReloading(false);
       this.ui.hideControlsHint();
       this.audio.stopAmbience();
 
-      console.log('[endHunt] step 2 - clearing consumables');
       // Clear active consumables after hunt
       this.economy.clearActiveConsumables();
 
       // Calculate XP earned from hunt (10 per kill, 50 per boss)
       const huntXP = (this.huntStats.totalKills * 10) + (this.huntStats.bossKills * 50);
 
-      console.log('[endHunt] step 3 - awarding XP:', huntXP);
       // Award XP FIRST so the results screen shows the updated rank
       if (huntXP > 0) {
         rankUpResult = this.economy.addXP(huntXP);
       }
 
-      console.log('[endHunt] step 4 - showing results');
       // Show results — the UI will handle adding money
       try {
         this.ui.showResults(this.huntBag, this.auth.getDisplayName(), huntXP);
@@ -701,7 +698,6 @@ class Game {
         // Fallback: force results screen visible so player is never stuck
         this.ui.showScreen('results');
       }
-      console.log('[endHunt] step 5 - done');
     } catch (fatalErr) {
       console.error('[endHunt] FATAL ERROR:', fatalErr);
       // Last resort: force results screen
@@ -1351,6 +1347,8 @@ class Game {
     this.hud.hide();
     this.hud.hideBossHP();
     this.hud.hideScopeHint();
+    this.hud.hideCombo();
+    this.hud.showReloading(false);
     this.trailWorld = null;
     this.shedInterior = null;
     this.bikeController = null;
