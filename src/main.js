@@ -675,6 +675,7 @@ class Game {
       this.hud.hide();
       this.hud.hideBossHP();
       this.hud.hideScopeHint();
+      this.hud.hideCombo();
       this.ui.hideControlsHint();
       this.audio.stopAmbience();
 
