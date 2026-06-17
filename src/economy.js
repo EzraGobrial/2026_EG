@@ -1074,6 +1074,7 @@ export class Economy {
     if (!loc || loc.unlocked || this.money < loc.cost) return false;
     this.money -= loc.cost;
     loc.unlocked = true;
+    this.currentLocation = key;
     this.save();
     return true;
   }
