@@ -230,7 +230,7 @@
   <div id="screen-title" class="screen hidden">
     <div class="title-content">
       <h1 class="title-text">Gary's Life</h1>
-      <p class="title-subtitle">The Make Believe Life of Gary <canvas id="censored-savage" class="censored-canvas"></canvas>'s Imagination</p>
+      <p class="title-subtitle">The Make Believe Life of Gary <span class="censored-name">Savage</span>'s Imagination</p>
       <div id="title-welcome" class="title-welcome"></div>
       <button id="btn-start" class="btn btn-primary">Start Game</button>
       <p class="title-hint">Hunt birds. Make money. Get rich.</p>
@@ -573,72 +573,22 @@
   }
   </script>
   <script type="module" src="src/main.js"></script>
-  <script>
-    // Animated pixelated censorship effect on "Savage"
-    (function() {
-      const canvas = document.getElementById('censored-savage');
-      if (!canvas) return;
-
-      const BLOCK = 4;       // display pixels per internal pixel
-      const IW = 38, IH = 9; // internal resolution
-      canvas.width  = IW;
-      canvas.height = IH;
-      canvas.style.width  = (IW * BLOCK) + 'px';
-      canvas.style.height = (IH * BLOCK) + 'px';
-      canvas.style.imageRendering = 'pixelated';
-      canvas.style.verticalAlign = 'middle';
-
-      const ctx = canvas.getContext('2d');
-
-      // Pre-render the text to an offscreen canvas
-      const offscreen = document.createElement('canvas');
-      offscreen.width = IW;
-      offscreen.height = IH;
-      const octx = offscreen.getContext('2d');
-      octx.fillStyle = '#0d0d18';
-      octx.fillRect(0, 0, IW, IH);
-      octx.fillStyle = '#c8a87a';
-      octx.font = `bold ${IH - 1}px monospace`;
-      octx.textAlign = 'center';
-      octx.textBaseline = 'middle';
-      octx.fillText('SAVAGE', IW / 2, IH / 2);
-      const textData = octx.getImageData(0, 0, IW, IH);
-
-      // Slow, subtle animation — update every ~120ms (~8fps)
-      let lastTime = 0;
-      function draw(ts) {
-        requestAnimationFrame(draw);
-        if (ts - lastTime < 120) return;
-        lastTime = ts;
-
-        const imgData = ctx.createImageData(IW, IH);
-        const d = imgData.data;
-        const td = textData.data;
-
-        for (let i = 0; i < IW * IH; i++) {
-          const px = i * 4;
-          const isText = (td[px] + td[px+1] + td[px+2]) > 60;
-          // Game palette: golds/ambers for text pixels, dark brown-black for bg
-          const jitter = Math.floor(Math.random() * 20) - 8;
-          if (isText) {
-            // Gold/amber range — like #d4a853 with variation
-            d[px]   = Math.min(255, Math.max(0, 160 + jitter * 2));
-            d[px+1] = Math.min(255, Math.max(0, 110 + jitter));
-            d[px+2] = Math.min(255, Math.max(0,  30 + Math.abs(jitter)));
-          } else {
-            // Dark brown-black range — like #1a1410 with variation
-            d[px]   = Math.min(255, Math.max(0, 22 + jitter));
-            d[px+1] = Math.min(255, Math.max(0, 18 + jitter));
-            d[px+2] = Math.min(255, Math.max(0, 12 + jitter));
-          }
-          d[px+3] = 255;
-        }
-
-        ctx.putImageData(imgData, 0, 0);
-      }
-
-      requestAnimationFrame(draw);
-    })();
-  </script>
+  <style>
+    .censored-name {
+      position: relative;
+      display: inline-block;
+    }
+    .censored-name::after {
+      content: '';
+      position: absolute;
+      left: -2px;
+      right: -2px;
+      top: 50%;
+      transform: translateY(-50%);
+      height: 55%;
+      background: #8b6a00;
+      pointer-events: none;
+    }
+  </style>
 </body>
 </html>
