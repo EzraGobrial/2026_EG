@@ -179,6 +179,7 @@ export class UI {
 
   showPauseOverlay() {
     if (this.pauseOverlay) this.pauseOverlay.classList.remove('hidden');
+    this._updateSettingsDot();
   }
 
   hidePauseOverlay() {
@@ -466,8 +467,26 @@ export class UI {
     panel.dataset.huntLayout = '1';
   }
 
+  _setupEscHint() {
+    if (this._escHintReady) return;
+    this._escHintReady = true;
+    let hint = document.getElementById('esc-pause-hint');
+    if (!hint) {
+      hint = document.createElement('div');
+      hint.id = 'esc-pause-hint';
+      hint.style.cssText = 'position:fixed;top:52px;right:16px;z-index:60;display:none;padding:6px 12px;background:rgba(26,20,16,0.72);border:1px solid rgba(212,168,83,0.4);border-radius:8px;color:#f5e6d0;font-family:Outfit,sans-serif;font-size:12px;font-weight:600;pointer-events:none;backdrop-filter:blur(4px)';
+      hint.innerHTML = 'Press <span style="display:inline-block;padding:1px 6px;margin:0 2px;background:rgba(212,168,83,0.25);border:1px solid rgba(212,168,83,0.55);border-radius:4px;font-weight:700">ESC</span> to pause';
+      document.body.appendChild(hint);
+    }
+    // Show whenever the player is in first-person gameplay (pointer locked)
+    document.addEventListener('pointerlockchange', () => {
+      hint.style.display = document.pointerLockElement ? 'block' : 'none';
+    });
+  }
+
   showMorning() {
     this._setupMorningLayout();
+    this._setupEscHint();
     const eco = this.economy;
     document.getElementById('morning-day').textContent = `Day ${eco.day}`;
     document.getElementById('morning-money').textContent = `$${eco.money}`;
