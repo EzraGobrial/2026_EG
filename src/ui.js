@@ -207,6 +207,76 @@ export class UI {
     if (qualitySelect) {
       qualitySelect.value = values.graphicsQuality;
     }
+    this._renderDeviceSetting(values);
+  }
+
+  _renderDeviceSetting(values) {
+    const panel = this.screens.settings && this.screens.settings.querySelector('.settings-panel');
+    if (!panel) return;
+    const settings = this._settings;
+    const seen = settings ? settings.get('seenDevices') : true;
+    const device = (values && values.deviceType) || (settings && settings.get('deviceType')) || 'school';
+
+    const old = document.getElementById('setting-device-row');
+    if (old) old.remove();
+
+    const row = document.createElement('div');
+    row.id = 'setting-device-row';
+    row.className = 'settings-row';
+    if (!seen) {
+      row.style.cssText = 'border:1px solid var(--accent-gold);border-radius:8px;padding:8px;box-shadow:0 0 14px rgba(212,168,83,0.7)';
+    }
+    row.innerHTML =
+      '<label>Device' + (seen ? '' : ' <span style="color:#ff3b30;font-size:11px;font-weight:700">● NEW</span>') + '</label>' +
+      '<div class="settings-control" style="display:flex;gap:8px">' +
+        '<button id="device-school" class="btn btn-secondary" style="flex:1;margin:0">School Device</button>' +
+        '<button id="device-other" class="btn btn-secondary" style="flex:1;margin:0">Other</button>' +
+      '</div>';
+    const backBtn = document.getElementById('btn-settings-back');
+    if (backBtn && backBtn.parentNode === panel) panel.insertBefore(row, backBtn);
+    else panel.appendChild(row);
+
+    const paint = (d) => {
+      [['device-school', 'school'], ['device-other', 'other']].forEach(([id, val]) => {
+        const b = document.getElementById(id);
+        if (!b) return;
+        b.style.opacity = (d === val) ? '1' : '0.45';
+        b.style.outline = (d === val) ? '2px solid var(--accent-gold)' : 'none';
+      });
+    };
+    paint(device);
+    const choose = (d) => {
+      paint(d);
+      if (this.onSettingChange) this.onSettingChange('deviceType', d);
+    };
+    const schoolBtn = document.getElementById('device-school');
+    const otherBtn = document.getElementById('device-other');
+    if (schoolBtn) schoolBtn.onclick = () => choose('school');
+    if (otherBtn) otherBtn.onclick = () => choose('other');
+
+    // Opening the Settings screen counts as discovering the new Devices option
+    if (settings && !seen) settings.set('seenDevices', true);
+    this._updateSettingsDot();
+  }
+
+  _updateSettingsDot() {
+    const show = this._settings ? !this._settings.get('seenDevices') : false;
+    ['btn-title-settings', 'btn-pause-settings'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      let dot = btn.querySelector('.settings-dot');
+      if (show) {
+        if (!dot) {
+          dot = document.createElement('span');
+          dot.className = 'settings-dot';
+          dot.style.cssText = 'position:absolute;top:-5px;right:-5px;width:11px;height:11px;background:#ff3b30;border-radius:50%;box-shadow:0 0 6px #ff3b30;pointer-events:none';
+          btn.style.position = 'relative';
+          btn.appendChild(dot);
+        }
+      } else if (dot) {
+        dot.remove();
+      }
+    });
   }
 
   showCredits() {
@@ -297,6 +367,7 @@ export class UI {
     const welcome = document.getElementById('title-welcome');
     welcome.textContent = `Welcome back, ${displayName}!`;
     this.showScreen('title');
+    this._updateSettingsDot();
   }
 
   showScreen(name) {
@@ -360,7 +431,43 @@ export class UI {
 
   // ─── Morning Screen ─────────────────────────
 
+  _setupMorningLayout() {
+    const panel = document.querySelector('#screen-morning .challenges-panel');
+    if (!panel || panel.dataset.huntLayout === '1') return;
+    const huntBtn = document.getElementById('btn-hunt');
+    if (!huntBtn) return;
+
+    // Right panel becomes a fixed-height column: scrolling content + pinned button
+    panel.style.display = 'flex';
+    panel.style.flexDirection = 'column';
+    panel.style.maxHeight = '85vh';
+
+    const title = panel.querySelector('.panel-title');
+    const scroll = document.createElement('div');
+    scroll.id = 'challenges-scroll';
+    scroll.style.cssText = 'flex:1 1 auto;overflow-y:auto;min-height:0;padding-right:6px';
+
+    // Move everything except the title and the hunt button into the scroll area
+    Array.from(panel.children).forEach(ch => {
+      if (ch === title || ch === huntBtn) return;
+      scroll.appendChild(ch);
+    });
+    if (title) title.after(scroll); else panel.prepend(scroll);
+
+    // Pinned footer that always shows the Go Hunting button
+    const footer = document.createElement('div');
+    footer.id = 'hunt-footer';
+    footer.style.cssText = 'flex:0 0 auto;border-top:1px solid rgba(212,168,83,0.25);margin-top:12px;padding-top:12px';
+    huntBtn.style.marginTop = '0';
+    huntBtn.style.width = '100%';
+    footer.appendChild(huntBtn);
+    panel.appendChild(footer);
+
+    panel.dataset.huntLayout = '1';
+  }
+
   showMorning() {
+    this._setupMorningLayout();
     const eco = this.economy;
     document.getElementById('morning-day').textContent = `Day ${eco.day}`;
     document.getElementById('morning-money').textContent = `$${eco.money}`;
@@ -765,7 +872,7 @@ export class UI {
         div.style.cssText += bannerStyle;
         div.innerHTML = `
           <span class="lb-rank">${i + 1}</span>
-          <span class="lb-name">${rankBadge}${entry.name}${entry.tag ? ' <span class="og-badge">OG</span>' : ''}${isYou ? ' (you)' : ''}</span>
+          <span class="lb-name">${rankBadge}${entry.name}${entry.tag ? ` <span class="og-badge"${TAGS[entry.tag] ? ` style="color:${TAGS[entry.tag].textColor || TAGS[entry.tag].color};border-color:${TAGS[entry.tag].color}"` : ''}>${TAGS[entry.tag] ? TAGS[entry.tag].name : 'OG'}</span>` : ''}${isYou ? ' (you)' : ''}</span>
           <span class="lb-money">$${entry[valueKey].toLocaleString()}</span>
         `;
         container.appendChild(div);
@@ -789,10 +896,27 @@ export class UI {
 
   // ─── Shop Screen ────────────────────────────
 
+  _setupShopLayout() {
+    const panel = document.querySelector('#screen-shop .shop-panel');
+    if (!panel || panel.dataset.shopLayout === '1') return;
+    const content = document.getElementById('shop-tab-content');
+    if (!content) return;
+    // Fixed-height column: header + tabs stay, tab content scrolls,
+    // the Back / Go to Sleep buttons stay pinned and always visible.
+    panel.style.display = 'flex';
+    panel.style.flexDirection = 'column';
+    panel.style.maxHeight = '88vh';
+    content.style.flex = '1 1 auto';
+    content.style.overflowY = 'auto';
+    content.style.minHeight = '0';
+    panel.dataset.shopLayout = '1';
+  }
+
   showShop(category) {
     // category is null when opened normally (full shop), or a stall category string
     this._shopCategory = category || null;
     this.showScreen('shop');
+    this._setupShopLayout();
 
     try {
       const eco = this.economy;
@@ -1789,28 +1913,52 @@ export class UI {
       content.innerHTML = '';
       const grid = document.createElement('div');
       grid.className = 'locker-items';
+      let anyTags = false;
 
+      // Owned tags purchased or granted in the shop (DEV, Hunter, etc.)
+      for (const tagKey of (eco.ownedTags || [])) {
+        const tagData = TAGS[tagKey];
+        if (!tagData) continue;
+        anyTags = true;
+        const tagEquipped = eco.equippedTag === tagKey;
+        const tItem = document.createElement('div');
+        tItem.className = 'locker-item' + (tagEquipped ? ' equipped' : '');
+        tItem.innerHTML =
+          '<div class="locker-item-icon" style="font-family:var(--font-display);font-size:20px;color:' + (tagData.textColor || tagData.color) + '">' + tagData.name + '</div>' +
+          '<div class="locker-item-name">' + tagData.name + ' Tag</div>' +
+          '<button class="btn ' + (tagEquipped ? 'btn-secondary' : 'btn-primary') + '">' + (tagEquipped ? 'Unequip' : 'Equip') + '</button>';
+        tItem.querySelector('.btn').addEventListener('click', () => {
+          eco.equipTag(tagKey);
+          this._renderLockerTab('tags');
+        });
+        grid.appendChild(tItem);
+      }
+
+      // Legacy OG tag (kept from the old inventory structure)
       if (eco.inventory && eco.inventory.tags && eco.inventory.tags.includes('og')) {
-        const isEquipped = eco.equipped && eco.equipped.tag === 'og';
-        const item = document.createElement('div');
-        item.className = `locker-item${isEquipped ? ' equipped' : ''}`;
-        item.innerHTML = `
-          <div class="locker-item-icon" style="font-family:var(--font-display);font-size:24px;color:var(--accent-gold)">OG</div>
-          <div class="locker-item-name">OG Tag</div>
-          <div class="locker-item-desc">Played in the first 30 days</div>
-          <button class="btn ${isEquipped ? 'btn-secondary' : 'btn-primary'}">${isEquipped ? 'Unequip' : 'Equip'}</button>
-        `;
-        item.querySelector('.btn').addEventListener('click', () => {
-          eco.equipped.tag = isEquipped ? null : 'og';
+        anyTags = true;
+        const ogEquipped = eco.equipped && eco.equipped.tag === 'og';
+        const ogItem = document.createElement('div');
+        ogItem.className = 'locker-item' + (ogEquipped ? ' equipped' : '');
+        ogItem.innerHTML =
+          '<div class="locker-item-icon" style="font-family:var(--font-display);font-size:24px;color:var(--accent-gold)">OG</div>' +
+          '<div class="locker-item-name">OG Tag</div>' +
+          '<div class="locker-item-desc">Played in the first 30 days</div>' +
+          '<button class="btn ' + (ogEquipped ? 'btn-secondary' : 'btn-primary') + '">' + (ogEquipped ? 'Unequip' : 'Equip') + '</button>';
+        ogItem.querySelector('.btn').addEventListener('click', () => {
+          eco.equipped.tag = ogEquipped ? null : 'og';
           eco.save();
           this._renderLockerTab('tags');
         });
-        grid.appendChild(item);
+        grid.appendChild(ogItem);
+      }
+
+      if (anyTags) {
         content.appendChild(grid);
       } else {
         content.innerHTML = '<div class="locker-coming-soon">No tags earned yet</div>';
       }
-    } else {
+        } else {
       content.innerHTML = `<div class="locker-coming-soon">Coming Soon</div>`;
     }
   }

@@ -9,6 +9,8 @@ const DEFAULTS = {
   masterVolume: 0.4,
   mouseSensitivity: 1.0,
   graphicsQuality: 'high', // 'low' | 'medium' | 'high'
+  deviceType: 'school', // 'school' = 2D tabbed shop only | 'other' = walk-in market
+  seenDevices: false, // has the player opened the Devices setting yet
 };
 
 export class Settings {
