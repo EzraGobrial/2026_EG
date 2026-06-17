@@ -180,6 +180,30 @@ export class UI {
   showPauseOverlay() {
     if (this.pauseOverlay) this.pauseOverlay.classList.remove('hidden');
     this._updateSettingsDot();
+    this._setupEndHuntButton();
+    // "End the Hunt" only applies when paused mid-hunt (HUD is visible)
+    const endBtn = document.getElementById('btn-end-hunt');
+    if (endBtn) {
+      const hud = document.getElementById('hud');
+      const inHunt = hud && !hud.classList.contains('hidden');
+      endBtn.style.display = inHunt ? '' : 'none';
+    }
+  }
+
+  _setupEndHuntButton() {
+    if (document.getElementById('btn-end-hunt')) return;
+    const panel = this.pauseOverlay && this.pauseOverlay.querySelector('.pause-panel');
+    if (!panel) return;
+    const btn = document.createElement('button');
+    btn.id = 'btn-end-hunt';
+    btn.className = 'btn btn-secondary';
+    btn.textContent = 'End the Hunt';
+    const resume = document.getElementById('btn-resume');
+    if (resume) resume.after(btn); else panel.appendChild(btn);
+    btn.addEventListener('click', () => {
+      this.audio.playUIClick();
+      if (this.onEndHunt) this.onEndHunt();
+    });
   }
 
   hidePauseOverlay() {
