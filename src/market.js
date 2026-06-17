@@ -694,12 +694,12 @@ export class MarketWorld {
     // rotation.y = atan2(-px, -pz) makes the stand face the center.
     const R = 8.5;
     const standDefs = [
-      { label: 'WEAPONS',   category: 'weapons',   angleDeg:   0, roofColor: 0x1e3a8a, keeperColor: 0x152a6a },  // N  — navy
-      { label: 'SKINS',     category: 'skins',     angleDeg:  50, roofColor: 0x7a1a1a, keeperColor: 0x5a1010 },  // NE — crimson
-      { label: 'LOCATIONS', category: 'locations', angleDeg: 310, roofColor: 0x1a5c2a, keeperColor: 0x0e3a18 },  // NW — forest green
-      { label: 'BANNERS',   category: 'banners',   angleDeg:  95, roofColor: 0x7a5a0a, keeperColor: 0x5a3a05 },  // E  — amber
-      { label: 'POTIONS',   category: 'potions',   angleDeg: 265, roofColor: 0x4a1a7a, keeperColor: 0x30105a },  // W  — purple
-      { label: 'TAGS',      category: 'tags',      angleDeg: 145, roofColor: 0x2a0a5a, keeperColor: 0x1a0540 },  // SE — deep violet
+      { label: 'WEAPONS',   category: 'weapons',   angleDeg: -25, roofColor: 0x1e3a8a, keeperColor: 0x152a6a },  // N  — navy
+      { label: 'SKINS',     category: 'skins',     angleDeg: 25, roofColor: 0x7a1a1a, keeperColor: 0x5a1010 },  // NE — crimson
+      { label: 'LOCATIONS', category: 'locations', angleDeg: -73, roofColor: 0x1a5c2a, keeperColor: 0x0e3a18 },  // NW — forest green
+      { label: 'BANNERS',   category: 'banners',   angleDeg: 73, roofColor: 0x7a5a0a, keeperColor: 0x5a3a05 },  // E  — amber
+      { label: 'POTIONS',   category: 'potions',   angleDeg: -121, roofColor: 0x4a1a7a, keeperColor: 0x30105a },  // W  — purple
+      { label: 'TAGS',      category: 'tags',      angleDeg: 121, roofColor: 0x2a0a5a, keeperColor: 0x1a0540 },  // SE — deep violet
     ];
 
     standDefs.forEach(def => {
