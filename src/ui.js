@@ -801,7 +801,27 @@ export class UI {
 
   // ─── Results Screen ─────────────────────────
 
+  _setupResultsButtons() {
+    const panel = this.screens.results && this.screens.results.querySelector('.results-panel');
+    if (!panel || document.getElementById('results-actions')) return;
+    // Lay the action buttons out in a compact 2-column grid (pairs side by side),
+    // with "Skip to Sleep" spanning the full width at the bottom.
+    const grid = document.createElement('div');
+    grid.id = 'results-actions';
+    grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px';
+    ['btn-to-shop', 'btn-to-locker', 'btn-trade', 'btn-friends', 'btn-tournament', 'btn-clan', 'btn-skip-shop'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      btn.style.width = 'auto';
+      btn.style.margin = '0';
+      if (id === 'btn-skip-shop') btn.style.gridColumn = '1 / -1';
+      grid.appendChild(btn);
+    });
+    panel.appendChild(grid);
+  }
+
   showResults(huntBag, displayName, xpEarned = 0) {
+    this._setupResultsButtons();
     const summary = document.getElementById('results-summary');
     summary.innerHTML = '';
 
