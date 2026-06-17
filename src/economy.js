@@ -955,7 +955,7 @@ export class Economy {
       totalEarned: this.totalMoneyEarned,
       day: this.day,
       dimension: this.dimension,
-      tag: this.equipped && this.equipped.tag ? this.equipped.tag : null,
+      tag: this.equippedTag || (this.equipped && this.equipped.tag) || null,
       banner: this.equippedBanner || null,
       rank: this.rank || 1,
       updatedAt: Date.now()
