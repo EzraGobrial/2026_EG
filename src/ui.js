@@ -915,7 +915,7 @@ export class UI {
         div.style.cssText += bannerStyle;
         div.innerHTML = `
           <span class="lb-rank">${i + 1}</span>
-          <span class="lb-name">${rankBadge}${entry.name}${entry.tag ? ` <span class="og-badge"${TAGS[entry.tag] ? ` style="color:${TAGS[entry.tag].textColor || TAGS[entry.tag].color};border-color:${TAGS[entry.tag].color}"` : ''}>${TAGS[entry.tag] ? TAGS[entry.tag].name : 'OG'}</span>` : ''}${isYou ? ' (you)' : ''}</span>
+          <span class="lb-name">${rankBadge}${entry.name}${entry.tag ? ` <span style="display:inline-block;padding:1px 7px;margin-left:5px;border-radius:6px;font-size:10px;font-weight:800;letter-spacing:0.5px;vertical-align:middle;${TAGS[entry.tag] ? `color:${TAGS[entry.tag].textColor || TAGS[entry.tag].color};border:1px solid ${TAGS[entry.tag].color};background:${TAGS[entry.tag].color}22` : `color:var(--accent-gold);border:1px solid var(--accent-gold)`}">${TAGS[entry.tag] ? TAGS[entry.tag].name : 'OG'}</span>` : ''}${isYou ? ' (you)' : ''}</span>
           <span class="lb-money">$${entry[valueKey].toLocaleString()}</span>
         `;
         container.appendChild(div);
@@ -1958,6 +1958,13 @@ export class UI {
       grid.className = 'locker-items';
       let anyTags = false;
 
+      // Migrate legacy OG equip into the unified single-tag field (one tag at a time)
+      if (eco.equipped && eco.equipped.tag === 'og' && !eco.equippedTag) {
+        eco.equippedTag = 'og';
+        eco.equipped.tag = null;
+        eco.save();
+      }
+
       // Owned tags purchased or granted in the shop (DEV, Hunter, etc.)
       for (const tagKey of (eco.ownedTags || [])) {
         const tagData = TAGS[tagKey];
@@ -1980,7 +1987,7 @@ export class UI {
       // Legacy OG tag (kept from the old inventory structure)
       if (eco.inventory && eco.inventory.tags && eco.inventory.tags.includes('og')) {
         anyTags = true;
-        const ogEquipped = eco.equipped && eco.equipped.tag === 'og';
+        const ogEquipped = eco.equippedTag === 'og';
         const ogItem = document.createElement('div');
         ogItem.className = 'locker-item' + (ogEquipped ? ' equipped' : '');
         ogItem.innerHTML =
@@ -1989,7 +1996,8 @@ export class UI {
           '<div class="locker-item-desc">Played in the first 30 days</div>' +
           '<button class="btn ' + (ogEquipped ? 'btn-secondary' : 'btn-primary') + '">' + (ogEquipped ? 'Unequip' : 'Equip') + '</button>';
         ogItem.querySelector('.btn').addEventListener('click', () => {
-          eco.equipped.tag = ogEquipped ? null : 'og';
+          eco.equippedTag = ogEquipped ? null : 'og';
+          eco.equipped.tag = null;
           eco.save();
           this._renderLockerTab('tags');
         });
