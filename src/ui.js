@@ -635,7 +635,9 @@ export class UI {
     if (dotsEl) {
       dotsEl.innerHTML = '';
       for (let i = 0; i < challenges.length; i++) {
-        const filled = challenges[i].completed;
+        // Fill the first N segments by completed COUNT, not by which quest — so
+        // line 1 fills first, then 2, then 3, regardless of completion order.
+        const filled = i < completedCount;
         // Dot
         const dot = document.createElement('div');
         dot.className = `challenge-dot${filled ? ' filled' : ''}`;
