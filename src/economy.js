@@ -626,27 +626,27 @@ export const DIMENSIONS = [
     fee: 5000,
     locations: {
       tundra: {
-        name: 'Tundra', cost: 800,
+        name: 'Tundra', cost: 25000,
         description: 'Flat, frozen plains. Birds camouflage in the snow.',
         birds: ['snow_bunting', 'ptarmigan'], maxBirds: 5, areaSize: 60, unlocked: false
       },
       glacier: {
-        name: 'Glacier', cost: 1500,
+        name: 'Glacier', cost: 45000,
         description: 'Icy cliffs and frozen waterfalls.',
         birds: ['snow_bunting', 'ptarmigan', 'snowy_owl'], maxBirds: 6, areaSize: 50, unlocked: false
       },
       ice_cave: {
-        name: 'Ice Cave', cost: 2500,
+        name: 'Ice Cave', cost: 70000,
         description: 'Crystal caverns echo with wingbeats.',
         birds: ['snowy_owl', 'puffin', 'arctic_tern'], maxBirds: 5, areaSize: 40, unlocked: false
       },
       frozen_lake: {
-        name: 'Frozen Lake', cost: 4000,
+        name: 'Frozen Lake', cost: 105000,
         description: 'A vast frozen lake under the northern lights.',
         birds: ['puffin', 'arctic_tern', 'gyrfalcon'], maxBirds: 6, areaSize: 65, unlocked: false
       },
       arctic_peak: {
-        name: 'Arctic Peak', cost: 6000,
+        name: 'Arctic Peak', cost: 150000,
         description: 'The highest point. Only legendary birds dare fly here.',
         birds: ['arctic_tern', 'gyrfalcon', 'ice_phoenix'], maxBirds: 4, areaSize: 70, unlocked: false
       }
@@ -659,27 +659,27 @@ export const DIMENSIONS = [
     fee: 10000,
     locations: {
       oasis: {
-        name: 'Oasis', cost: 1500,
+        name: 'Oasis', cost: 50000,
         description: 'A green haven in the sand. Birds come to drink.',
         birds: ['sandgrouse', 'roadrunner'], maxBirds: 6, areaSize: 45, unlocked: false
       },
       canyon: {
-        name: 'Canyon', cost: 3000,
+        name: 'Canyon', cost: 90000,
         description: 'Deep rocky canyons with echoing calls.',
         birds: ['sandgrouse', 'roadrunner', 'vulture'], maxBirds: 6, areaSize: 55, unlocked: false
       },
       dunes: {
-        name: 'Dunes', cost: 5000,
+        name: 'Dunes', cost: 140000,
         description: 'Endless rolling sand dunes under a blazing sun.',
         birds: ['vulture', 'secretary_bird', 'desert_hawk'], maxBirds: 5, areaSize: 70, unlocked: false
       },
       mesa: {
-        name: 'Mesa', cost: 8000,
+        name: 'Mesa', cost: 210000,
         description: 'Flat-topped mountains where predators circle.',
         birds: ['secretary_bird', 'desert_hawk', 'sand_falcon'], maxBirds: 5, areaSize: 65, unlocked: false
       },
       ruins: {
-        name: 'Ruins', cost: 12000,
+        name: 'Ruins', cost: 300000,
         description: 'Ancient ruins. The Sun Phoenix was last seen here.',
         birds: ['desert_hawk', 'sand_falcon', 'sun_phoenix'], maxBirds: 4, areaSize: 75, unlocked: false
       },
@@ -742,7 +742,7 @@ function generateDimension(id) {
       spread: 0.14, pellets: 8 + tier, isShotgun: true, owned: false
     };
     const LOCN = ['Gateway', 'Wilds', 'Depths', 'Spires', 'Sanctum'];
-    const COSTM = [18, 32, 52, 78, 110];
+    const COSTM = [72, 130, 210, 330, 480];
     const SETS = [[0, 1], [0, 1, 2], [1, 2, 3], [2, 3, 4], [3, 4, 5]];
     const locations = {};
     for (let i = 0; i < 5; i++) {
