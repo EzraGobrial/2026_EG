@@ -689,6 +689,73 @@ export const DIMENSIONS = [
   }
 ];
 
+// ═══ Infinite procedural dimensions (id >= 5) ═══
+function hslHex(h, s, l) {
+    s /= 100; l /= 100;
+    const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2;
+    let r = 0, g = 0, b = 0;
+    if (h < 60) { r = c; g = x; } else if (h < 120) { r = x; g = c; } else if (h < 180) { g = c; b = x; }
+    else if (h < 240) { g = x; b = c; } else if (h < 300) { r = x; b = c; } else { r = c; b = x; }
+    return ((Math.round((r + m) * 255) << 16) | (Math.round((g + m) * 255) << 8) | Math.round((b + m) * 255));
+  }
+
+function generateDimension(id) {
+    const tier = id - 4;
+    const THEMES = ['Nebula', 'Abyss', 'Mirage', 'Aurora', 'Tempest', 'Verdant', 'Quantum', 'Celestial', 'Phantom', 'Eclipse', 'Obsidian', 'Radiant', 'Spectral', 'Glacial', 'Molten', 'Astral'];
+    const ROMAN = ['', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+    const cycle = Math.floor((id - 5) / THEMES.length);
+    const baseName = THEMES[(id - 5) % THEMES.length];
+    const name = cycle > 0 ? (baseName + ' ' + (ROMAN[cycle] || ('x' + (cycle + 1)))) : baseName;
+    const topVal = Math.round(500 * Math.pow(2.76, tier));
+    const floorVal = Math.round(topVal / 2.3);
+    const RAR = ['common', 'common', 'uncommon', 'uncommon', 'rare', 'legendary'];
+    const WT = [34, 28, 18, 12, 6, 2];
+    const NOUNS = ['Flitter', 'Glider', 'Stalker', 'Drake', 'Wraith', 'Sovereign'];
+    const birdKeys = [];
+    for (let i = 0; i < 6; i++) {
+      const t = i / 5;
+      const value = Math.round(floorVal + (topVal - floorVal) * t);
+      const hue = (id * 47 + i * 61) % 360;
+      const key = 'd' + id + '_b' + i;
+      BIRDS[key] = {
+        name: name + ' ' + NOUNS[i], value, speed: 2.6 + i * 0.45, size: 0.36 + i * 0.06,
+        rarity: RAR[i], weight: WT[i], hp: 1,
+        bodyColor: hslHex(hue, 70, 50), wingColor: hslHex(hue, 70, 40),
+        headColor: hslHex((hue + 20) % 360, 70, 55), beakColor: 0x333333,
+        bellyColor: hslHex(hue, 55, 72), flapSpeed: 6 + i, flapAmplitude: 0.55 + i * 0.05
+      };
+      birdKeys.push(key);
+    }
+    const wk0 = 'd' + id + '_w0', wk1 = 'd' + id + '_w1';
+    WEAPONS[wk0] = {
+      name: name + ' Lance', cost: Math.round(topVal * 4), dimension: id,
+      description: 'Precision energy weapon from the ' + name + ' dimension.',
+      fireRate: Math.max(0.35, 1.4 - 0.04 * tier), accuracy: Math.min(0.99, 0.9 + 0.012 * tier),
+      ammo: 3 + tier, reloadTime: Math.max(0.7, 1.9 - 0.08 * tier),
+      spread: 0.012, hasScope: true, isShotgun: false, owned: false
+    };
+    WEAPONS[wk1] = {
+      name: name + ' Scattergun', cost: Math.round(topVal * 8), dimension: id,
+      description: 'Devastating spread weapon from the ' + name + ' dimension.',
+      fireRate: Math.max(0.5, 1.1 - 0.02 * tier), accuracy: 0.6,
+      ammo: 4 + Math.floor(tier / 2), reloadTime: Math.max(1.2, 2.6 - 0.06 * tier),
+      spread: 0.14, pellets: 8 + tier, isShotgun: true, owned: false
+    };
+    const LOCN = ['Gateway', 'Wilds', 'Depths', 'Spires', 'Sanctum'];
+    const COSTM = [2, 4, 7, 11, 16];
+    const SETS = [[0, 1], [0, 1, 2], [1, 2, 3], [2, 3, 4], [3, 4, 5]];
+    const locations = {};
+    for (let i = 0; i < 5; i++) {
+      const key = 'd' + id + '_l' + i;
+      locations[key] = {
+        name: name + ' ' + LOCN[i], cost: Math.round(topVal * COSTM[i]),
+        description: 'A ' + LOCN[i].toLowerCase() + ' in the ' + name + ' dimension.',
+        birds: SETS[i].map(j => birdKeys[j]), maxBirds: 5 + (i % 3), areaSize: 50 + i * 5, unlocked: false
+      };
+    }
+    return { id, name, fee: Math.round(10000 * Math.pow(2.6, tier)), locations, weapons: [wk0, wk1] };
+  }
+
 // Grandpa weapons cannot be traded
 const GRANDPA_WEAPONS = ['old_rifle', 'grandpas_shotgun', 'grandpas_rifle'];
 
@@ -824,6 +891,8 @@ export class Economy {
       if (data.rank !== undefined) this.rank = data.rank;
       if (data.seenScopeHint !== undefined) this.seenScopeHint = data.seenScopeHint;
 
+      // Ensure procedurally-generated dimensions exist first
+      this._ensureDimensions(this.dimension + 1);
       // Rebuild locations from all unlocked dimensions
       this.locations = {};
       for (let d = 0; d < this.dimension && d < DIMENSIONS.length; d++) {
@@ -883,12 +952,26 @@ export class Economy {
 
   // ─── Dimension Methods ──────────────────────
 
+  _ensureDimensions(uptoId) {
+    while (DIMENSIONS.length < uptoId) {
+      const dim = generateDimension(DIMENSIONS.length + 1);
+      DIMENSIONS.push(dim);
+      for (const wk of dim.weapons) {
+        if (!this.weapons[wk] && WEAPONS[wk]) {
+          this.weapons[wk] = JSON.parse(JSON.stringify(WEAPONS[wk]));
+        }
+      }
+    }
+  }
+
   getDimensionName() {
+    this._ensureDimensions(this.dimension);
     const dim = DIMENSIONS[this.dimension - 1];
     return dim ? dim.name : `Dimension ${this.dimension}`;
   }
 
   getDimensionFee() {
+    this._ensureDimensions(this.dimension + 1);
     const nextDim = DIMENSIONS[this.dimension]; // 0-indexed, so this.dimension points to next
     return nextDim ? nextDim.fee : 0;
   }
@@ -897,6 +980,7 @@ export class Economy {
    * Check if all locations in the CURRENT dimension are unlocked
    */
   canAdvanceDimension() {
+    this._ensureDimensions(this.dimension + 1);
     if (this.dimension >= DIMENSIONS.length) return false; // no more dimensions
     const currentDimLocs = DIMENSIONS[this.dimension - 1].locations;
     for (const key of Object.keys(currentDimLocs)) {
@@ -915,6 +999,7 @@ export class Economy {
 
     this.money -= fee;
     this.dimension++;
+    this._ensureDimensions(this.dimension + 1);
 
     // Merge new dimension's locations
     const newDim = DIMENSIONS[this.dimension - 1];
@@ -1326,6 +1411,6 @@ export class Economy {
   }
 
   hasWon() {
-    return this.money >= 5000;
+    return false; // Infinite game — never ends
   }
 }
