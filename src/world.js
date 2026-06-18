@@ -1380,7 +1380,7 @@ function buildVolcano(scene, obstacles) {
   const smokeMat = new THREE.MeshStandardMaterial({
     color: 0x777777, roughness: 0.5, transparent: true, opacity: 0.3
   });
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 3; i++) {
     const smoke = new THREE.Mesh(new THREE.SphereGeometry(1 + Math.random() * 1.5, 7, 6), smokeMat);
     smoke.position.set(
       (Math.random() - 0.5) * 30,
