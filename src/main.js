@@ -709,7 +709,7 @@ class Game {
     const ret = document.getElementById('scope-reticle');
     if (ret) ret.style.display = 'none';
     const ch = document.getElementById('crosshair');
-    if (ch) ch.style.display = '';
+    if (ch) { ch.classList.add('hidden'); ch.style.display = ''; }
   }
 
   _endHunt() {
