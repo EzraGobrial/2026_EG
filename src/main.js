@@ -676,12 +676,31 @@ class Game {
     }
   }
 
+  _resetScope() {
+    this._scoping = false;
+    this._slomoActive = false;
+    this._slomoTimer = 0;
+    this._slomoCooldown = 0;
+    this.birdSpeedMultiplier = 1;
+    this._currentFOV = this._normalFOV;
+    if (this.camera) { this.camera.fov = this._normalFOV; this.camera.updateProjectionMatrix(); }
+    if (this.player) this.player.mouseSensitivity = this._normalSens;
+    if (this.weapons) { this.weapons.isADS = false; if (this.weapons.currentGun) this.weapons.currentGun.visible = true; }
+    const vig = document.getElementById('scope-vignette');
+    if (vig) { vig.classList.remove('active'); vig.classList.remove('scoped'); }
+    const ret = document.getElementById('scope-reticle');
+    if (ret) ret.style.display = 'none';
+    const ch = document.getElementById('crosshair');
+    if (ch) ch.style.display = '';
+  }
+
   _endHunt() {
     let rankUpResult = null;
     try {
       this.state = STATE.RESULTS;
       this.player.unlock();
       this.hud.hide();
+      this._resetScope();
       this.hud.hideBossHP();
       this.hud.hideScopeHint();
       this.hud.hideCombo();
@@ -1355,6 +1374,7 @@ class Game {
   _quitToTitle() {
     this.ui.hidePauseOverlay();
     this.ui.hideAll();
+    this._resetScope();
     this.audio.stopAmbience();
     if (this.audio.ctx && this.audio.ctx.state === 'suspended') this.audio.ctx.resume();
     this.hud.hide();
