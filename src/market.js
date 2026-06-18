@@ -514,7 +514,7 @@ function buildStand(label, roofColor = 0x2a5530, keeperColor = 0x2a3a5a) {
   g.add(botMold);
 
   // ── Support columns (3: left, center, right) ─
-  const colPositions = [-(W / 2 - 0.2), 0, W / 2 - 0.2];
+  const colPositions = [-(W / 2 - 0.2), W / 2 - 0.2];
   colPositions.forEach(x => {
     // Column shaft
     const col = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.14, 3.8, 12), darkWood);
