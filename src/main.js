@@ -719,15 +719,15 @@ class Game {
       const g = new THREE.Group();
       const addMat = (color, opacity) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false });
       // Bright inner core (runs the length of the beam, base at local y=0)
-      const core = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 1, 8), addMat(0xccf6ff, 0.95));
+      const core = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1, 8), addMat(0x9fe8ff, 0.5));
       core.position.y = 0.5; g.add(core);
       // Soft outer glow
-      const glow = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 1, 8), addMat(0x33b5ff, 0.35));
+      const glow = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 1, 8), addMat(0x2aa0ff, 0.16));
       glow.position.y = 0.5; g.add(glow);
       // Traveling energy nodes that pulse + jitter along the beam
       const nodes = [];
       for (let i = 0; i < 12; i++) {
-        const n = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), addMat(0xffffff, 0.8));
+        const n = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), addMat(0xbfeeff, 0.5));
         g.add(n); nodes.push(n);
       }
       g.userData = { core, glow, nodes };
@@ -736,8 +736,12 @@ class Game {
     }
     const g = this._beamMesh;
     g.visible = true;
+    // Start at the muzzle and aim at the crosshair point so the beam comes out
+    // of the gun tip and converges at screen center (not off-axis from a corner).
     const origin = this.weapons.getBarrelWorldPos ? this.weapons.getBarrelWorldPos() : this.camera.position.clone();
-    const dir = this.player.getForwardDirection().clone().normalize();
+    const camDir = this.player.getForwardDirection().clone().normalize();
+    const aimPoint = this.camera.position.clone().add(camDir.multiplyScalar(150));
+    const dir = aimPoint.clone().sub(origin).normalize();
     g.position.copy(origin);
     g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
     const t = performance.now() / 1000;
@@ -745,11 +749,11 @@ class Game {
     // Core: rapid thickness pulse + flicker + slight elliptical jitter (shake)
     const cp = 0.7 + 0.5 * Math.abs(Math.sin(t * 24));
     core.scale.set(cp + Math.random() * 0.3, length, cp + Math.random() * 0.3);
-    core.material.opacity = 0.8 + Math.random() * 0.2;
+    core.material.opacity = 0.45 + Math.random() * 0.15;
     // Glow: slower pulse, flickering opacity + hue drift (cyan to electric blue)
     const gp = 0.8 + 0.45 * Math.sin(t * 13);
     glow.scale.set(gp + Math.random() * 0.4, length, gp + Math.random() * 0.4);
-    glow.material.opacity = 0.22 + 0.22 * Math.abs(Math.sin(t * 9));
+    glow.material.opacity = 0.1 + 0.12 * Math.abs(Math.sin(t * 9));
     glow.material.color.setHSL(0.55 + 0.06 * Math.sin(t * 5), 1.0, 0.6);
     // Nodes: stream of pulses traveling outward with lateral shake
     for (let i = 0; i < nodes.length; i++) {
@@ -758,7 +762,7 @@ class Game {
       n.position.x = (Math.random() - 0.5) * 0.14;
       n.position.z = (Math.random() - 0.5) * 0.14;
       n.scale.setScalar(0.5 + 0.9 * Math.abs(Math.sin(t * 18 + i * 1.7)));
-      n.material.opacity = 0.45 + 0.55 * Math.abs(Math.sin(t * 26 + i * 2.1));
+      n.material.opacity = 0.3 + 0.4 * Math.abs(Math.sin(t * 26 + i * 2.1));
     }
   }
 
