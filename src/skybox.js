@@ -144,16 +144,16 @@ export const SKY_PRESETS = {
     dirLightIntensity: 0.6
   },
   volcano: {
-    topColor: new THREE.Color(0x1a1a22),
-    bottomColor: new THREE.Color(0x442222),
-    sunColor: new THREE.Color(0xff4422),
+    topColor: new THREE.Color(0x4a3a52),
+    bottomColor: new THREE.Color(0xaa5a38),
+    sunColor: new THREE.Color(0xff8844),
     sunDirection: new THREE.Vector3(0.3, 0.4, 0.3),
-    sunIntensity: 0.8,
-    fogColor: new THREE.Color(0x332222),
-    ambientColor: 0x553322,
-    ambientIntensity: 0.4,
-    dirLightColor: 0xff6633,
-    dirLightIntensity: 0.9
+    sunIntensity: 1.3,
+    fogColor: new THREE.Color(0x6b4a44),
+    ambientColor: 0x8a6a4a,
+    ambientIntensity: 0.8,
+    dirLightColor: 0xffaa66,
+    dirLightIntensity: 1.45
   },
   island: {
     topColor: new THREE.Color(0x1188dd),
