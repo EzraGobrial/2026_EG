@@ -933,7 +933,8 @@ class Game {
   _onMouseDown(e) {
     if (this.state !== STATE.HUNTING) return;
     if (e.button === 2) {
-      // Right-click: scope
+      // Right-click: scope — don't engage while the Slo-Mo Gun is cooling down (prevents flicker)
+      if (this.economy.currentWeapon === 'slomo_gun' && this._slomoCooldown > 0) return;
       this._scoping = true;
       return;
     }
