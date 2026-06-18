@@ -372,22 +372,30 @@ export class SkySystem {
   }
 
   setPreset(presetName) {
-    const p = SKY_PRESETS[presetName];
-    if (!p) return;
+    const p = SKY_PRESETS[presetName] || SKY_PRESETS.backyard;
 
-    this.skyMat.uniforms.uTopColor.value.copy(p.topColor);
-    this.skyMat.uniforms.uBottomColor.value.copy(p.bottomColor);
+    // Brightness floor: lift any sky color / light that is too dark, so birds
+    // stay visible in every level (and generated dimensions get a bright sky).
+    const lift = (color, minL) => {
+      const c = (color && color.isColor) ? color.clone() : new THREE.Color(color);
+      const hsl = {}; c.getHSL(hsl);
+      if (hsl.l < minL) c.setHSL(hsl.h, hsl.s, minL);
+      return c;
+    };
+
+    this.skyMat.uniforms.uTopColor.value.copy(lift(p.topColor, 0.42));
+    this.skyMat.uniforms.uBottomColor.value.copy(lift(p.bottomColor, 0.48));
     this.skyMat.uniforms.uSunColor.value.copy(p.sunColor);
     this.skyMat.uniforms.uSunDirection.value.copy(p.sunDirection);
-    this.skyMat.uniforms.uSunIntensity.value = p.sunIntensity;
+    this.skyMat.uniforms.uSunIntensity.value = Math.max(p.sunIntensity, 1.0);
 
-    this.scene.fog = new THREE.FogExp2(p.fogColor, 0.008);
+    this.scene.fog = new THREE.FogExp2(lift(p.fogColor, 0.42), 0.008);
 
-    this.ambientLight.color.setHex(p.ambientColor);
-    this.ambientLight.intensity = p.ambientIntensity;
+    this.ambientLight.color.copy(lift(p.ambientColor, 0.5));
+    this.ambientLight.intensity = Math.max(p.ambientIntensity, 0.8);
 
     this.dirLight.color.setHex(p.dirLightColor);
-    this.dirLight.intensity = p.dirLightIntensity;
+    this.dirLight.intensity = Math.max(p.dirLightIntensity, 1.2);
 
     const sunDir = p.sunDirection.clone().normalize().multiplyScalar(50);
     this.dirLight.position.copy(sunDir);
