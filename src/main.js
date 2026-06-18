@@ -154,6 +154,13 @@ class Game {
     this._slomoTimer = 0;        // how long scoped (max 3s)
     this._slomoCooldown = 0;     // cooldown before can scope again
     this._slomoActive = false;   // is slomo effect currently on
+    // Rail Gun continuous beam state
+    this._beamFiring = false;
+    this._beamHeat = 0;
+    this._beamCooldown = 0;
+    this._beamRaycaster = new THREE.Raycaster();
+    this._beamRaycaster.far = 200;
+    this._beamMesh = null;
     this.birdSpeedMultiplier = 1; // passed to bird system
 
     // ─── Clock ─────────────────────────────
@@ -676,6 +683,79 @@ class Game {
     }
   }
 
+  _fireBeamTick() {
+    this._beamRaycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
+    const hit = this.birds.raycastHit(this._beamRaycaster);
+    if (!hit) return;
+    const { bird, point } = hit;
+    const birdData = bird.data;
+    this.particles.spawnFeatherBurst(point, birdData.bodyColor, birdData.wingColor);
+    this.audio.playBirdHit();
+    const killed = this.birds.hit(bird);
+    if (!killed) { this.hud.showBossHP(bird.hp, birdData.hp || 1); return; }
+    if (this.birds.isBoss(bird)) { this.hud.hideBossHP(); this.huntStats.bossKills++; }
+    this.comboCount++;
+    this.comboTimer = this.comboTimeout;
+    const comboMultiplier = this._getComboMultiplier();
+    const fluctuation = 0.85 + Math.random() * 0.3;
+    let earnedValue = Math.round(birdData.value * fluctuation);
+    if (this._doubleMoneyActive) earnedValue *= 2;
+    this.huntBag.push({ key: bird.birdKey, combo: comboMultiplier, earnedValue: earnedValue });
+    this.economy.totalBirdsKilled++;
+    this.huntStats.moneyEarned += earnedValue;
+    this.huntStats.totalKills++;
+    if (this.comboCount > this.huntStats.maxCombo) this.huntStats.maxCombo = this.comboCount;
+    const rarityColor = RARITY_COLORS[birdData.rarity] || '#aaa';
+    this.hud.addKill(birdData.name, earnedValue, rarityColor, this.comboCount, comboMultiplier);
+    this.hud.showMoneyPopup(earnedValue, comboMultiplier);
+    this.hud.showHitMarker();
+    this.hud.showCombo(this.comboCount, comboMultiplier);
+  }
+
+  _showBeam(on) {
+    if (on) {
+      if (!this._beamMesh) {
+        const geo = new THREE.CylinderGeometry(0.05, 0.05, 1, 8);
+        const mat = new THREE.MeshBasicMaterial({ color: 0x66e0ff, transparent: true, opacity: 0.85 });
+        this._beamMesh = new THREE.Mesh(geo, mat);
+        this.scene.add(this._beamMesh);
+      }
+      this._beamMesh.visible = true;
+      const origin = this.weapons.getBarrelWorldPos ? this.weapons.getBarrelWorldPos() : this.camera.position.clone();
+      const dir = this.player.getForwardDirection().clone().normalize();
+      const length = 120;
+      this._beamMesh.position.copy(origin).add(dir.clone().multiplyScalar(length / 2));
+      this._beamMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+      this._beamMesh.scale.set(1, length, 1);
+    } else if (this._beamMesh) {
+      this._beamMesh.visible = false;
+    }
+  }
+
+  _updateBeamHeatUI() {
+    let el = document.getElementById('beam-heat');
+    const cooling = this._beamCooldown > 0;
+    const firing = this._beamFiring && this._beamHeat > 0;
+    if (cooling || firing) {
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'beam-heat';
+        el.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-120px);z-index:60;background:rgba(18,18,28,0.82);color:#fff;font-family:sans-serif;font-size:18px;font-weight:800;padding:8px 18px;border-radius:10px;border:2px solid #66e0ff;text-align:center;pointer-events:none;text-shadow:0 1px 3px #000;';
+        document.body.appendChild(el);
+      }
+      el.style.display = 'block';
+      if (cooling) {
+        el.style.borderColor = '#ff5544';
+        el.textContent = 'OVERHEATED - ' + Math.ceil(this._beamCooldown) + 's';
+      } else {
+        el.style.borderColor = '#66e0ff';
+        el.textContent = 'Rail Gun: ' + (Math.round((5 - this._beamHeat) * 10) / 10) + 's left';
+      }
+    } else if (el) {
+      el.style.display = 'none';
+    }
+  }
+
   _updateSlomoCooldownUI(isSlomo) {
     let el = document.getElementById('slomo-cooldown');
     if (isSlomo && this._slomoCooldown > 0) {
@@ -695,6 +775,10 @@ class Game {
   _resetScope() {
     const _cd = document.getElementById('slomo-cooldown');
     if (_cd) _cd.style.display = 'none';
+    this._beamFiring = false;
+    if (this._beamMesh) this._beamMesh.visible = false;
+    const _bh = document.getElementById('beam-heat');
+    if (_bh) _bh.style.display = 'none';
     this._scoping = false;
     this._slomoActive = false;
     this._slomoTimer = 0;
@@ -963,6 +1047,13 @@ class Game {
       return;
     }
 
+    // Rail Gun: hold to fire a continuous beam (overheats after 5s)
+    if (this.economy.currentWeapon === 'rail_gun') {
+      if (this._beamCooldown > 0) { this.audio.playEmptyClick(); return; }
+      this._beamFiring = true;
+      return;
+    }
+
     // Try to shoot
     const raycasters = this.weapons.shoot();
     if (!raycasters) {
@@ -1181,6 +1272,23 @@ class Game {
 
     // Slo-Mo cooldown indicator (shows countdown while cooling down)
     this._updateSlomoCooldownUI(isSlomo);
+
+    // Rail Gun continuous beam
+    if (this.economy.currentWeapon === 'rail_gun') {
+      if (this._beamCooldown > 0) { this._beamCooldown -= dt; this._beamFiring = false; }
+      if (this._beamFiring) {
+        this._beamHeat += dt;
+        this._fireBeamTick();
+        this._showBeam(true);
+        if (this._beamHeat >= 5) { this._beamFiring = false; this._beamHeat = 0; this._beamCooldown = 4; }
+      } else {
+        this._showBeam(false);
+      }
+      this._updateBeamHeatUI();
+    } else {
+      this._showBeam(false);
+      this._beamFiring = false;
+    }
 
     const targetFOV = this._scoping
       ? (isScoped ? 15 : this._scopeFOV)  // scoped weapons zoom in much more
@@ -1583,6 +1691,10 @@ class Game {
   _onMouseUp(e) {
     if (e.button === 2) {
       this._scoping = false;
+    }
+    if (e.button === 0 && this._beamFiring) {
+      this._beamFiring = false;
+      if (this._beamHeat < 5) this._beamHeat = 0; // released early - no cooldown
     }
   }
 
