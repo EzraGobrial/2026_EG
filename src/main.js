@@ -582,7 +582,7 @@ class Game {
     this.player.setBounds(locData.areaSize);
     this.player.setObstacles(this.world.obstacles);
     this.player.reset();
-    this.maxActiveBirds = locData.maxBirds;
+    this.maxActiveBirds = locData.maxBirds + 4;
 
     // School Device: stationary - aim & shoot, no walking
     this.player.moveSpeed = (this.settings.get('deviceType') === 'school') ? 0 : 5;
@@ -1299,7 +1299,7 @@ class Game {
         this.birds.spawn(bonusKey);
       }
 
-      this.spawnInterval = 2 + Math.random() * 3; // randomize next spawn
+      this.spawnInterval = 0.6 + Math.random() * 1.0; // randomize next spawn
     }
 
     // Keyboard reload (R key)
