@@ -316,7 +316,16 @@ class Game {
     this._showMorning();
   }
 
+  _disposeMarket() {
+    if (this.marketWorld) {
+      this.marketWorld.dispose();
+      this.marketWorld = null;
+    }
+    this._shopReturnsToMarket = false;
+  }
+
   _showMorning() {
+    this._disposeMarket();
     this.state = STATE.MORNING;
     this.player.unlock();
     this.hud.hide();
@@ -550,6 +559,7 @@ class Game {
   }
 
   _startHunt() {
+    this._disposeMarket();
     this.state = STATE.HUNTING;
     this.ui.hideAll();
     this.hud.show();
@@ -873,6 +883,7 @@ class Game {
   }
 
   _goToSleep() {
+    this._disposeMarket();
     this.state = STATE.SLEEP;
 
     // Check for win condition
