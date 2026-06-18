@@ -242,10 +242,11 @@ const FLIGHT_STYLE = {
  * Pick a random flight style. Flyby is most common for natural feel.
  */
 function pickFlightStyle() {
+  // Favor predictable, shootable paths: mostly straight fly-bys, some gentle
+  // circles. The chaotic random-zigzag 'wander' style is no longer used.
   const roll = Math.random();
-  if (roll < 0.4) return FLIGHT_STYLE.FLYBY;
-  if (roll < 0.7) return FLIGHT_STYLE.CIRCLE;
-  return FLIGHT_STYLE.WANDER;
+  if (roll < 0.7) return FLIGHT_STYLE.FLYBY;
+  return FLIGHT_STYLE.CIRCLE;
 }
 
 /**
@@ -744,8 +745,12 @@ export class BirdSystem {
             bird.pathT = 0;
             bird.state = 'EXITING';
           } else {
-            // Stay in area — new flight pattern
-            bird.waypoints = generateFlightPath(this.areaSize, bird.mesh.position, bird.speed);
+            // Stay in area — new flight pattern. Begin it at the current
+            // position so the bird flows smoothly instead of snapping/zooming
+            // to a random new spot.
+            const _np = generateFlightPath(this.areaSize, bird.mesh.position, bird.speed);
+            _np.unshift(bird.mesh.position.clone());
+            bird.waypoints = _np;
             bird.waypointIndex = 0;
             bird.pathT = 0;
           }
