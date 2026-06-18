@@ -741,6 +741,7 @@ class Game {
 
   _startMarket() {
     this.state = STATE.MARKET;
+    this._preMarketLocation = this.economy.currentLocation;
     this.ui.hideAll();
     this.hud.hide();
     this.audio.stopAmbience();
@@ -860,8 +861,9 @@ class Game {
     }
     this._shopReturnsToMarket = false;
 
-    // Restore the regular world behind the results screen
-    const locKey = this.economy.currentLocation;
+    // Show the location the player was in BEFORE shopping. Buying a new
+    // location selects it for the next hunt but shouldn't change surroundings yet.
+    const locKey = this._preMarketLocation || this.economy.currentLocation;
     this.world.load(locKey);
     this.sky.setPreset(locKey);
     this.player.setObstacles(this.world.obstacles);
