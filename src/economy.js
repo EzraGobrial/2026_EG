@@ -449,7 +449,7 @@ export const WEAPONS = {
     cost: 2000, dimension: 3,
     description: 'Electromagnetic precision. Pierces through anything.',
     fireRate: 3.0, accuracy: 0.99, ammo: 1, reloadTime: 3.5,
-    spread: 0.005, hasScope: true, isShotgun: false, owned: false
+    spread: 0.005, hasScope: false, isShotgun: false, owned: false
   },
   slomo_gun: {
     name: 'Slo-Mo Gun',
