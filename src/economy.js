@@ -742,7 +742,7 @@ function generateDimension(id) {
       spread: 0.14, pellets: 8 + tier, isShotgun: true, owned: false
     };
     const LOCN = ['Gateway', 'Wilds', 'Depths', 'Spires', 'Sanctum'];
-    const COSTM = [2, 4, 7, 11, 16];
+    const COSTM = [18, 32, 52, 78, 110];
     const SETS = [[0, 1], [0, 1, 2], [1, 2, 3], [2, 3, 4], [3, 4, 5]];
     const locations = {};
     for (let i = 0; i < 5; i++) {
