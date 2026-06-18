@@ -676,7 +676,25 @@ class Game {
     }
   }
 
+  _updateSlomoCooldownUI(isSlomo) {
+    let el = document.getElementById('slomo-cooldown');
+    if (isSlomo && this._slomoCooldown > 0) {
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'slomo-cooldown';
+        el.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-110px);z-index:60;background:rgba(18,18,28,0.82);color:#fff;font-family:sans-serif;font-size:20px;font-weight:800;padding:10px 20px;border-radius:10px;border:2px solid #ff5544;text-align:center;pointer-events:none;text-shadow:0 1px 3px #000;';
+        document.body.appendChild(el);
+      }
+      el.style.display = 'block';
+      el.textContent = 'Wait for the cooldown — ' + Math.ceil(this._slomoCooldown) + 's';
+    } else if (el) {
+      el.style.display = 'none';
+    }
+  }
+
   _resetScope() {
+    const _cd = document.getElementById('slomo-cooldown');
+    if (_cd) _cd.style.display = 'none';
     this._scoping = false;
     this._slomoActive = false;
     this._slomoTimer = 0;
@@ -1160,6 +1178,9 @@ class Game {
     if (isSlomo && this._slomoCooldown > 0 && this._scoping) {
       this._scoping = false;
     }
+
+    // Slo-Mo cooldown indicator (shows countdown while cooling down)
+    this._updateSlomoCooldownUI(isSlomo);
 
     const targetFOV = this._scoping
       ? (isScoped ? 15 : this._scopeFOV)  // scoped weapons zoom in much more
