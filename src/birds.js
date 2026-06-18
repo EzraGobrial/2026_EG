@@ -409,6 +409,11 @@ export class BirdSystem {
   _buildExitPath(currentPos, birdSpeed) {
     const alt = currentPos.y + (Math.random() - 0.5) * 3;
     const exitPos = this._getEdgePosition(Math.max(3, alt));
+    // Fly well beyond the boundary and climb, so the bird visibly recedes
+    // into the distance (out of view) before it is removed.
+    exitPos.x *= 2.4;
+    exitPos.z *= 2.4;
+    exitPos.y += 10;
 
     // Midpoint between current and exit
     const mid = currentPos.clone().lerp(exitPos, 0.5).add(
@@ -713,8 +718,16 @@ export class BirdSystem {
         // End of path
         if (bird.waypointIndex >= wp.length - 1) {
           if (bird.state === 'EXITING') {
-            // Bird has flown out of the area — remove silently
-            toRemove.push(bird);
+            // Only remove once the bird is far from the play area (out of view).
+            const distFromCenter = Math.hypot(bird.mesh.position.x, bird.mesh.position.z);
+            if (distFromCenter > this.areaSize * 0.5 + 18) {
+              toRemove.push(bird);
+            } else {
+              // Not far enough yet — keep flying outward.
+              bird.waypoints = this._buildExitPath(bird.mesh.position, bird.speed);
+              bird.waypointIndex = 0;
+              bird.pathT = 0;
+            }
             continue;
           }
 
