@@ -984,6 +984,8 @@ export class Economy {
     if (this.dimension >= DIMENSIONS.length) return false; // no more dimensions
     const currentDimLocs = DIMENSIONS[this.dimension - 1].locations;
     for (const key of Object.keys(currentDimLocs)) {
+      const def = currentDimLocs[key];
+      if (def.isBoss || def.cost === undefined) continue; // skip non-buyable arenas (e.g. boss_desert)
       if (!this.locations[key] || !this.locations[key].unlocked) return false;
     }
     return true;
