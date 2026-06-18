@@ -742,7 +742,9 @@ class Game {
     const camDir = this.player.getForwardDirection().clone().normalize();
     const aimPoint = this.camera.position.clone().add(camDir.multiplyScalar(150));
     const dir = aimPoint.clone().sub(origin).normalize();
-    g.position.copy(origin);
+    // Push the start forward to the actual barrel tip so the beam begins at the
+    // muzzle (not behind the gun, near the camera).
+    g.position.copy(origin.clone().add(dir.clone().multiplyScalar(2.8)));
     g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
     const t = performance.now() / 1000;
     const { core, glow, nodes } = g.userData;
