@@ -713,22 +713,52 @@ class Game {
   }
 
   _showBeam(on) {
-    if (on) {
-      if (!this._beamMesh) {
-        const geo = new THREE.CylinderGeometry(0.05, 0.05, 1, 8);
-        const mat = new THREE.MeshBasicMaterial({ color: 0x66e0ff, transparent: true, opacity: 0.85 });
-        this._beamMesh = new THREE.Mesh(geo, mat);
-        this.scene.add(this._beamMesh);
+    if (!on) { if (this._beamMesh) this._beamMesh.visible = false; return; }
+    const length = 120;
+    if (!this._beamMesh) {
+      const g = new THREE.Group();
+      const addMat = (color, opacity) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false });
+      // Bright inner core (runs the length of the beam, base at local y=0)
+      const core = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 1, 8), addMat(0xccf6ff, 0.95));
+      core.position.y = 0.5; g.add(core);
+      // Soft outer glow
+      const glow = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 1, 8), addMat(0x33b5ff, 0.35));
+      glow.position.y = 0.5; g.add(glow);
+      // Traveling energy nodes that pulse + jitter along the beam
+      const nodes = [];
+      for (let i = 0; i < 12; i++) {
+        const n = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), addMat(0xffffff, 0.8));
+        g.add(n); nodes.push(n);
       }
-      this._beamMesh.visible = true;
-      const origin = this.weapons.getBarrelWorldPos ? this.weapons.getBarrelWorldPos() : this.camera.position.clone();
-      const dir = this.player.getForwardDirection().clone().normalize();
-      const length = 120;
-      this._beamMesh.position.copy(origin).add(dir.clone().multiplyScalar(length / 2));
-      this._beamMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-      this._beamMesh.scale.set(1, length, 1);
-    } else if (this._beamMesh) {
-      this._beamMesh.visible = false;
+      g.userData = { core, glow, nodes };
+      this.scene.add(g);
+      this._beamMesh = g;
+    }
+    const g = this._beamMesh;
+    g.visible = true;
+    const origin = this.weapons.getBarrelWorldPos ? this.weapons.getBarrelWorldPos() : this.camera.position.clone();
+    const dir = this.player.getForwardDirection().clone().normalize();
+    g.position.copy(origin);
+    g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+    const t = performance.now() / 1000;
+    const { core, glow, nodes } = g.userData;
+    // Core: rapid thickness pulse + flicker + slight elliptical jitter (shake)
+    const cp = 0.7 + 0.5 * Math.abs(Math.sin(t * 24));
+    core.scale.set(cp + Math.random() * 0.3, length, cp + Math.random() * 0.3);
+    core.material.opacity = 0.8 + Math.random() * 0.2;
+    // Glow: slower pulse, flickering opacity + hue drift (cyan to electric blue)
+    const gp = 0.8 + 0.45 * Math.sin(t * 13);
+    glow.scale.set(gp + Math.random() * 0.4, length, gp + Math.random() * 0.4);
+    glow.material.opacity = 0.22 + 0.22 * Math.abs(Math.sin(t * 9));
+    glow.material.color.setHSL(0.55 + 0.06 * Math.sin(t * 5), 1.0, 0.6);
+    // Nodes: stream of pulses traveling outward with lateral shake
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i];
+      n.position.y = (t * 70 + i * (length / nodes.length)) % length;
+      n.position.x = (Math.random() - 0.5) * 0.14;
+      n.position.z = (Math.random() - 0.5) * 0.14;
+      n.scale.setScalar(0.5 + 0.9 * Math.abs(Math.sin(t * 18 + i * 1.7)));
+      n.material.opacity = 0.45 + 0.55 * Math.abs(Math.sin(t * 26 + i * 2.1));
     }
   }
 
