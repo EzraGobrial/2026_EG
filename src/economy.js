@@ -728,14 +728,14 @@ function generateDimension(id) {
     }
     const wk0 = 'd' + id + '_w0', wk1 = 'd' + id + '_w1';
     WEAPONS[wk0] = {
-      name: name + ' Lance', cost: Math.round(topVal * 4), dimension: id,
+      name: name + ' Lance', cost: Math.round(topVal * 8), dimension: id,
       description: 'Precision energy weapon from the ' + name + ' dimension.',
       fireRate: Math.max(0.35, 1.4 - 0.04 * tier), accuracy: Math.min(0.99, 0.9 + 0.012 * tier),
       ammo: 3 + tier, reloadTime: Math.max(0.7, 1.9 - 0.08 * tier),
       spread: 0.012, hasScope: true, isShotgun: false, owned: false
     };
     WEAPONS[wk1] = {
-      name: name + ' Scattergun', cost: Math.round(topVal * 8), dimension: id,
+      name: name + ' Scattergun', cost: Math.round(topVal * 16), dimension: id,
       description: 'Devastating spread weapon from the ' + name + ' dimension.',
       fireRate: Math.max(0.5, 1.1 - 0.02 * tier), accuracy: 0.6,
       ammo: 4 + Math.floor(tier / 2), reloadTime: Math.max(1.2, 2.6 - 0.06 * tier),
