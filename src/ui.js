@@ -1023,6 +1023,7 @@ export class UI {
     content.innerHTML = '';
     const advanceEl = document.getElementById('shop-advance-dim');
     if (advanceEl) advanceEl.style.display = (tab === 'locations') ? '' : 'none';
+    if (tab === 'locations') this._renderDimensionAdvance();
 
     switch(tab) {
       case 'weapons': this._renderShopWeapons(content); break;
