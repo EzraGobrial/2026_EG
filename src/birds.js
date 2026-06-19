@@ -575,21 +575,28 @@ export class BirdSystem {
       this.kill(birdObj);
       return true; // dead
     }
-    // Hit flash — briefly make bird white
-    birdObj.mesh.traverse(child => {
-      if (child.isMesh && child.material) {
-        child.userData._origColor = child.material.color.getHex();
-        child.material.color.setHex(0xffffff);
-      }
-    });
-    setTimeout(() => {
+    // Hit flash — briefly make bird white. Guard against re-entrancy: if a flash
+    // is already running (e.g. a second shotgun pellet or rapid shot lands within
+    // 150ms), don't re-capture the now-white color — that would store white as
+    // the "original" and leave the bird permanently white.
+    if (!birdObj._flashing) {
+      birdObj._flashing = true;
       birdObj.mesh.traverse(child => {
-        if (child.isMesh && child.material && child.userData._origColor !== undefined) {
-          child.material.color.setHex(child.userData._origColor);
-          delete child.userData._origColor;
+        if (child.isMesh && child.material) {
+          child.userData._origColor = child.material.color.getHex();
+          child.material.color.setHex(0xffffff);
         }
       });
-    }, 150);
+      setTimeout(() => {
+        birdObj.mesh.traverse(child => {
+          if (child.isMesh && child.material && child.userData._origColor !== undefined) {
+            child.material.color.setHex(child.userData._origColor);
+            delete child.userData._origColor;
+          }
+        });
+        birdObj._flashing = false;
+      }, 150);
+    }
     return false; // still alive
   }
 
