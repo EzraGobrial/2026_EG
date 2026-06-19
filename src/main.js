@@ -718,12 +718,17 @@ class Game {
     if (!this._beamMesh) {
       const g = new THREE.Group();
       const addMat = (color, opacity) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false });
-      // Bright inner core (runs the length of the beam, base at local y=0)
-      const core = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1, 8), addMat(0x9fe8ff, 0.5));
-      core.position.y = 0.5; g.add(core);
+      // Bright inner core (runs the length of the beam, base at local y=0).
+      // Translate the geometry so it spans y:[0,1] — a plain position offset is
+      // NOT scaled, so scaling y to `length` later would push a centered
+      // cylinder half its length *behind* the muzzle (beam shooting backward).
+      const coreGeo = new THREE.CylinderGeometry(0.03, 0.03, 1, 8); coreGeo.translate(0, 0.5, 0);
+      const core = new THREE.Mesh(coreGeo, addMat(0x9fe8ff, 0.5));
+      g.add(core);
       // Soft outer glow
-      const glow = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 1, 8), addMat(0x2aa0ff, 0.16));
-      glow.position.y = 0.5; g.add(glow);
+      const glowGeo = new THREE.CylinderGeometry(0.11, 0.11, 1, 8); glowGeo.translate(0, 0.5, 0);
+      const glow = new THREE.Mesh(glowGeo, addMat(0x2aa0ff, 0.16));
+      g.add(glow);
       // Traveling energy nodes that pulse + jitter along the beam
       const nodes = [];
       for (let i = 0; i < 12; i++) {
@@ -1548,9 +1553,12 @@ class Game {
     this.hud.hideScopeHint();
     this.hud.hideCombo();
     this.hud.showReloading(false);
-    this.trailWorld = null;
-    this.shedInterior = null;
-    this.bikeController = null;
+    // Dispose story-mode worlds before dropping the references, otherwise their
+    // meshes stay parented to the scene and show up as ghost objects (and leak
+    // GPU memory) the next time a world is loaded.
+    if (this.trailWorld) { this.trailWorld.dispose(); this.trailWorld = null; }
+    if (this.shedInterior) { this.shedInterior.dispose(); this.shedInterior = null; }
+    if (this.bikeController) { this.bikeController.dispose(); this.bikeController = null; }
     if (this.marketWorld) { this.marketWorld.dispose(); this.marketWorld = null; }
     this._pauseReturnState = null;
     this._shopReturnsToMarket = false;
