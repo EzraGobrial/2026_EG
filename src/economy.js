@@ -682,8 +682,7 @@ export const DIMENSIONS = [
         name: 'Ruins', cost: 300000,
         description: 'Ancient ruins. The Sun Phoenix was last seen here.',
         birds: ['desert_hawk', 'sand_falcon', 'sun_phoenix'], maxBirds: 4, areaSize: 75, unlocked: false
-      },
-      boss_desert: { name: 'Sun Titan', hp: 100, isBoss: true }
+      }
     },
     weapons: ['laser_rifle', 'plasma_shotgun']
   }
@@ -845,10 +844,17 @@ export class Economy {
       data.weaponOwned[k] = w.owned;
     }
     for (const [k, l] of Object.entries(this.locations)) {
-      data.locationUnlocked[k] = l.unlocked;
+      if (l.isBoss || l.cost === undefined) continue; // non-buyable arenas (e.g. boss_desert) have no unlocked flag
+      data.locationUnlocked[k] = !!l.unlocked;        // coerce to boolean — Firestore rejects `undefined`
     }
-    // Fire-and-forget write to Firestore
-    setDoc(doc(db, 'saves', this.uid), data).catch(e => console.warn('Save failed:', e));
+    // Fire-and-forget write to Firestore. setDoc validates synchronously and
+    // THROWS on invalid data (e.g. an undefined field), which .catch() can't
+    // catch — so wrap it, otherwise a bad save aborts advancing/buying.
+    try {
+      setDoc(doc(db, 'saves', this.uid), data).catch(e => console.warn('Save failed:', e));
+    } catch (e) {
+      console.warn('Save failed (invalid data):', e);
+    }
     // Auto-update leaderboard on every save
     if (this.displayName) {
       this.updateLeaderboard(this.displayName);
