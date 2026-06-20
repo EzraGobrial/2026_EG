@@ -570,6 +570,7 @@ export class UI {
       for (const key of Object.keys(dim.locations)) {
         const loc = eco.locations[key];
         if (!loc) continue;
+        if (loc.isBoss || loc.cost === undefined) continue; // boss arenas aren't selectable locations
 
         const card = document.createElement('div');
         card.className = 'location-card';
@@ -1243,6 +1244,7 @@ export class UI {
       for (const locKey of Object.keys(dim.locations)) {
         const loc = eco.locations[locKey];
         if (!loc) continue;
+        if (loc.isBoss || loc.cost === undefined) continue; // boss arenas aren't purchasable shop items
 
         const item = document.createElement('div');
         item.className = 'shop-item';
@@ -1526,7 +1528,14 @@ export class UI {
           this.audio.playUIClick();
           if (eco.advanceDimension()) {
             this.audio.playCashRegister();
-            this.showShop();
+            this.toast(`✓ Traveled to Dimension ${eco.dimension} — ${eco.getDimensionName()}!`, 'gold');
+            // Refresh in place on the Locations tab so the new dimension's
+            // locations appear immediately. (showShop() with no arg resets to
+            // the Weapons tab, which is why they only appeared after re-opening.)
+            document.getElementById('shop-money').textContent = `$${eco.money}`;
+            const dimHeader = document.getElementById('shop-dimension');
+            if (dimHeader) dimHeader.textContent = `Dimension ${eco.dimension} -- ${eco.getDimensionName()}`;
+            this._renderShopTab('locations');
           }
         });
       }

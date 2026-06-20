@@ -1160,7 +1160,10 @@ export class Economy {
 
   buyLocation(key) {
     const loc = this.locations[key];
-    if (!loc || loc.unlocked || this.money < loc.cost) return false;
+    // Skip non-buyable arenas (e.g. boss_desert) — they have no cost and must
+    // never be "purchased" (subtracting an undefined cost corrupts money to NaN).
+    if (!loc || loc.isBoss || loc.cost === undefined) return false;
+    if (loc.unlocked || this.money < loc.cost) return false;
     this.money -= loc.cost;
     loc.unlocked = true;
     this.currentLocation = key;
