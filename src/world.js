@@ -2259,6 +2259,110 @@ function buildRuins(scene, obstacles) {
   return group;
 }
 
+// ─── Procedural world (generated dimensions, id >= 5) ───
+// Previously these dimensions had no builder at all, so the world was empty
+// and every one looked the same. We now derive a coloured biome (ground tint +
+// themed scenery) from the location key so each generated dimension is distinct
+// and visually matches its procedurally-generated sky.
+function _seedHue(seed) {
+  let h = 2166136261;
+  const s = String(seed || 'x');
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  const m = /^d(\d+)_l?(\d+)?/.exec(s);
+  const dimNum = m ? parseInt(m[1], 10) : (h >>> 0) % 97;
+  const locIdx = m && m[2] ? parseInt(m[2], 10) : 0;
+  return { hue: (((dimNum * 47) % 360) / 360 + locIdx * 0.05) % 1, style: (h >>> 0) % 4 };
+}
+
+function buildProcedural(scene, obstacles, seed) {
+  const group = new THREE.Group();
+  const { hue, style } = _seedHue(seed);
+  const col = (h, s, l) => new THREE.Color().setHSL(((h % 1) + 1) % 1, s, l);
+
+  // Tinted ground
+  const groundHex = col(hue, 0.4, 0.34).getHex();
+  const ground = createGrassPlane(140, groundHex);
+  group.add(ground);
+
+  // Coloured ground tufts / spores
+  const tufts = createInstancedGrass(110, 1400, col(hue, 0.55, 0.45).getHex());
+  group.add(tufts);
+
+  // Scattered rocks tinted to the biome
+  for (let i = 0; i < 7; i++) {
+    const rx = (Math.random() - 0.5) * 70, rz = (Math.random() - 0.5) * 70;
+    if (Math.hypot(rx, rz) < 6) continue;
+    const rock = createRock(rx, 0.1, rz, 0.6 + Math.random() * 1.1, obstacles);
+    rock.material = new THREE.MeshStandardMaterial({ color: col(hue, 0.25, 0.4), roughness: 0.95 });
+    group.add(rock);
+  }
+
+  const accent = col((hue + 0.5) % 1, 0.7, 0.6);
+  const accent2 = col(hue, 0.75, 0.6);
+
+  if (style === 0 || style === 2) {
+    // Glowing crystal spires (some big enough to block movement)
+    for (let i = 0; i < 16; i++) {
+      const x = (Math.random() - 0.5) * 78, z = (Math.random() - 0.5) * 78;
+      if (Math.hypot(x, z) < 7) continue;
+      const big = Math.random() < 0.4;
+      const hgt = big ? 4 + Math.random() * 6 : 1.2 + Math.random() * 2.2;
+      const rad = (big ? 0.6 : 0.3) * (0.8 + Math.random() * 0.6);
+      const geo = new THREE.ConeGeometry(rad, hgt, 5);
+      const c = Math.random() < 0.5 ? accent : accent2;
+      const mat = new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.5, roughness: 0.3, metalness: 0.2, flatShading: true });
+      const crystal = new THREE.Mesh(geo, mat);
+      crystal.position.set(x, hgt / 2, z);
+      crystal.rotation.y = Math.random() * Math.PI;
+      crystal.rotation.z = (Math.random() - 0.5) * 0.3;
+      crystal.castShadow = true;
+      group.add(crystal);
+      if (big && obstacles) obstacles.push({ type: 'circle', x, z, r: rad + 0.4 });
+    }
+  } else if (style === 1) {
+    // Floating monoliths + drifting orbs
+    for (let i = 0; i < 12; i++) {
+      const x = (Math.random() - 0.5) * 76, z = (Math.random() - 0.5) * 76;
+      if (Math.hypot(x, z) < 7) continue;
+      const h = 3 + Math.random() * 7, w = 0.8 + Math.random() * 1.6;
+      const geo = new THREE.BoxGeometry(w, h, w);
+      const mat = new THREE.MeshStandardMaterial({ color: col(hue, 0.3, 0.3), emissive: accent, emissiveIntensity: 0.18, roughness: 0.6, metalness: 0.3 });
+      const slab = new THREE.Mesh(geo, mat);
+      slab.position.set(x, h / 2, z);
+      slab.rotation.y = Math.random() * Math.PI;
+      slab.castShadow = true;
+      group.add(slab);
+      if (obstacles) obstacles.push({ type: 'circle', x, z, r: w * 0.7 });
+    }
+    for (let i = 0; i < 10; i++) {
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.4 + Math.random() * 0.5, 12, 12),
+        new THREE.MeshStandardMaterial({ color: accent, emissive: accent, emissiveIntensity: 0.7, roughness: 0.2 }));
+      orb.position.set((Math.random() - 0.5) * 70, 2 + Math.random() * 8, (Math.random() - 0.5) * 70);
+      group.add(orb);
+    }
+  } else {
+    // Giant alien mushrooms (stalk + glowing cap)
+    for (let i = 0; i < 13; i++) {
+      const x = (Math.random() - 0.5) * 76, z = (Math.random() - 0.5) * 76;
+      if (Math.hypot(x, z) < 7) continue;
+      const stalkH = 1.5 + Math.random() * 4;
+      const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.28, stalkH, 8),
+        new THREE.MeshStandardMaterial({ color: col(hue, 0.2, 0.78), roughness: 0.85 }));
+      stalk.position.set(x, stalkH / 2, z); stalk.castShadow = true;
+      group.add(stalk);
+      const capR = 0.7 + Math.random() * 1.1;
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(capR, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+        new THREE.MeshStandardMaterial({ color: accent, emissive: accent, emissiveIntensity: 0.35, roughness: 0.5 }));
+      cap.position.set(x, stalkH, z); cap.castShadow = true;
+      group.add(cap);
+      if (obstacles && stalkH > 3) obstacles.push({ type: 'circle', x, z, r: 0.4 });
+    }
+  }
+
+  scene.add(group);
+  return group;
+}
+
 // ─── Exports ─────────────────────────────────
 
 const BUILDERS = {
@@ -2297,14 +2401,16 @@ export class WorldSystem {
 
   load(locationKey) {
     this.unload();
-    const builder = BUILDERS[locationKey];
-    if (!builder) {
-      console.warn('Unknown location:', locationKey);
-      return;
-    }
     this.currentKey = locationKey;
     this.obstacles = [];
-    this.currentWorld = builder(this.scene, this.obstacles);
+    const builder = BUILDERS[locationKey];
+    if (builder) {
+      this.currentWorld = builder(this.scene, this.obstacles);
+    } else {
+      // Generated dimensions (id >= 5) have no hand-authored builder — give them
+      // a unique procedural biome instead of an empty, identical-looking world.
+      this.currentWorld = buildProcedural(this.scene, this.obstacles, locationKey);
+    }
   }
 
   unload() {

@@ -567,10 +567,10 @@ export class BirdSystem {
   }
 
   /**
-   * Hit a bird — decrements HP, returns true if killed
+   * Hit a bird — decrements HP by `dmg` (weapon power), returns true if killed
    */
-  hit(birdObj) {
-    birdObj.hp--;
+  hit(birdObj, dmg = 1) {
+    birdObj.hp -= Math.max(1, dmg);
     if (birdObj.hp <= 0) {
       this.kill(birdObj);
       return true; // dead
@@ -658,6 +658,58 @@ export class BirdSystem {
     }
 
     return closestBird;
+  }
+
+  /**
+   * Pierce raycast — returns EVERY bird the ray passes through, nearest first.
+   * Used by piercing weapons (Rail Gun, Laser Rifle, dimension Lances).
+   */
+  raycastPierce(raycaster) {
+    const hits = [];
+    for (const bird of this.birds) {
+      if (!bird.alive || bird.state === 'FALLING') continue;
+      const pos = bird.mesh.position;
+      const hitRadius = bird.data.speed < 2.0 ? bird.data.size * 1.2 : bird.data.size * 0.8;
+      const sphere = new THREE.Sphere(pos, hitRadius);
+      const intersectPoint = new THREE.Vector3();
+      if (raycaster.ray.intersectSphere(sphere, intersectPoint)) {
+        const dist = raycaster.ray.origin.distanceTo(intersectPoint);
+        hits.push({ bird, point: intersectPoint.clone(), dist });
+      }
+    }
+    hits.sort((a, b) => a.dist - b.dist);
+    return hits;
+  }
+
+  /**
+   * Send a random flying bird into a dive toward the player (visual "attack").
+   * Reuses the waypoint system (same approach as startleNear) so it stays
+   * compatible with normal flight. Returns the diving bird, or null.
+   */
+  diveBomb(playerPos) {
+    const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    const candidates = this.birds.filter(b =>
+      b.alive && (b.state === 'FLYING' || b.state === 'ENTERING') &&
+      (!b._diveUntil || b._diveUntil < now)
+    );
+    if (candidates.length === 0) return null;
+    const bird = candidates[Math.floor(Math.random() * candidates.length)];
+
+    const start = bird.mesh.position.clone();
+    // Swoop low over the player, then climb back out the far side.
+    const overHead = new THREE.Vector3(playerPos.x, Math.max(3, playerPos.y + 3.5), playerPos.z);
+    const past = new THREE.Vector3(
+      playerPos.x + (start.x - playerPos.x) * -0.6,
+      Math.max(8, start.y + 4),
+      playerPos.z + (start.z - playerPos.z) * -0.6
+    );
+    bird.waypoints = [start, overHead, past];
+    bird.waypointIndex = 0;
+    bird.pathT = 0;
+    bird.state = 'FLYING';
+    bird.startled = false;
+    bird._diveUntil = now + 4000; // don't re-pick this bird for 4s
+    return bird;
   }
 
   /**

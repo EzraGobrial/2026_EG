@@ -1165,10 +1165,10 @@ body {
 
 .results-layout {
   display: flex;
-  gap: 24px;
+  gap: 20px;
   align-items: flex-start;
-  max-width: 1100px;
-  width: 95%;
+  max-width: 1520px;
+  width: 97%;
   max-height: 90vh;
 }
 
@@ -1177,8 +1177,10 @@ body {
   min-width: 0;
 }
 
+/* Leaderboard now holds three columns (Total / Current / Longest Streak),
+   so it gets the lion's share of the width and player names show in full. */
 .results-layout .leaderboard-panel {
-  flex: 1.3;
+  flex: 2.6;
   min-width: 0;
 }
 
@@ -1212,7 +1214,7 @@ body {
 .leaderboard-divider {
   width: 1px;
   background: var(--border-color);
-  margin: 0 12px;
+  margin: 0 10px;
   align-self: stretch;
 }
 
@@ -1273,7 +1275,8 @@ body {
 .lb-entry:nth-child(3) .lb-rank { color: #cd7f32; }
 
 .lb-name {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
@@ -1281,13 +1284,16 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  padding-right: 10px;
 }
 
 .lb-money {
   font-family: var(--font-display);
   font-size: 14px;
   color: var(--accent-gold);
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  margin-left: auto;
+  white-space: nowrap;
 }
 
 .lb-empty {
@@ -1301,6 +1307,65 @@ body {
   .results-layout {
     flex-direction: column;
   }
+  .leaderboard-columns {
+    flex-direction: column;
+    gap: 16px;
+  }
+  .leaderboard-divider {
+    display: none;
+  }
+}
+
+/* ─── Bird attack: poop splat + drips (higher dimensions) ─── */
+.poop-splat {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 60;
+}
+.poop-splat.hidden { display: none; }
+
+.poop-blob {
+  position: absolute;
+  will-change: transform, opacity;
+  box-shadow: inset 0 6px 14px rgba(40,30,14,0.5), 0 2px 6px rgba(30,22,10,0.35);
+}
+/* A subtle "wet" highlight on each blob */
+.poop-blob::after {
+  content: '';
+  position: absolute;
+  left: 26%;
+  top: 20%;
+  width: 26%;
+  height: 20%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(190,170,120,0.45), rgba(190,170,120,0));
+}
+
+/* ─── HUD toast (e.g. "Blocked!") ─── */
+.hud-toast {
+  position: fixed;
+  left: 50%;
+  top: 26%;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  background: rgba(20, 22, 28, 0.82);
+  border: 1px solid var(--accent-gold);
+  color: var(--accent-gold);
+  border-radius: 10px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+  z-index: 61;
+}
+.hud-toast.hidden { display: none; }
+.hud-toast.toast-pop { animation: toast-pop 0.3s ease; }
+@keyframes toast-pop {
+  0%   { transform: translateX(-50%) scale(0.7); opacity: 0; }
+  60%  { transform: translateX(-50%) scale(1.08); opacity: 1; }
+  100% { transform: translateX(-50%) scale(1); opacity: 1; }
 }
 
 /* ═══════════════════════════════════════════════

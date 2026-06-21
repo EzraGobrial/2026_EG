@@ -293,6 +293,69 @@ export const SKY_PRESETS = {
   }
 };
 
+// ─── Procedural sky for generated dimensions (id >= 5) ───
+// Before this, any location without an explicit preset fell back to the
+// "backyard" blue sky — which made every infinite dimension look identical.
+// We now derive a distinct, deterministic palette from the location key so
+// each generated dimension gets its own coloured sky, fog and lighting.
+function _hashStr(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0);
+}
+
+export function proceduralSkyPreset(key) {
+  key = key || 'unknown';
+  // Share a hue family across a whole dimension (d7_l0, d7_l1, …) so locations
+  // feel related, with a small per-location shift. The base hue matches the
+  // bird-colour seed used when the dimension is generated (id * 47).
+  const m = /^d(\d+)_l?(\d+)?/.exec(key);
+  const dimNum = m ? parseInt(m[1], 10) : _hashStr(key) % 97;
+  const locIdx = m && m[2] ? parseInt(m[2], 10) : 0;
+  const baseHue = ((dimNum * 47) % 360) / 360;
+  const hue = (baseHue + locIdx * 0.05) % 1;
+  const style = _hashStr(key) % 4;            // 4 distinct moods
+  const comp = (hue + 0.5) % 1;               // complementary hue
+  const c = (h, s, l) => new THREE.Color().setHSL(((h % 1) + 1) % 1, s, l);
+
+  let topColor, bottomColor, sunColor, sunIntensity, dirLightColor, dirLightIntensity, ambientColor, ambientIntensity, sunDirection;
+  if (style === 0) {           // vivid daylight
+    topColor = c(hue, 0.6, 0.45); bottomColor = c(hue + 0.06, 0.5, 0.7);
+    sunColor = c(hue + 0.08, 0.5, 0.85); sunIntensity = 1.3;
+    dirLightColor = 0xffffff; dirLightIntensity = 1.4;
+    ambientColor = c(hue, 0.35, 0.6).getHex(); ambientIntensity = 0.7;
+    sunDirection = new THREE.Vector3(0.4, 0.7, 0.2);
+  } else if (style === 1) {    // alien sunset
+    topColor = c(hue, 0.55, 0.4); bottomColor = c(comp, 0.7, 0.62);
+    sunColor = c(comp, 0.7, 0.7); sunIntensity = 1.7;
+    dirLightColor = c(comp, 0.6, 0.7).getHex(); dirLightIntensity = 1.4;
+    ambientColor = c(hue, 0.4, 0.55).getHex(); ambientIntensity = 0.65;
+    sunDirection = new THREE.Vector3(-0.3, 0.35, 0.5);
+  } else if (style === 2) {    // electric dusk
+    topColor = c(hue + 0.55, 0.6, 0.4); bottomColor = c(hue, 0.6, 0.6);
+    sunColor = c(hue, 0.6, 0.8); sunIntensity = 1.4;
+    dirLightColor = c(hue, 0.5, 0.75).getHex(); dirLightIntensity = 1.3;
+    ambientColor = c(hue + 0.55, 0.4, 0.55).getHex(); ambientIntensity = 0.7;
+    sunDirection = new THREE.Vector3(0.3, 0.55, 0.35);
+  } else {                     // luminous twilight
+    topColor = c(hue, 0.5, 0.42); bottomColor = c(hue + 0.12, 0.55, 0.66);
+    sunColor = c(hue + 0.1, 0.55, 0.82); sunIntensity = 1.5;
+    dirLightColor = 0xfff0e0; dirLightIntensity = 1.35;
+    ambientColor = c(hue, 0.35, 0.58).getHex(); ambientIntensity = 0.68;
+    sunDirection = new THREE.Vector3(0.5, 0.8, 0.1);
+  }
+
+  return {
+    topColor, bottomColor, sunColor, sunDirection, sunIntensity,
+    fogColor: bottomColor.clone(),
+    ambientColor, ambientIntensity,
+    dirLightColor, dirLightIntensity
+  };
+}
+
 export class SkySystem {
   constructor(scene) {
     this.scene = scene;
@@ -372,7 +435,10 @@ export class SkySystem {
   }
 
   setPreset(presetName) {
-    const p = SKY_PRESETS[presetName] || SKY_PRESETS.backyard;
+    // Known hand-authored presets (Dimensions 1–4) use their tuned palette;
+    // anything else (the infinite generated dimensions) gets a unique
+    // procedurally-derived sky instead of defaulting to backyard blue.
+    const p = SKY_PRESETS[presetName] || proceduralSkyPreset(presetName);
 
     // Brightness floor: lift any sky color / light that is too dark, so birds
     // stay visible in every level (and generated dimensions get a bright sky).

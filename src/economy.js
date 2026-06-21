@@ -8,6 +8,28 @@ import { doc, setDoc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from './firebase.js';
 import { serializeChallenges, deserializeChallenges, generateDailyChallenges, getRealDayKey } from './challenges.js';
 
+// ═══════════════════════════════════════════════
+// Number / money formatting
+// Values >= 1,000,000 are shown compactly as #.###M
+// (and #.###B / #.###T for billions / trillions) so big
+// numbers never overflow their UI slot. Smaller values keep
+// thousands separators.
+// ═══════════════════════════════════════════════
+export function fmtNum(n) {
+  n = Number(n) || 0;
+  const sign = n < 0 ? '-' : '';
+  const abs = Math.abs(n);
+  if (abs >= 1e12) return sign + (abs / 1e12).toFixed(3) + 'T';
+  if (abs >= 1e9)  return sign + (abs / 1e9).toFixed(3) + 'B';
+  if (abs >= 1e6)  return sign + (abs / 1e6).toFixed(3) + 'M';
+  return sign + Math.round(abs).toLocaleString();
+}
+
+// Same as fmtNum but with a leading "$".
+export function fmtMoney(n) {
+  return '$' + fmtNum(n);
+}
+
 export const BIRDS = {
   // ─── Dimension 1: Earth ─────────────────────
   sparrow: {
@@ -374,53 +396,58 @@ export const LOCATIONS = {
   }
 };
 
+// Weapons progress in clear tiers. `power` = damage per hit (boss birds have
+// 2–3 HP, so higher-power guns drop them faster); `tier` drives the star
+// rating shown in the shop. Stats improve monotonically with cost, and the
+// flavour of each gun matches its name (scopes zoom, shotguns spread, the
+// Rail Gun and Laser Rifle pierce straight through multiple birds).
 export const WEAPONS = {
   // ─── Dimension 1: Earth ─────────────────────
   old_rifle: {
     name: "Grandpa's Old Rifle",
-    cost: 0, dimension: 1,
+    cost: 0, dimension: 1, tier: 1, power: 1,
     description: 'Slow and inaccurate, but it works.',
     fireRate: 2.0, accuracy: 0.85, ammo: 1, reloadTime: 2.5,
     spread: 0.04, isShotgun: false, owned: true, isGrandpa: true
   },
   grandpas_shotgun: {
     name: "Grandpa's Shotgun",
-    cost: 0, dimension: 1,
+    cost: 0, dimension: 1, tier: 1, power: 1,
     description: 'Wide spread, easy to hit. Great for beginners.',
     fireRate: 2.2, accuracy: 0.6, ammo: 2, reloadTime: 2.8,
     spread: 0.12, pellets: 5, isShotgun: true, owned: true, isGrandpa: true
   },
   hunting_rifle: {
     name: 'Hunting Rifle',
-    cost: 75, dimension: 1,
-    description: 'A proper hunting rifle. Much more reliable.',
-    fireRate: 1.5, accuracy: 0.92, ammo: 1, reloadTime: 1.8,
-    spread: 0.025, isShotgun: false, owned: false
+    cost: 75, dimension: 1, tier: 2, power: 1,
+    description: 'A proper hunting rifle. Faster, tighter, far more reliable.',
+    fireRate: 1.4, accuracy: 0.92, ammo: 1, reloadTime: 1.6,
+    spread: 0.022, isShotgun: false, owned: false
   },
   combat_shotgun: {
     name: 'Combat Shotgun',
-    cost: 200, dimension: 1,
+    cost: 200, dimension: 1, tier: 2, power: 1,
     description: '6 pellets, fast reload. Devastating at close range.',
-    fireRate: 1.6, accuracy: 0.65, ammo: 3, reloadTime: 1.8,
+    fireRate: 1.5, accuracy: 0.66, ammo: 3, reloadTime: 1.7,
     spread: 0.10, pellets: 6, isShotgun: true, owned: false
   },
   scoped_rifle: {
     name: 'Scoped Rifle',
-    cost: 500, dimension: 1,
-    description: 'Zoom in for deadly precision shots.',
-    fireRate: 2.0, accuracy: 0.97, ammo: 1, reloadTime: 2.0,
-    spread: 0.01, hasScope: true, isShotgun: false, owned: false
+    cost: 500, dimension: 1, tier: 3, power: 2,
+    description: 'Zoom in for deadly precision. Hits hard enough to stagger bosses.',
+    fireRate: 1.8, accuracy: 0.97, ammo: 1, reloadTime: 1.8,
+    spread: 0.008, hasScope: true, isShotgun: false, owned: false
   },
   semi_auto: {
     name: 'Semi-Auto',
-    cost: 1200, dimension: 1,
-    description: 'Fast firing. 5 shots before reload.',
-    fireRate: 0.4, accuracy: 0.88, ammo: 5, reloadTime: 2.5,
-    spread: 0.035, isShotgun: false, owned: false
+    cost: 1200, dimension: 1, tier: 3, power: 1,
+    description: 'Rapid trigger. 6 shots before reload — melt whole flocks.',
+    fireRate: 0.35, accuracy: 0.90, ammo: 6, reloadTime: 2.0,
+    spread: 0.03, isShotgun: false, owned: false
   },
   grandpas_rifle: {
     name: "Great-Grandfather's Rifle",
-    cost: 0, dimension: 1,
+    cost: 0, dimension: 1, tier: 4, power: 2,
     description: 'A rifle from another era. Immaculate. Infinite ammo. Never needs reloading.',
     fireRate: 0.6, accuracy: 0.96, ammo: Infinity, reloadTime: 0,
     spread: 0.065, isShotgun: true, crosshairShape: 'square',
@@ -430,49 +457,49 @@ export const WEAPONS = {
   // ─── Dimension 2: Tropics ──────────────────
   crossbow: {
     name: 'Crossbow',
-    cost: 800, dimension: 2,
-    description: 'Silent and deadly. Lightning-fast reload.',
-    fireRate: 2.5, accuracy: 0.95, ammo: 1, reloadTime: 0.8,
-    spread: 0.015, isShotgun: false, owned: false
+    cost: 800, dimension: 2, tier: 4, power: 2,
+    description: 'Silent and deadly. Lightning-fast reload and a heavy bolt.',
+    fireRate: 2.0, accuracy: 0.95, ammo: 1, reloadTime: 0.6,
+    spread: 0.012, isShotgun: false, owned: false
   },
   auto_shotgun: {
     name: 'Auto Shotgun',
-    cost: 1500, dimension: 2,
-    description: 'Rapid-fire shotgun. 4 shots, 8 pellets each.',
-    fireRate: 0.6, accuracy: 0.55, ammo: 4, reloadTime: 3.0,
-    spread: 0.14, pellets: 8, isShotgun: true, owned: false
+    cost: 1500, dimension: 2, tier: 4, power: 2,
+    description: 'Rapid-fire shotgun. 5 shots, 9 pellets each.',
+    fireRate: 0.5, accuracy: 0.58, ammo: 5, reloadTime: 2.6,
+    spread: 0.13, pellets: 9, isShotgun: true, owned: false
   },
 
   // ─── Dimension 3: Arctic ───────────────────
   rail_gun: {
     name: 'Rail Gun',
-    cost: 2000, dimension: 3,
-    description: 'Electromagnetic precision. Pierces through anything.',
-    fireRate: 3.0, accuracy: 0.99, ammo: 1, reloadTime: 3.5,
-    spread: 0.005, hasScope: false, isShotgun: false, owned: false
+    cost: 2000, dimension: 3, tier: 5, power: 4, pierce: true,
+    description: 'Electromagnetic beam. Pierces straight through every bird in line.',
+    fireRate: 2.5, accuracy: 0.99, ammo: 1, reloadTime: 3.0,
+    spread: 0.004, hasScope: false, isShotgun: false, owned: false
   },
   slomo_gun: {
     name: 'Slo-Mo Gun',
-    cost: 3000, dimension: 3,
+    cost: 3000, dimension: 3, tier: 5, power: 3,
     description: 'Slows time when you scope in. 3-second window, 5s cooldown.',
-    fireRate: 1.8, accuracy: 0.93, ammo: 2, reloadTime: 2.0,
-    spread: 0.02, hasScope: true, isSlomo: true, isShotgun: false, owned: false
+    fireRate: 1.6, accuracy: 0.94, ammo: 2, reloadTime: 1.8,
+    spread: 0.016, hasScope: true, isSlomo: true, isShotgun: false, owned: false
   },
 
   // ─── Dimension 4: Desert ───────────────────
   laser_rifle: {
     name: 'Laser Rifle',
-    cost: 4000, dimension: 4,
-    description: 'Instant-hit beam. No spread, no bullet travel time.',
-    fireRate: 1.2, accuracy: 1.0, ammo: 3, reloadTime: 2.5,
+    cost: 4000, dimension: 4, tier: 6, power: 4, pierce: true,
+    description: 'Instant-hit beam. No spread, no travel time — burns through a whole row.',
+    fireRate: 1.0, accuracy: 1.0, ammo: 4, reloadTime: 2.0,
     spread: 0.0, hasScope: true, isShotgun: false, owned: false
   },
   plasma_shotgun: {
     name: 'Plasma Shotgun',
-    cost: 5000, dimension: 4,
-    description: 'Fires superheated plasma. 10 pellets, massive spread.',
-    fireRate: 1.0, accuracy: 0.5, ammo: 2, reloadTime: 3.5,
-    spread: 0.18, pellets: 10, isShotgun: true, owned: false
+    cost: 5000, dimension: 4, tier: 6, power: 3,
+    description: 'Fires superheated plasma. 12 scorching pellets, massive spread.',
+    fireRate: 0.9, accuracy: 0.56, ammo: 3, reloadTime: 3.0,
+    spread: 0.17, pellets: 12, isShotgun: true, owned: false
   }
 };
 
@@ -484,6 +511,12 @@ export const BANNERS = {
   crimson:       { name: 'Crimson',       cost: 400,  color: '#8b2252' },
   arctic_frost:  { name: 'Arctic Frost',  cost: 600,  color: '#88ccee', dimension: 3 },
   desert_flame:  { name: 'Desert Flame',  cost: 800,  color: '#cc5522', dimension: 4 },
+  // ─── Premium banners (high-end money sinks) ───
+  royal_violet:  { name: 'Royal Violet',  cost: 5000,    color: '#6d28d9' },
+  emberglow:     { name: 'Emberglow',     cost: 20000,   color: '#b91c1c' },
+  aurora:        { name: 'Aurora',        cost: 75000,   color: '#10b981' },
+  void_black:    { name: 'Void',          cost: 300000,  color: '#0a0a12' },
+  prismatic:     { name: 'Prismatic',     cost: 2000000, color: '#ec4899' },
   champion:      { name: 'Champion',      cost: null, color: '#ffd700', tournamentOnly: true },
 };
 
@@ -493,6 +526,12 @@ export const TAGS = {
   tycoon:        { name: 'Tycoon',      cost: 400,  color: '#5a3a05', textColor: '#f5d070' },
   sharpshooter:  { name: 'Sharpshooter',cost: 300,  color: '#1a3060', textColor: '#90b8ff' },
   legend:        { name: 'Legend',      cost: 800,  color: '#5a0a0a', textColor: '#ff8080' },
+  // ─── Premium tags (high-end money sinks) ───
+  apex:          { name: 'Apex',        cost: 10000,   color: '#3a0a5a', textColor: '#c98bff' },
+  mogul:         { name: 'Mogul',       cost: 50000,   color: '#5a4a05', textColor: '#ffe070' },
+  mythic:        { name: 'Mythic',      cost: 250000,  color: '#0a3a5a', textColor: '#70d8ff' },
+  immortal:      { name: 'Immortal',    cost: 1000000, color: '#5a0a2a', textColor: '#ff80b0' },
+  billionaire:   { name: 'Billionaire', cost: 5000000, color: '#1a3a1a', textColor: '#7dffa0' },
 };
 
 export const CONSUMABLES = {
@@ -520,6 +559,14 @@ export const WEAPON_SKINS = {
   arctic_camo:    { name: 'Arctic',         cost: 400,  colors: { stock: 0xccddee, metal: 0xaabbcc } },
   shadow:         { name: 'Shadow',         cost: 600,  colors: { stock: 0x1a1a1a, metal: 0x333333 } },
   neon:           { name: 'Neon',           cost: 800,  colors: { stock: 0x00ff88, metal: 0x00ccff } },
+  // ─── Premium cosmetics (pure money sinks) ───
+  rose_gold:      { name: 'Rose Gold',      cost: 2500,   colors: { stock: 0xb76e79, metal: 0xe8b4b8 } },
+  obsidian:       { name: 'Obsidian',       cost: 5000,   colors: { stock: 0x0b0b10, metal: 0x2a2a3a } },
+  emerald:        { name: 'Emerald',        cost: 12000,  colors: { stock: 0x0c5c3a, metal: 0x2ee59d } },
+  molten:         { name: 'Molten',         cost: 30000,  colors: { stock: 0x5a1500, metal: 0xff5a1e } },
+  galaxy:         { name: 'Galaxy',         cost: 90000,  colors: { stock: 0x1a0b3a, metal: 0x9a5cff } },
+  prismatic:      { name: 'Prismatic',      cost: 250000, colors: { stock: 0x222233, metal: 0xff5ad4 } },
+  diamond:        { name: 'Diamond',        cost: 1000000,colors: { stock: 0xbfe9ff, metal: 0xeafaff } },
   champion_gold:  { name: 'Champion Gold',  cost: null, colors: { stock: 0xffd700, metal: 0xffc107 }, tournamentOnly: true },
 };
 
@@ -538,6 +585,48 @@ export const PETS = {
     name: 'Falcon', cost: 800, ability: 'assist',
     desc: 'Falcon occasionally catches small birds for you',
     color: 0x4a5570
+  },
+  // ─── Prestige companions (big-ticket; give a passive earnings cut) ───
+  golden_retriever: {
+    name: 'Golden Retriever', cost: 25000, ability: 'retrieve', earnBonus: 0.05,
+    desc: 'Loyal prestige companion. +5% earnings every hunt.',
+    color: 0xE3B563
+  },
+  phoenix_companion: {
+    name: 'Phoenix Companion', cost: 250000, ability: 'spot', earnBonus: 0.10,
+    desc: 'A reborn phoenix at your side. +10% earnings every hunt.',
+    color: 0xff6a1e
+  },
+  diamond_drone: {
+    name: 'Diamond Drone', cost: 2000000, ability: 'assist', earnBonus: 0.20,
+    desc: 'Top-tier flex. Auto-collects and grants +20% earnings every hunt.',
+    color: 0x9fe8ff
+  }
+};
+
+// ─── Defensive gear (persistent; counters bird attacks on higher dimensions) ───
+// Owned once, always active. `poopBlock` is the chance (0–1) to fully avoid an
+// incoming poop hit; `slowImmune` removes the movement-slow penalty.
+export const GEAR = {
+  umbrella: {
+    name: 'Hunting Umbrella', cost: 1500, poopBlock: 0.4, slowImmune: false,
+    desc: 'Pops open overhead — blocks 40% of incoming bird droppings.'
+  },
+  rain_jacket: {
+    name: 'Oilskin Jacket', cost: 6000, poopBlock: 0.4, slowImmune: true,
+    desc: 'Slick coat: 40% block and you never get bogged down by splatter.'
+  },
+  riot_shield: {
+    name: 'Riot Shield', cost: 25000, poopBlock: 0.7, slowImmune: true,
+    desc: 'Angled polycarbonate canopy. Blocks 70% of droppings, no slowdown.'
+  },
+  hazmat_suit: {
+    name: 'Hazmat Suit', cost: 120000, poopBlock: 0.9, slowImmune: true,
+    desc: 'Sealed head to toe. Blocks 90% of droppings and shrugs off the rest.'
+  },
+  auto_canopy: {
+    name: 'Auto-Canopy Drone', cost: 1000000, poopBlock: 1.0, slowImmune: true,
+    desc: 'A hovering drone vaporises droppings before they land. Total immunity.'
   }
 };
 
@@ -730,13 +819,15 @@ function generateDimension(id) {
     const wk0 = 'd' + id + '_w0', wk1 = 'd' + id + '_w1';
     WEAPONS[wk0] = {
       name: name + ' Lance', cost: Math.round(topVal * 8), dimension: id,
-      description: 'Precision energy weapon from the ' + name + ' dimension.',
+      tier: 6 + tier, power: 4 + tier, pierce: true,
+      description: 'Precision energy lance from the ' + name + ' dimension. Pierces every bird in its path.',
       fireRate: Math.max(0.35, 1.4 - 0.04 * tier), accuracy: Math.min(0.99, 0.9 + 0.012 * tier),
       ammo: 3 + tier, reloadTime: Math.max(0.7, 1.9 - 0.08 * tier),
       spread: 0.012, hasScope: true, isShotgun: false, owned: false
     };
     WEAPONS[wk1] = {
       name: name + ' Scattergun', cost: Math.round(topVal * 16), dimension: id,
+      tier: 6 + tier, power: 3 + Math.floor(tier / 2),
       description: 'Devastating spread weapon from the ' + name + ' dimension.',
       fireRate: Math.max(0.5, 1.1 - 0.02 * tier), accuracy: 0.6,
       ammo: 4 + Math.floor(tier / 2), reloadTime: Math.max(1.2, 2.6 - 0.06 * tier),
@@ -759,6 +850,9 @@ function generateDimension(id) {
 
 // Grandpa weapons cannot be traded
 const GRANDPA_WEAPONS = ['old_rifle', 'grandpas_shotgun', 'grandpas_rifle'];
+
+// Maximum weapon upgrade level (stars shown in the shop)
+export const MAX_WEAPON_LEVEL = 5;
 
 export class Economy {
   constructor() {
@@ -792,6 +886,8 @@ export class Economy {
     this.challengeChestClaimed = false;
     this.ownedPets = [];
     this.activePet = null;
+    this.ownedGear = [];          // persistent defensive gear (anti-bird)
+    this.bestKillstreak = 0;      // longest kill streak in a single game (hunt)
     this.clanId = null;
     this.xp = 0;
     this.rank = 1;
@@ -833,6 +929,8 @@ export class Economy {
       challengeChestClaimed: this.challengeChestClaimed || false,
       ownedPets: this.ownedPets || [],
       activePet: this.activePet || null,
+      ownedGear: this.ownedGear || [],
+      bestKillstreak: this.bestKillstreak || 0,
       clanId: this.clanId || null,
       xp: this.xp || 0,
       rank: this.rank || 1,
@@ -894,6 +992,8 @@ export class Economy {
       if (data.challengeChestClaimed !== undefined) this.challengeChestClaimed = data.challengeChestClaimed;
       if (data.ownedPets) this.ownedPets = data.ownedPets;
       if (data.activePet) this.activePet = data.activePet;
+      if (data.ownedGear) this.ownedGear = data.ownedGear;
+      if (data.bestKillstreak !== undefined) this.bestKillstreak = data.bestKillstreak;
       if (data.clanId) this.clanId = data.clanId;
       if (data.xp !== undefined) this.xp = data.xp;
       if (data.rank !== undefined) this.rank = data.rank;
@@ -1048,6 +1148,7 @@ export class Economy {
       name: displayName,
       currentMoney: this.money,
       totalEarned: this.totalMoneyEarned,
+      killstreak: this.bestKillstreak || 0,
       day: this.day,
       dimension: this.dimension,
       tag: this.equippedTag || (this.equipped && this.equipped.tag) || null,
@@ -1072,6 +1173,7 @@ export class Economy {
           name: data.name || 'Unknown',
           currentMoney: data.currentMoney || 0,
           totalEarned: data.totalEarned || 0,
+          killstreak: data.killstreak || 0,
           day: data.day || 1,
           dimension: data.dimension || 1,
           tag: data.tag || null,
@@ -1080,11 +1182,12 @@ export class Economy {
       });
       return {
         byCurrentMoney: [...entries].sort((a, b) => b.currentMoney - a.currentMoney),
-        byTotalEarned: [...entries].sort((a, b) => b.totalEarned - a.totalEarned)
+        byTotalEarned: [...entries].sort((a, b) => b.totalEarned - a.totalEarned),
+        byKillstreak: [...entries].sort((a, b) => b.killstreak - a.killstreak)
       };
     } catch (e) {
       console.warn('Failed to read leaderboard:', e);
-      return { byCurrentMoney: [], byTotalEarned: [] };
+      return { byCurrentMoney: [], byTotalEarned: [], byKillstreak: [] };
     }
   }
 
@@ -1100,15 +1203,16 @@ export class Economy {
     const weapon = this.weapons[weaponKey];
     if (!weapon) return Infinity;
     const level = this.getUpgradeLevel(weaponKey);
-    if (level >= 3) return Infinity;
-    return Math.floor(weapon.cost * (level + 1) * 0.75);
+    if (level >= MAX_WEAPON_LEVEL) return Infinity;
+    // Cost ramps up with each level so deep upgrades stay a real money sink.
+    return Math.floor(weapon.cost * (level + 1) * 0.6 * Math.pow(1.4, level));
   }
 
   upgradeWeapon(weaponKey) {
     const cost = this.getUpgradeCost(weaponKey);
     if (this.money < cost) return false;
     const level = this.getUpgradeLevel(weaponKey);
-    if (level >= 3) return false;
+    if (level >= MAX_WEAPON_LEVEL) return false;
     this.money -= cost;
     if (!this.weaponUpgrades[weaponKey]) this.weaponUpgrades[weaponKey] = {};
     this.weaponUpgrades[weaponKey].level = level + 1;
@@ -1125,7 +1229,43 @@ export class Economy {
     if (level >= 1) { w.accuracy = Math.min(1, w.accuracy * 1.1); w.reloadTime *= 0.9; }
     if (level >= 2) { w.ammo += 1; w.fireRate *= 0.9; }
     if (level >= 3) { w.accuracy = Math.min(1, w.accuracy * 1.1); w.reloadTime *= 0.85; w.fireRate *= 0.9; }
+    if (level >= 4) { w.spread *= 0.7; w.ammo += 1; w.reloadTime *= 0.85; }
+    if (level >= 5) { w.fireRate *= 0.85; w.power = (w.power || 1) + 1; w.accuracy = Math.min(1, w.accuracy * 1.05); }
     return w;
+  }
+
+  // ─── Defensive gear (anti-bird) ───
+  buyGear(key) {
+    const g = GEAR[key];
+    if (!g || this.money < g.cost) return false;
+    if (this.ownedGear.includes(key)) return false;
+    this.money -= g.cost;
+    this.ownedGear.push(key);
+    this.save();
+    return true;
+  }
+
+  hasGear(key) {
+    return this.ownedGear.includes(key);
+  }
+
+  // Best protection across all owned gear: highest block chance, and whether
+  // any owned piece grants slow-immunity. Used by the bird-attack system.
+  getPoopDefense() {
+    let block = 0, slowImmune = false;
+    for (const key of this.ownedGear) {
+      const g = GEAR[key];
+      if (!g) continue;
+      if (g.poopBlock > block) block = g.poopBlock;
+      if (g.slowImmune) slowImmune = true;
+    }
+    return { block, slowImmune };
+  }
+
+  // Passive earnings bonus from the currently-equipped pet (0 = none).
+  getEarnBonus() {
+    const pet = this.activePet && PETS[this.activePet];
+    return (pet && pet.earnBonus) ? pet.earnBonus : 0;
   }
 
   getLocation() {

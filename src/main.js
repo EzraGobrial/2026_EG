@@ -127,6 +127,10 @@ class Game {
     this.comboTimer = 0;
     this.comboTimeout = 3; // seconds to keep combo alive
 
+    // Killstreak — consecutive kills without a miss (for the leaderboard).
+    // Unlike the combo it does NOT reset on the 3s timer, only on a miss.
+    this._killstreak = 0;
+
     // Double-pump: per-weapon ammo tracking
     this.weaponAmmo = {};
 
@@ -162,6 +166,13 @@ class Game {
     this._beamRaycaster.far = 200;
     this._beamMesh = null;
     this.birdSpeedMultiplier = 1; // passed to bird system
+
+    // ─── Bird attack / poop system (higher dimensions) ───
+    this._poops = [];                 // active falling droppings
+    this._poopTimer = 0;              // time until next attack attempt
+    this._poopSlowUntil = 0;         // timestamp: movement slowed until
+    this._basePlayerSpeed = this.player.moveSpeed; // restore point for slow
+    this.BIRD_ATTACK_MIN_DIM = 3;     // dimensions >= this get aggressive birds
 
     // ─── Clock ─────────────────────────────
     this.clock = new THREE.Clock();
@@ -611,7 +622,7 @@ class Game {
     this.particles.clear();
     this.hud.clearKillFeed();
     this._cheatBuffer = '';
-    this.huntStats = { totalKills: 0, maxCombo: 0, missCount: 0, bossKills: 0, earlyKills: 0, moneyEarned: 0 };
+    this.huntStats = { totalKills: 0, maxCombo: 0, maxKillstreak: 0, missCount: 0, bossKills: 0, earlyKills: 0, moneyEarned: 0 };
     this.hud.hideBossHP();
 
     // Apply consumable effects
@@ -653,7 +664,14 @@ class Game {
     // Reset combo and double-pump state
     this.comboCount = 0;
     this.comboTimer = 0;
+    this._killstreak = 0;
     this.weaponAmmo = {};
+
+    // Reset bird-attack state for the new hunt
+    this._clearPoops();
+    this._poopTimer = 2 + Math.random() * 3;
+    this._poopSlowUntil = 0;
+    this.player.moveSpeed = this._basePlayerSpeed;
 
     // Lock pointer
     this.player.lock();
@@ -691,15 +709,18 @@ class Game {
     const birdData = bird.data;
     this.particles.spawnFeatherBurst(point, birdData.bodyColor, birdData.wingColor);
     this.audio.playBirdHit();
-    const killed = this.birds.hit(bird);
+    const killed = this.birds.hit(bird, this.economy.getWeapon().power || 1);
     if (!killed) { this.hud.showBossHP(bird.hp, birdData.hp || 1); return; }
     if (this.birds.isBoss(bird)) { this.hud.hideBossHP(); this.huntStats.bossKills++; }
     this.comboCount++;
     this.comboTimer = this.comboTimeout;
+    this._killstreak++;
+    if (this._killstreak > this.huntStats.maxKillstreak) this.huntStats.maxKillstreak = this._killstreak;
     const comboMultiplier = this._getComboMultiplier();
     const fluctuation = 0.85 + Math.random() * 0.3;
     let earnedValue = Math.round(birdData.value * fluctuation);
     if (this._doubleMoneyActive) earnedValue *= 2;
+    earnedValue = Math.round(earnedValue * (1 + this.economy.getEarnBonus()));
     this.huntBag.push({ key: bird.birdKey, combo: comboMultiplier, earnedValue: earnedValue });
     this.economy.totalBirdsKilled++;
     this.huntStats.moneyEarned += earnedValue;
@@ -853,6 +874,17 @@ class Game {
 
       // Clear active consumables after hunt
       this.economy.clearActiveConsumables();
+
+      // Record the longest killstreak of this hunt for the leaderboard
+      if (this.huntStats.maxKillstreak > (this.economy.bestKillstreak || 0)) {
+        this.economy.bestKillstreak = this.huntStats.maxKillstreak;
+        this.economy.save();
+      }
+
+      // Clean up bird-attack state
+      this._clearPoops();
+      this.player.moveSpeed = this._basePlayerSpeed;
+      this._poopSlowUntil = 0;
 
       // Calculate XP earned from hunt (10 per kill, 50 per boss)
       const huntXP = (this.huntStats.totalKills * 10) + (this.huntStats.bossKills * 50);
@@ -1071,6 +1103,164 @@ class Game {
     return Math.min(3 + (this.comboCount - 5) * 0.5, 5); // caps at 5x
   }
 
+  /**
+   * Common accounting when a bird is killed (shared by normal shots, piercing
+   * shots and the rail-gun beam): boss flags, story XP, combo + killstreak,
+   * money (with double-money + pet earn bonus), hunt stats and HUD feedback.
+   */
+  _awardKill(bird) {
+    const birdData = bird.data;
+
+    if (this.birds.isBoss(bird)) {
+      this.hud.hideBossHP();
+      this.huntStats.bossKills++;
+    }
+
+    // Story XP for bird kills
+    if (this.story.getPhase() === 'assembling') {
+      const flash = this.story.addXP(5);
+      this.hud.showXPBar(this.story.getXPFraction());
+      if (flash) {
+        if (flash.text) {
+          this.ui.showSpeechBubble(flash.text);
+        } else {
+          this._doGrandpaReveal();
+        }
+      }
+      this.economy.story = this.story.serialize();
+    }
+
+    // Combo + killstreak
+    this.comboCount++;
+    this.comboTimer = this.comboTimeout;
+    this._killstreak++;
+    if (this._killstreak > this.huntStats.maxKillstreak) this.huntStats.maxKillstreak = this._killstreak;
+    const comboMultiplier = this._getComboMultiplier();
+
+    // Value (fluctuation, double-money potion, then pet earn bonus)
+    const fluctuation = 0.85 + Math.random() * 0.3;
+    let earnedValue = Math.round(birdData.value * fluctuation);
+    if (this._doubleMoneyActive) earnedValue *= 2;
+    earnedValue = Math.round(earnedValue * (1 + this.economy.getEarnBonus()));
+    this.huntBag.push({ key: bird.birdKey, combo: comboMultiplier, earnedValue });
+    this.economy.totalBirdsKilled++;
+    this.huntStats.moneyEarned += earnedValue;
+
+    // Hunt stats
+    this.huntStats.totalKills++;
+    if (this.huntTimer >= 40) this.huntStats.earlyKills++;
+    if (this.comboCount > this.huntStats.maxCombo) this.huntStats.maxCombo = this.comboCount;
+
+    // HUD feedback
+    const rarityColor = RARITY_COLORS[birdData.rarity] || '#aaa';
+    this.hud.addKill(birdData.name, earnedValue, rarityColor, this.comboCount, comboMultiplier);
+    this.hud.showMoneyPopup(earnedValue, comboMultiplier);
+    this.hud.showHitFlash();
+    this.hud.showHitMarker();
+    this.hud.showCombo(this.comboCount, comboMultiplier);
+  }
+
+  // ─── Bird attacks: dive-bombing + poop (higher dimensions) ───
+
+  _clearPoops() {
+    if (!this._poops) { this._poops = []; return; }
+    for (const p of this._poops) {
+      if (p.mesh) {
+        this.scene.remove(p.mesh);
+        if (p.mesh.geometry) p.mesh.geometry.dispose();
+        if (p.mesh.material && p.mesh.material.dispose) p.mesh.material.dispose();
+      }
+    }
+    this._poops = [];
+  }
+
+  _updatePoop(dt) {
+    const dim = this.economy.dimension || 1;
+    if (dim < this.BIRD_ATTACK_MIN_DIM) return; // only higher dimensions
+
+    // Difficulty ramps with dimension: attacks come more often deeper in.
+    const ramp = Math.min(1, (dim - this.BIRD_ATTACK_MIN_DIM) / 8);
+    const interval = 6.5 - 4 * ramp; // ~6.5s down to ~2.5s between attacks
+
+    this._poopTimer -= dt;
+    if (this._poopTimer <= 0) {
+      this._poopTimer = interval * (0.7 + Math.random() * 0.6);
+      const bird = this.birds.diveBomb(this.camera.position.clone());
+      if (bird) {
+        // Drop the payload a beat after the dive begins, near the low point.
+        setTimeout(() => {
+          if (this.state === STATE.HUNTING && bird.alive) this._spawnPoopFromBird(bird);
+        }, 450);
+        // Tougher dimensions can launch a second dropping.
+        if (Math.random() < ramp * 0.6) {
+          const b2 = this.birds.diveBomb(this.camera.position.clone());
+          if (b2) setTimeout(() => {
+            if (this.state === STATE.HUNTING && b2.alive) this._spawnPoopFromBird(b2);
+          }, 750);
+        }
+      }
+    }
+
+    // Advance existing droppings
+    const cam = this.camera.position;
+    for (let i = this._poops.length - 1; i >= 0; i--) {
+      const p = this._poops[i];
+      p.vel.y -= 16 * dt;                 // gravity
+      p.mesh.position.addScaledVector(p.vel, dt);
+      p.mesh.rotation.x += 6 * dt;
+
+      const hitCam = p.mesh.position.distanceTo(cam) < 1.3 && p.mesh.position.y < cam.y + 0.5;
+      const hitGround = p.mesh.position.y <= 0.12;
+      if (hitCam || hitGround) {
+        if (hitCam) this._splatPlayer();
+        else this.particles.spawnFeatherBurst(p.mesh.position.clone(), 0x6b5638, 0x4a3a22);
+        this.scene.remove(p.mesh);
+        if (p.mesh.geometry) p.mesh.geometry.dispose();
+        if (p.mesh.material && p.mesh.material.dispose) p.mesh.material.dispose();
+        this._poops.splice(i, 1);
+      }
+    }
+  }
+
+  _spawnPoopFromBird(bird) {
+    if (!bird || !bird.mesh) return;
+    const start = bird.mesh.position.clone();
+    const target = this.camera.position.clone();
+    // Aim roughly at the player with a little spread, then let gravity finish.
+    const dir = target.sub(start);
+    const horiz = Math.hypot(dir.x, dir.z) || 1;
+    const vel = new THREE.Vector3(
+      (dir.x / horiz) * 3 + (Math.random() - 0.5) * 2,
+      -2,
+      (dir.z / horiz) * 3 + (Math.random() - 0.5) * 2
+    );
+    const mesh = new THREE.Mesh(
+      new THREE.SphereGeometry(0.12, 8, 6),
+      new THREE.MeshStandardMaterial({ color: 0xece6d0, roughness: 1.0 })
+    );
+    mesh.position.copy(start);
+    this.scene.add(mesh);
+    this._poops.push({ mesh, vel });
+  }
+
+  _splatPlayer() {
+    // Defensive gear reduces or negates the hit.
+    const def = this.economy.getPoopDefense ? this.economy.getPoopDefense() : { block: 0, slowImmune: false };
+    if (Math.random() < def.block) {
+      if (this.hud.showToast) this.hud.showToast('🛡️ Blocked!');
+      this.audio.playUIClick && this.audio.playUIClick();
+      return;
+    }
+    // Screen splatter
+    if (this.hud.showPoopSplat) this.hud.showPoopSplat();
+    this.audio.playBirdHit && this.audio.playBirdHit();
+    // Movement slow (unless gear grants immunity) — mild, lasts as long as the
+    // splat is on screen (~5s).
+    if (!def.slowImmune) {
+      this._poopSlowUntil = (typeof performance !== 'undefined' ? performance.now() : Date.now()) + 5000;
+    }
+  }
+
   // ─── Input ─────────────────────────────────
 
   _onMouseDown(e) {
@@ -1121,74 +1311,49 @@ class Game {
     this.particles.spawnShellCasing(ejectPos, rightDir);
 
     // Check hits
+    const wpn = this.economy.getWeapon();
+    const power = wpn.power || 1;
     let hitSomething = false;
-    for (const rc of raycasters) {
-      const hit = this.birds.raycastHit(rc);
-      if (hit) {
-        hitSomething = true;
-        const { bird, point } = hit;
+
+    if (wpn.pierce) {
+      // Piercing weapon — the shot passes through every bird in line.
+      const pierced = this.birds.raycastPierce(raycasters[0]);
+      for (const { bird, point } of pierced) {
         const birdData = bird.data;
-
-        // Feather burst at hit position
         this.particles.spawnFeatherBurst(point, birdData.bodyColor, birdData.wingColor);
-        this.audio.playBirdHit();
-
-        // Hit the bird (boss birds take multiple hits)
-        const killed = this.birds.hit(bird);
-
-        if (!killed) {
-          // Boss took a hit but isn't dead — show HP bar
+        hitSomething = true;
+        const killed = this.birds.hit(bird, power);
+        if (killed) {
+          this._awardKill(bird);
+        } else {
           this.hud.showBossHP(bird.hp, birdData.hp || 1);
-          break;
         }
+      }
+      if (hitSomething) { this.audio.playBirdHit(); this.hud.showHitMarker(); }
+    } else {
+      for (const rc of raycasters) {
+        const hit = this.birds.raycastHit(rc);
+        if (hit) {
+          hitSomething = true;
+          const { bird, point } = hit;
+          const birdData = bird.data;
 
-        // Bird is dead — hide boss HP if it was a boss
-        if (this.birds.isBoss(bird)) {
-          this.hud.hideBossHP();
-          this.huntStats.bossKills++;
-        }
+          // Feather burst at hit position
+          this.particles.spawnFeatherBurst(point, birdData.bodyColor, birdData.wingColor);
+          this.audio.playBirdHit();
 
-        // Story XP for bird kills
-        if (this.story.getPhase() === 'assembling') {
-          const flash = this.story.addXP(5);
-          this.hud.showXPBar(this.story.getXPFraction());
-          if (flash) {
-            if (flash.text) {
-              this.ui.showSpeechBubble(flash.text);
-            } else {
-              this._doGrandpaReveal();
-            }
+          // Hit the bird (boss birds take multiple hits; power = weapon damage)
+          const killed = this.birds.hit(bird, power);
+
+          if (!killed) {
+            // Boss took a hit but isn't dead — show HP bar
+            this.hud.showBossHP(bird.hp, birdData.hp || 1);
+            break;
           }
-          this.economy.story = this.story.serialize();
+
+          this._awardKill(bird);
+          break; // One hit per shot
         }
-
-        // Combo system — increase combo on hit
-        this.comboCount++;
-        this.comboTimer = this.comboTimeout;
-        const comboMultiplier = this._getComboMultiplier();
-
-        // Add to bag with combo info and pre-calculated value
-        const fluctuation = 0.85 + Math.random() * 0.3;
-        let earnedValue = Math.round(birdData.value * fluctuation);
-        if (this._doubleMoneyActive) earnedValue *= 2;
-        this.huntBag.push({ key: bird.birdKey, combo: comboMultiplier, earnedValue: earnedValue });
-        this.economy.totalBirdsKilled++;
-        this.huntStats.moneyEarned += earnedValue;
-
-        // Hunt stats tracking
-        this.huntStats.totalKills++;
-        if (this.huntTimer >= 40) this.huntStats.earlyKills++;
-        if (this.comboCount > this.huntStats.maxCombo) this.huntStats.maxCombo = this.comboCount;
-
-        // HUD feedback with combo (use stored earnedValue, no re-roll)
-        const rarityColor = RARITY_COLORS[birdData.rarity] || '#aaa';
-        this.hud.addKill(birdData.name, earnedValue, rarityColor, this.comboCount, comboMultiplier);
-        this.hud.showMoneyPopup(earnedValue, comboMultiplier);
-        this.hud.showHitFlash();
-        this.hud.showHitMarker();
-        this.hud.showCombo(this.comboCount, comboMultiplier);
-
-        break; // One hit per shot
       }
     }
 
@@ -1201,10 +1366,11 @@ class Game {
       }
     }
 
-    // Missed — reset combo
+    // Missed — reset combo and killstreak
     if (!hitSomething) {
       this.comboCount = 0;
       this.comboTimer = 0;
+      this._killstreak = 0;
       this.hud.hideCombo();
       this.huntStats.missCount++;
     }
@@ -1384,6 +1550,16 @@ class Game {
     // Bird updates (pass slo-mo multiplier)
     this.birds.update(dt * this.birdSpeedMultiplier);
 
+    // Bird attacks (dive-bomb + poop) — only on higher dimensions.
+    // Wrapped so a problem here can never break the core hunt loop.
+    try { this._updatePoop(dt); } catch (e) { console.warn('Bird attack update error:', e); }
+
+    // Apply or clear the poop movement-slow penalty
+    const _nowMs = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    this.player.moveSpeed = (this._poopSlowUntil > _nowMs)
+      ? this._basePlayerSpeed * 0.9   // barely-noticeable slow while splattered
+      : this._basePlayerSpeed;
+
     // Spawn new birds
     this.spawnTimer += dt;
     if (this.spawnTimer >= this.spawnInterval && this.birds.getLivingCount() < this.maxActiveBirds) {
@@ -1548,6 +1724,9 @@ class Game {
     this._resetScope();
     this.audio.stopAmbience();
     if (this.audio.ctx && this.audio.ctx.state === 'suspended') this.audio.ctx.resume();
+    this._clearPoops();
+    this.player.moveSpeed = this._basePlayerSpeed;
+    this._poopSlowUntil = 0;
     this.hud.hide();
     this.hud.hideBossHP();
     this.hud.hideScopeHint();

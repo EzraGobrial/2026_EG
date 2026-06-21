@@ -3,7 +3,7 @@
 // Menu screens: title, morning, results, shop, sleep, win
 // ═══════════════════════════════════════════════
 
-import { Economy, BIRDS, RARITY_COLORS, DIMENSIONS, WEAPONS, BANNERS, TAGS, CONSUMABLES, WEAPON_SKINS, PETS, RANKS } from './economy.js';
+import { Economy, BIRDS, RARITY_COLORS, DIMENSIONS, WEAPONS, BANNERS, TAGS, CONSUMABLES, WEAPON_SKINS, PETS, GEAR, RANKS, MAX_WEAPON_LEVEL, fmtMoney, fmtNum } from './economy.js';
 
 /**
  * Generate HTML for a rank badge (CSS-styled, not emoji)
@@ -516,7 +516,7 @@ export class UI {
     this._setupEscHint();
     const eco = this.economy;
     document.getElementById('morning-day').textContent = `Day ${eco.day}`;
-    document.getElementById('morning-money').textContent = `$${eco.money}`;
+    document.getElementById('morning-money').textContent = fmtMoney(eco.money);
     document.getElementById('morning-weapon').textContent = eco.getWeapon().name;
 
     // Dimension badge
@@ -579,7 +579,7 @@ export class UI {
           card.classList.add('locked');
           card.innerHTML = `
             <div class="loc-name">${loc.name}</div>
-            <div class="loc-info">Locked — $${loc.cost}</div>
+            <div class="loc-info">Locked — ${fmtMoney(loc.cost)}</div>
           `;
         } else {
           if (key === eco.currentLocation) {
@@ -678,7 +678,7 @@ export class UI {
           if (reward > 0) {
             btn.textContent = `Claimed! +$${reward}`;
             btn.disabled = true;
-            document.getElementById('morning-money').textContent = `$${eco.money}`;
+            document.getElementById('morning-money').textContent = fmtMoney(eco.money);
             if (chestEl) {
               chestEl.className = 'challenge-chest claimed';
               chestEl.querySelector('.chest-icon').textContent = '✅';
@@ -860,7 +860,7 @@ export class UI {
       }
     }
 
-    document.getElementById('results-total-money').textContent = `$${total}`;
+    document.getElementById('results-total-money').textContent = fmtMoney(total);
     this.economy.money += total;
     this.economy.totalMoneyEarned += total;
     this.economy.huntBag = [];
@@ -899,23 +899,24 @@ export class UI {
   async _renderLeaderboard(currentUser) {
     const totalEl = document.getElementById('lb-total-earned');
     const currentEl = document.getElementById('lb-current-money');
+    const streakEl = document.getElementById('lb-killstreak');
+    const cols = [totalEl, currentEl, streakEl].filter(Boolean);
 
-    totalEl.innerHTML = '<div class="lb-empty">Loading...</div>';
-    currentEl.innerHTML = '<div class="lb-empty">Loading...</div>';
+    cols.forEach(el => { el.innerHTML = '<div class="lb-empty">Loading...</div>'; });
 
-    const { byCurrentMoney, byTotalEarned } = await Economy.getLeaderboard();
+    const { byCurrentMoney, byTotalEarned, byKillstreak } = await Economy.getLeaderboard();
 
-    totalEl.innerHTML = '';
-    currentEl.innerHTML = '';
+    cols.forEach(el => { el.innerHTML = ''; });
 
     if (byTotalEarned.length === 0) {
-      totalEl.innerHTML = '<div class="lb-empty">No players yet</div>';
-      currentEl.innerHTML = '<div class="lb-empty">No players yet</div>';
+      cols.forEach(el => { el.innerHTML = '<div class="lb-empty">No players yet</div>'; });
       return;
     }
 
-    // Helper: build a scrollable leaderboard list and scroll to the current player
-    const buildList = (entries, container, valueKey) => {
+    // Helper: build a scrollable leaderboard list and scroll to the current
+    // player. `fmtVal` formats the right-hand value for that column.
+    const buildList = (entries, container, valueKey, fmtVal) => {
+      if (!container) return;
       let youIndex = -1;
 
       entries.forEach((entry, i) => {
@@ -942,7 +943,7 @@ export class UI {
         div.innerHTML = `
           <span class="lb-rank">${i + 1}</span>
           <span class="lb-name">${rankBadge}${entry.name}${entry.tag ? ` <span style="display:inline-block;padding:1px 7px;margin-left:5px;border-radius:6px;font-size:10px;font-weight:800;letter-spacing:0.5px;vertical-align:middle;${TAGS[entry.tag] ? `color:${TAGS[entry.tag].textColor || TAGS[entry.tag].color};border:1px solid ${TAGS[entry.tag].color};background:${TAGS[entry.tag].color}22` : `color:var(--accent-gold);border:1px solid var(--accent-gold)`}">${TAGS[entry.tag] ? TAGS[entry.tag].name : 'OG'}</span>` : ''}${isYou ? ' (you)' : ''}</span>
-          <span class="lb-money">$${entry[valueKey].toLocaleString()}</span>
+          <span class="lb-money">${fmtVal(entry[valueKey])}</span>
         `;
         container.appendChild(div);
       });
@@ -959,8 +960,9 @@ export class UI {
       }
     };
 
-    buildList(byTotalEarned, totalEl, 'totalEarned');
-    buildList(byCurrentMoney, currentEl, 'currentMoney');
+    buildList(byTotalEarned, totalEl, 'totalEarned', v => fmtMoney(v));
+    buildList(byCurrentMoney, currentEl, 'currentMoney', v => fmtMoney(v));
+    buildList(byKillstreak, streakEl, 'killstreak', v => `${v} 🔥`);
   }
 
   // ─── Shop Screen ────────────────────────────
@@ -989,7 +991,7 @@ export class UI {
 
     try {
       const eco = this.economy;
-      document.getElementById('shop-money').textContent = `$${eco.money}`;
+      document.getElementById('shop-money').textContent = fmtMoney(eco.money);
 
       const dimHeader = document.getElementById('shop-dimension');
       if (dimHeader) {
@@ -1063,15 +1065,15 @@ export class UI {
         const isEquipped = key === eco.currentWeapon;
         const upgradeLevel = eco.getUpgradeLevel(key);
         const upgradeCost = eco.getUpgradeCost(key);
-        const maxed = upgradeLevel >= 3;
+        const maxed = upgradeLevel >= MAX_WEAPON_LEVEL;
         const canAffordUpgrade = eco.money >= upgradeCost;
-        const stars = '\u2605'.repeat(upgradeLevel) + '\u2606'.repeat(3 - upgradeLevel);
+        const stars = '\u2605'.repeat(upgradeLevel) + '\u2606'.repeat(Math.max(0, MAX_WEAPON_LEVEL - upgradeLevel));
 
         item.innerHTML = `
           <div class="shop-item-name">${weapon.name} <span style="color:var(--accent-gold);font-size:12px">${stars}</span></div>
           <div class="shop-item-desc">${weapon.description || ''}</div>
           <div class="shop-item-price">${isEquipped ? 'EQUIPPED' : 'OWNED'}</div>
-          ${!maxed && weapon.cost > 0 ? `<button class="btn btn-upgrade ${canAffordUpgrade ? '' : 'cant-afford'}" style="margin-top:6px;font-size:11px;padding:4px 8px">Upgrade Lv${upgradeLevel + 1} \u2014 $${upgradeCost}</button>` : (maxed && weapon.cost > 0 ? '<div style="color:var(--accent-gold);font-size:11px;margin-top:4px">MAX LEVEL</div>' : '')}
+          ${!maxed && weapon.cost > 0 ? `<button class="btn btn-upgrade ${canAffordUpgrade ? '' : 'cant-afford'}" style="margin-top:6px;font-size:11px;padding:4px 8px">Upgrade Lv${upgradeLevel + 1} \u2014 ${fmtMoney(upgradeCost)}</button>` : (maxed && weapon.cost > 0 ? '<div style="color:var(--accent-gold);font-size:11px;margin-top:4px">MAX LEVEL</div>' : '')}
         `;
         if (!isEquipped) {
           item.style.cursor = 'pointer';
@@ -1089,7 +1091,7 @@ export class UI {
             this.audio.playUIClick();
             if (eco.upgradeWeapon(key)) {
               this.audio.playCashRegister();
-              document.getElementById('shop-money').textContent = `$${eco.money}`;
+              document.getElementById('shop-money').textContent = fmtMoney(eco.money);
               this._renderShopTab('weapons');
             }
           });
@@ -1099,20 +1101,20 @@ export class UI {
         item.innerHTML = `
           <div class="shop-item-name">${weapon.name}</div>
           <div class="shop-item-desc">${weapon.description || ''}</div>
-          <div class="shop-item-price">$${weapon.cost}</div>
+          <div class="shop-item-price">${fmtMoney(weapon.cost)}</div>
         `;
       } else {
         item.innerHTML = `
           <div class="shop-item-name">${weapon.name}</div>
           <div class="shop-item-desc">${weapon.description || ''}</div>
-          <div class="shop-item-price">$${weapon.cost}</div>
+          <div class="shop-item-price">${fmtMoney(weapon.cost)}</div>
         `;
         item.addEventListener('click', () => {
           this.audio.playUIClick();
           if (eco.buyWeapon(key)) {
             this.audio.playCashRegister();
             this.toast(`✓ ${weapon.name} purchased!`, 'gold');
-            document.getElementById('shop-money').textContent = `$${eco.money}`;
+            document.getElementById('shop-money').textContent = fmtMoney(eco.money);
             this._renderShopTab('weapons');
           }
         });
@@ -1139,7 +1141,7 @@ export class UI {
         item.innerHTML = `
           <div class="shop-item-name">${cons.name}${owned > 0 ? ` <span style="color:var(--accent-gold)">(x${owned})</span>` : ''}</div>
           <div class="shop-item-desc">${cons.desc}</div>
-          <div class="shop-item-price">$${cons.cost}</div>
+          <div class="shop-item-price">${fmtMoney(cons.cost)}</div>
         `;
         if (eco.money >= cons.cost) {
           item.addEventListener('click', () => {
@@ -1147,7 +1149,7 @@ export class UI {
             if (eco.buyConsumable(key)) {
               this.audio.playCashRegister();
               this.toast(`✓ ${cons.name} purchased!`, 'success');
-              document.getElementById('shop-money').textContent = `$${eco.money}`;
+              document.getElementById('shop-money').textContent = fmtMoney(eco.money);
               this._renderShopTab('weapons');
             }
           });
@@ -1175,7 +1177,7 @@ export class UI {
           <div class="shop-item-name">${cons.name}${tierBadge}${owned > 0 ? ` <span style="color:var(--accent-gold)">(x${owned})</span>` : ''}</div>
           <div class="shop-item-desc">${cons.desc}</div>
           <div class="shop-item-duration">${durationBadge}</div>
-          <div class="shop-item-price">$${cons.cost}</div>
+          <div class="shop-item-price">${fmtMoney(cons.cost)}</div>
         `;
         if (eco.money >= cons.cost) {
           item.addEventListener('click', () => {
@@ -1183,7 +1185,7 @@ export class UI {
             if (eco.buyConsumable(key)) {
               this.audio.playCashRegister();
               this.toast(`✓ ${cons.name} purchased!`, 'success');
-              document.getElementById('shop-money').textContent = `$${eco.money}`;
+              document.getElementById('shop-money').textContent = fmtMoney(eco.money);
               this._renderShopTab('weapons');
             }
           });
@@ -1211,14 +1213,14 @@ export class UI {
       const colorPreview = skin.colors ? `<div style="display:inline-flex;gap:3px;vertical-align:middle"><div style="width:14px;height:14px;border-radius:3px;background:#${skin.colors.stock.toString(16).padStart(6,'0')}"></div><div style="width:14px;height:14px;border-radius:3px;background:#${skin.colors.metal.toString(16).padStart(6,'0')}"></div></div>` : '';
       item.innerHTML = `
         <div class="shop-item-name">${skin.name} ${colorPreview}</div>
-        <div class="shop-item-price">${owned ? 'OWNED' : `$${skin.cost}`}</div>
+        <div class="shop-item-price">${owned ? 'OWNED' : fmtMoney(skin.cost)}</div>
       `;
       if (!owned && eco.money >= skin.cost) {
         item.addEventListener('click', () => {
           this.audio.playUIClick();
           if (eco.buyWeaponSkin(key)) {
             this.audio.playCashRegister();
-            document.getElementById('shop-money').textContent = `$${eco.money}`;
+            document.getElementById('shop-money').textContent = fmtMoney(eco.money);
             this._renderShopTab('weapons');
           }
         });
@@ -1227,6 +1229,81 @@ export class UI {
     }
     container.appendChild(sGrid);
     } // end if (showSkins)
+
+    // ─── Defensive Gear (anti-bird) — full shop only ───
+    if (!restrict) {
+      const gearHeader = document.createElement('h3');
+      gearHeader.style.cssText = 'color:var(--accent-gold);margin:20px 0 10px;font-size:14px;';
+      gearHeader.textContent = 'Defensive Gear';
+      container.appendChild(gearHeader);
+
+      const gGrid = document.createElement('div');
+      gGrid.className = 'shop-grid';
+      for (const [key, g] of Object.entries(GEAR)) {
+        const owned = eco.ownedGear.includes(key);
+        const item = document.createElement('div');
+        item.className = `shop-item ${owned ? 'owned' : (eco.money < g.cost ? 'cant-afford' : '')}`;
+        item.innerHTML = `
+          <div class="shop-item-name">${g.name}</div>
+          <div class="shop-item-desc">${g.desc}</div>
+          <div class="shop-item-price">${owned ? 'OWNED' : fmtMoney(g.cost)}</div>
+        `;
+        if (!owned && eco.money >= g.cost) {
+          item.addEventListener('click', () => {
+            this.audio.playUIClick();
+            if (eco.buyGear(key)) {
+              this.audio.playCashRegister();
+              this.toast(`✓ ${g.name} purchased!`, 'gold');
+              document.getElementById('shop-money').textContent = fmtMoney(eco.money);
+              this._renderShopTab('weapons');
+            }
+          });
+        }
+        gGrid.appendChild(item);
+      }
+      container.appendChild(gGrid);
+
+      // ─── Companions (prestige pets) ───
+      const petHeader = document.createElement('h3');
+      petHeader.style.cssText = 'color:var(--accent-gold);margin:20px 0 10px;font-size:14px;';
+      petHeader.textContent = 'Companions';
+      container.appendChild(petHeader);
+
+      const petGrid = document.createElement('div');
+      petGrid.className = 'shop-grid';
+      for (const [key, pet] of Object.entries(PETS)) {
+        const owned = eco.ownedPets.includes(key);
+        const isActive = eco.activePet === key;
+        const item = document.createElement('div');
+        item.className = `shop-item ${owned ? 'owned' : (eco.money < pet.cost ? 'cant-afford' : '')}`;
+        item.innerHTML = `
+          <div class="shop-item-name">${pet.name}</div>
+          <div class="shop-item-desc">${pet.desc}</div>
+          <div class="shop-item-price">${owned ? (isActive ? 'EQUIPPED' : 'EQUIP') : fmtMoney(pet.cost)}</div>
+        `;
+        if (!owned && eco.money >= pet.cost) {
+          item.addEventListener('click', () => {
+            this.audio.playUIClick();
+            if (eco.buyPet(key)) {
+              eco.equipPet(key);
+              this.audio.playCashRegister();
+              this.toast(`✓ ${pet.name} purchased!`, 'gold');
+              document.getElementById('shop-money').textContent = fmtMoney(eco.money);
+              this._renderShopTab('weapons');
+            }
+          });
+        } else if (owned && !isActive) {
+          item.style.cursor = 'pointer';
+          item.addEventListener('click', () => {
+            this.audio.playUIClick();
+            eco.equipPet(key);
+            this._renderShopTab('weapons');
+          });
+        }
+        petGrid.appendChild(item);
+      }
+      container.appendChild(petGrid);
+    }
   }
 
   _renderShopLocations(container) {
@@ -1270,20 +1347,20 @@ export class UI {
           item.innerHTML = `
             <div class="shop-item-name">${loc.name}</div>
             <div class="shop-item-desc">${loc.description || ''}</div>
-            <div class="shop-item-price">$${loc.cost}</div>
+            <div class="shop-item-price">${fmtMoney(loc.cost)}</div>
           `;
         } else {
           item.innerHTML = `
             <div class="shop-item-name">${loc.name}</div>
             <div class="shop-item-desc">${loc.description || ''}</div>
-            <div class="shop-item-price">$${loc.cost}</div>
+            <div class="shop-item-price">${fmtMoney(loc.cost)}</div>
           `;
           item.addEventListener('click', () => {
             this.audio.playUIClick();
             if (eco.buyLocation(locKey)) {
               this.audio.playCashRegister();
               this.toast(`✓ ${loc.name} unlocked!`, 'gold');
-              document.getElementById('shop-money').textContent = `$${eco.money}`;
+              document.getElementById('shop-money').textContent = fmtMoney(eco.money);
               this._renderShopTab('locations');
             }
           });
@@ -1312,7 +1389,7 @@ export class UI {
 
       const priceLabel = owned
         ? (isEquipped ? 'EQUIPPED' : 'OWNED')
-        : (banner.devCode ? '🔐 ENTER CODE' : `$${banner.cost}`);
+        : (banner.devCode ? '🔐 ENTER CODE' : fmtMoney(banner.cost));
 
       item.innerHTML = `
         <div style="display:flex;align-items:center;gap:8px">
@@ -1340,7 +1417,7 @@ export class UI {
           if (eco.buyBanner(key)) {
             this.audio.playCashRegister();
             this.toast(`✓ ${banner.name} banner purchased!`, 'gold');
-            document.getElementById('shop-money').textContent = `$${eco.money}`;
+            document.getElementById('shop-money').textContent = fmtMoney(eco.money);
             this._renderShopTab('banners');
           }
         }
@@ -1365,7 +1442,7 @@ export class UI {
 
       const priceLabel = owned
         ? (isEquipped ? 'EQUIPPED' : 'OWNED')
-        : (tag.devCode ? '🔐 ENTER CODE' : `$${tag.cost}`);
+        : (tag.devCode ? '🔐 ENTER CODE' : fmtMoney(tag.cost));
 
       item.innerHTML = `
         <div style="display:flex;align-items:center;gap:8px">
@@ -1391,7 +1468,7 @@ export class UI {
           if (eco.buyTag(key)) {
             this.audio.playCashRegister();
             this.toast(`✓ ${tag.name} tag purchased!`, 'gold');
-            document.getElementById('shop-money').textContent = `$${eco.money}`;
+            document.getElementById('shop-money').textContent = fmtMoney(eco.money);
             this._renderShopTab('tags');
           }
         }
@@ -1502,7 +1579,7 @@ export class UI {
           eco.money -= QUEST_COST;
           eco.save();
           this.audio.playCashRegister();
-          document.getElementById('shop-money').textContent = `$${eco.money}`;
+          document.getElementById('shop-money').textContent = fmtMoney(eco.money);
           this._renderShopTab('quests');
         }
       });
@@ -1532,7 +1609,7 @@ export class UI {
             // Refresh in place on the Locations tab so the new dimension's
             // locations appear immediately. (showShop() with no arg resets to
             // the Weapons tab, which is why they only appeared after re-opening.)
-            document.getElementById('shop-money').textContent = `$${eco.money}`;
+            document.getElementById('shop-money').textContent = fmtMoney(eco.money);
             const dimHeader = document.getElementById('shop-dimension');
             if (dimHeader) dimHeader.textContent = `Dimension ${eco.dimension} -- ${eco.getDimensionName()}`;
             this._renderShopTab('locations');
@@ -1821,7 +1898,7 @@ export class UI {
 
   showWin() {
     const eco = this.economy;
-    document.getElementById('win-money').textContent = `$${eco.money}`;
+    document.getElementById('win-money').textContent = fmtMoney(eco.money);
     document.getElementById('win-days').textContent = eco.day;
     document.getElementById('win-birds').textContent = eco.totalBirdsKilled;
     this.showScreen('win');

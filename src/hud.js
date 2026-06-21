@@ -4,6 +4,8 @@
 // dynamic crosshair, weapon slot bar
 // ═══════════════════════════════════════════════
 
+import { fmtNum } from './economy.js';
+
 export class HUD {
   constructor() {
     this.el = document.getElementById('hud');
@@ -29,6 +31,18 @@ export class HUD {
     this.comboEl.id = 'combo-display';
     this.comboEl.className = 'combo-display hidden';
     document.body.appendChild(this.comboEl);
+
+    // Poop splat overlay (bird attacks on higher dimensions)
+    this.poopSplatEl = document.createElement('div');
+    this.poopSplatEl.id = 'poop-splat';
+    this.poopSplatEl.className = 'poop-splat hidden';
+    document.body.appendChild(this.poopSplatEl);
+
+    // Lightweight toast for quick callouts (e.g. "Blocked!")
+    this.toastEl = document.createElement('div');
+    this.toastEl.id = 'hud-toast';
+    this.toastEl.className = 'hud-toast hidden';
+    document.body.appendChild(this.toastEl);
   }
 
   show() {
@@ -60,7 +74,7 @@ export class HUD {
   }
 
   setMoney(amount) {
-    this.moneyDisplay.textContent = amount;
+    this.moneyDisplay.textContent = fmtNum(amount);
   }
 
   setAmmo(current, max) {
@@ -167,10 +181,10 @@ export class HUD {
     const popup = document.createElement('div');
     popup.className = 'money-popup';
     if (comboMultiplier > 1) {
-      popup.textContent = `+$${boostedValue}`;
+      popup.textContent = `+$${fmtNum(boostedValue)}`;
       popup.classList.add('combo-boosted');
     } else {
-      popup.textContent = `+$${value}`;
+      popup.textContent = `+$${fmtNum(value)}`;
     }
     popup.style.left = `${window.innerWidth / 2 + (Math.random() - 0.5) * 80}px`;
     popup.style.top = `${window.innerHeight / 2 - 30 + (Math.random() - 0.5) * 40}px`;
@@ -221,6 +235,88 @@ export class HUD {
 
   hideCombo() {
     this.comboEl.classList.add('hidden');
+  }
+
+  /**
+   * Splatter the screen when a bird dropping hits the player.
+   * Creates 5 unique, randomly-shaped splotches that partially cover the view
+   * (so vision is impaired but not blocked). They hold for ~5s, then each one
+   * drips off the bottom of the screen with its own animation.
+   */
+  showPoopSplat() {
+    const el = this.poopSplatEl;
+    clearTimeout(this._poopSplatT);
+    clearTimeout(this._poopDripT);
+    el.innerHTML = '';
+    el.classList.remove('hidden');
+    // Faint full-screen wash = "bad vision"
+    el.style.transition = '';
+    el.style.background = 'rgba(70,56,30,0.10)';
+
+    const rPct = () => (18 + Math.random() * 64).toFixed(1) + '%';
+    const blobs = [];
+    for (let i = 0; i < 5; i++) {
+      const b = document.createElement('div');
+      b.className = 'poop-blob';
+      const size = 150 + Math.random() * 210;
+      const x = 6 + Math.random() * 88;          // % across screen
+      const y = 6 + Math.random() * 78;          // % down screen
+      const rot = (Math.random() * 360) | 0;
+      // 8-value border-radius = organic, never-the-same blob shape
+      const br = `${rPct()} ${rPct()} ${rPct()} ${rPct()} / ${rPct()} ${rPct()} ${rPct()} ${rPct()}`;
+      const tone = 38 + ((Math.random() * 16) | 0); // brown lightness jitter
+      b.style.position = 'absolute';
+      b.style.left = x + '%';
+      b.style.top = y + '%';
+      b.style.width = size + 'px';
+      b.style.height = (size * (0.78 + Math.random() * 0.5)) + 'px';
+      b.style.borderRadius = br;
+      b.style.background = `radial-gradient(closest-side, rgba(${tone + 30},${tone + 12},${tone - 8},0.92), rgba(${tone + 14},${tone},${tone - 14},0.8) 55%, rgba(${tone + 14},${tone},${tone - 14},0) 76%)`;
+      b.style.transform = `translate(-50%, -50%) rotate(${rot}deg)`;
+      b.style.opacity = '0';
+      b.style.transition = 'opacity 0.3s ease';
+      el.appendChild(b);
+      // fade in
+      requestAnimationFrame(() => { b.style.opacity = (0.78 + Math.random() * 0.18).toFixed(2); });
+      blobs.push({ b, rot });
+    }
+
+    // Hold ~5s, then drip each splotch off the screen, each one differently.
+    this._poopSplatT = setTimeout(() => {
+      let maxMs = 0;
+      const eases = ['cubic-bezier(.55,.06,.68,.19)', 'cubic-bezier(.4,0,.7,1)', 'cubic-bezier(.6,.04,.98,.34)', 'ease-in'];
+      blobs.forEach(({ b, rot }) => {
+        const dur = 1.6 + Math.random() * 1.3;     // seconds
+        const delay = Math.random() * 0.8;
+        const driftX = (Math.random() - 0.5) * 70; // px sideways wander
+        const stretch = (1.5 + Math.random() * 1.3).toFixed(2); // vertical smear
+        const ease = eases[(Math.random() * eases.length) | 0];
+        b.style.transition = `transform ${dur}s ${ease} ${delay}s, opacity ${dur}s ease ${delay}s`;
+        b.style.transform = `translate(calc(-50% + ${driftX}px), 135vh) rotate(${rot}deg) scaleY(${stretch})`;
+        b.style.opacity = '0';
+        maxMs = Math.max(maxMs, (dur + delay) * 1000);
+      });
+      // Clear the vision wash as the drips run
+      el.style.transition = 'background 1.2s ease';
+      el.style.background = 'rgba(70,56,30,0)';
+      this._poopDripT = setTimeout(() => {
+        el.classList.add('hidden');
+        el.innerHTML = '';
+        el.style.transition = '';
+      }, maxMs + 250);
+    }, 5000);
+  }
+
+  /**
+   * Quick centered toast message (auto-hides).
+   */
+  showToast(text) {
+    this.toastEl.textContent = text;
+    this.toastEl.classList.remove('hidden', 'toast-pop');
+    void this.toastEl.offsetWidth;
+    this.toastEl.classList.add('toast-pop');
+    clearTimeout(this._toastT);
+    this._toastT = setTimeout(() => this.toastEl.classList.add('hidden'), 1400);
   }
 
   /**
