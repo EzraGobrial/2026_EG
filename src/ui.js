@@ -2177,34 +2177,53 @@ export class UI {
       friendList.appendChild(row);
     }
 
-    // Search
+    // Search + suggestions
     const searchInput = document.getElementById('friend-search-input');
     const searchResults = document.getElementById('friend-search-results');
     searchInput.value = '';
-    searchResults.innerHTML = '';
+    searchResults.innerHTML = '<div style="color:var(--text-secondary);font-size:13px">Loading players…</div>';
+
+    // Render a list of players into the results area.
+    const renderPlayerRows = (list, emptyMsg) => {
+      searchResults.innerHTML = '';
+      if (!list || list.length === 0) {
+        searchResults.innerHTML = `<div style="color:var(--text-secondary);font-size:13px">${emptyMsg}</div>`;
+        return;
+      }
+      for (const p of list) {
+        const isFriend = friends.find(f => f.uid === p.uid);
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:6px 10px;margin-bottom:4px;background:rgba(255,255,255,0.03);border-radius:4px;font-size:13px;';
+        row.innerHTML = `<span>${p.name} <span style="color:var(--text-secondary)">(Dimension ${p.dimension})</span></span>${isFriend ? '<span style="color:#5ab55a">Friend</span>' : `<button class="btn btn-primary" style="font-size:11px;padding:3px 8px">Add</button>`}`;
+        if (!isFriend) {
+          row.querySelector('.btn').addEventListener('click', async () => {
+            const b = row.querySelector('.btn');
+            b.textContent = 'Sent!';
+            b.disabled = true;
+            await sendFriendRequest(uid, displayName, p.uid, p.name);
+          });
+        }
+        searchResults.appendChild(row);
+      }
+    };
+
+    // Default suggestions: pull players from the leaderboard (empty query
+    // matches everyone) so there's always a list to add from.
+    let suggestions = [];
+    try { suggestions = await searchPlayers('', uid); } catch (e) { console.warn('player suggestions failed:', e); }
+    renderPlayerRows(suggestions, 'No other players found yet.');
+
     let searchTimeout = null;
     searchInput.oninput = () => {
       clearTimeout(searchTimeout);
       const q = searchInput.value.trim();
-      if (q.length < 2) { searchResults.innerHTML = ''; return; }
+      if (q === '') { renderPlayerRows(suggestions, 'No other players found yet.'); return; }
+      searchResults.innerHTML = '<div style="color:var(--text-secondary);font-size:13px">Searching…</div>';
       searchTimeout = setTimeout(async () => {
-        const results = await searchPlayers(q, uid);
-        searchResults.innerHTML = '';
-        for (const p of results) {
-          const isFriend = friends.find(f => f.uid === p.uid);
-          const row = document.createElement('div');
-          row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:6px 10px;margin-bottom:4px;background:rgba(255,255,255,0.03);border-radius:4px;font-size:13px;';
-          row.innerHTML = `<span>${p.name} <span style="color:var(--text-secondary)">(Dimension ${p.dimension})</span></span>${isFriend ? '<span style="color:#5ab55a">Friend</span>' : `<button class="btn btn-primary" style="font-size:11px;padding:3px 8px">Add</button>`}`;
-          if (!isFriend) {
-            row.querySelector('.btn').addEventListener('click', async () => {
-              await sendFriendRequest(uid, displayName, p.uid, p.name);
-              row.querySelector('.btn').textContent = 'Sent!';
-              row.querySelector('.btn').disabled = true;
-            });
-          }
-          searchResults.appendChild(row);
-        }
-      }, 300);
+        let results = [];
+        try { results = await searchPlayers(q, uid); } catch (e) { console.warn('player search failed:', e); }
+        renderPlayerRows(results, `No players match “${q}”.`);
+      }, 250);
     };
 
     this.showScreen('friends');
