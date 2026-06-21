@@ -9,6 +9,8 @@ export class AudioSystem {
     this.masterGain = null;
     this.initialized = false;
     this._volume = 0.4;
+    this._splatBuffer = null;   // decoded splat.mp3
+    this._splatLoading = false;
   }
 
   init() {
@@ -18,6 +20,19 @@ export class AudioSystem {
     this.masterGain.gain.value = this._volume;
     this.masterGain.connect(this.ctx.destination);
     this.initialized = true;
+    this._loadSplat(); // preload the poop splat sound
+  }
+
+  // Load + decode the uploaded splat.mp3 once (fire-and-forget).
+  _loadSplat() {
+    if (this._splatBuffer || this._splatLoading || !this.ctx) return;
+    this._splatLoading = true;
+    fetch('sounds/splat.mp3')
+      .then(r => r.arrayBuffer())
+      .then(buf => this.ctx.decodeAudioData(buf))
+      .then(decoded => { this._splatBuffer = decoded; })
+      .catch(e => console.warn('splat.mp3 load failed:', e))
+      .finally(() => { this._splatLoading = false; });
   }
 
   // ─── Master Volume ──────────────────────────
@@ -122,8 +137,27 @@ export class AudioSystem {
     thwack.stop(t + 0.08);
   }
 
-  // ─── Poop Splat (wet squelch) — distinct from a bird hit ───────
+  // ─── Poop Splat — plays the uploaded splat.mp3 (classic splat). ───────
+  // Falls back to a synth squelch only if the file hasn't loaded yet.
   playPoopSplat() {
+    this.ensureCtx();
+    if (this._splatBuffer) {
+      const src = this.ctx.createBufferSource();
+      src.buffer = this._splatBuffer;
+      const g = this.ctx.createGain();
+      g.gain.value = 1.0;
+      src.connect(g);
+      g.connect(this.masterGain);
+      src.start();
+      return;
+    }
+    // Not decoded yet — kick off the load and use the synth splat just this once.
+    this._loadSplat();
+    this._playSynthSplat();
+  }
+
+  // Procedural fallback splat (used only until splat.mp3 has loaded).
+  _playSynthSplat() {
     this.ensureCtx();
     const t = this.ctx.currentTime;
 
