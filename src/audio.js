@@ -11,6 +11,10 @@ export class AudioSystem {
     this._volume = 0.4;
     this._splatBuffer = null;   // decoded splat.mp3
     this._splatLoading = false;
+    this._railBuffer = null;    // decoded railgun.mp3
+    this._railLoading = false;
+    this._railSource = null;    // active looping beam source
+    this._railGain = null;
   }
 
   init() {
@@ -20,7 +24,8 @@ export class AudioSystem {
     this.masterGain.gain.value = this._volume;
     this.masterGain.connect(this.ctx.destination);
     this.initialized = true;
-    this._loadSplat(); // preload the poop splat sound
+    this._loadSplat();    // preload the poop splat sound
+    this._loadRailgun();  // preload the rail gun beam sound
   }
 
   // Load + decode the uploaded splat.mp3 once (fire-and-forget).
@@ -33,6 +38,51 @@ export class AudioSystem {
       .then(decoded => { this._splatBuffer = decoded; })
       .catch(e => console.warn('splat.mp3 load failed:', e))
       .finally(() => { this._splatLoading = false; });
+  }
+
+  // Load + decode the uploaded railgun.mp3 once (fire-and-forget).
+  _loadRailgun() {
+    if (this._railBuffer || this._railLoading || !this.ctx) return;
+    this._railLoading = true;
+    fetch('sounds/railgun.mp3')
+      .then(r => r.arrayBuffer())
+      .then(buf => this.ctx.decodeAudioData(buf))
+      .then(decoded => { this._railBuffer = decoded; })
+      .catch(e => console.warn('railgun.mp3 load failed:', e))
+      .finally(() => { this._railLoading = false; });
+  }
+
+  // Start the looping rail-gun beam sound (no-op if already playing).
+  startRailgun() {
+    this.ensureCtx();
+    if (this._railSource) return;            // already firing
+    if (!this._railBuffer) { this._loadRailgun(); return; } // not ready yet
+    const src = this.ctx.createBufferSource();
+    src.buffer = this._railBuffer;
+    src.loop = true;
+    const g = this.ctx.createGain();
+    g.gain.value = 0.7;
+    src.connect(g);
+    g.connect(this.masterGain);
+    src.start();
+    this._railSource = src;
+    this._railGain = g;
+  }
+
+  // Stop the rail-gun beam sound with a tiny fade to avoid a click.
+  stopRailgun() {
+    if (!this._railSource) return;
+    const src = this._railSource, g = this._railGain;
+    this._railSource = null;
+    this._railGain = null;
+    try {
+      const t = this.ctx.currentTime;
+      g.gain.setValueAtTime(g.gain.value, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+      src.stop(t + 0.1);
+    } catch (e) {
+      try { src.stop(); } catch (_) {}
+    }
   }
 
   // ─── Master Volume ──────────────────────────

@@ -894,6 +894,7 @@ class Game {
       this._clearPoops();
       this.player.moveSpeed = this._basePlayerSpeed;
       this._poopSlowUntil = 0;
+      this.audio.stopRailgun();
 
       // Calculate XP earned from hunt (10 per kill, 50 per boss)
       const huntXP = (this.huntStats.totalKills * 10) + (this.huntStats.bossKills * 50);
@@ -1508,14 +1509,17 @@ class Game {
         this._beamHeat += dt;
         this._fireBeamTick();
         this._showBeam(true);
-        if (this._beamHeat >= 5) { this._beamFiring = false; this._beamHeat = 0; this._beamCooldown = 4; }
+        this.audio.startRailgun();   // loop the beam sound while firing
+        if (this._beamHeat >= 5) { this._beamFiring = false; this._beamHeat = 0; this._beamCooldown = 4; this.audio.stopRailgun(); }
       } else {
         this._showBeam(false);
+        this.audio.stopRailgun();    // released or cooling down
       }
       this._updateBeamHeatUI();
     } else {
       this._showBeam(false);
       this._beamFiring = false;
+      this.audio.stopRailgun();
     }
 
     const targetFOV = this._scoping
@@ -1705,6 +1709,8 @@ class Game {
     if (!this._isPausable(this.state)) return;
     this._pauseReturnState = this.state;
     this.state = STATE.PAUSED;
+    this._beamFiring = false;
+    this.audio.stopRailgun();    // don't let the beam loop resume after unpausing
     if (this.player.isLocked) this.player.unlock();
     if (this.audio.ctx && this.audio.ctx.state === 'running') this.audio.ctx.suspend();
     this.ui.hideInteractPrompt();
@@ -1748,6 +1754,7 @@ class Game {
     this._clearPoops();
     this.player.moveSpeed = this._basePlayerSpeed;
     this._poopSlowUntil = 0;
+    this.audio.stopRailgun();
     this.hud.hide();
     this.hud.hideBossHP();
     this.hud.hideScopeHint();
