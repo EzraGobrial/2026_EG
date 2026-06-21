@@ -51,16 +51,25 @@ class Game {
     this.state = STATE.TITLE;
     this.canvas = document.getElementById('game-canvas');
 
+    // Settings load first — the chosen graphics quality decides renderer
+    // options below (antialias is set at construction and can't change later).
+    this.settings = new Settings();
+    const _q = this.settings.get('graphicsQuality');
+
     // ─── Three.js Setup ────────────────────
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
-      antialias: true,
+      antialias: _q !== 'low',           // MSAA is expensive on weak GPUs (Chromebooks)
       powerPreference: 'high-performance'
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(1); // real value applied by _applyGraphicsQuality()
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = _q === 'high' ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
+    // Shadows are static (the sun never moves), so don't recompute them every
+    // frame — we re-render the shadow map only when the world changes.
+    this.renderer.shadowMap.autoUpdate = false;
+    this._lastShadowKey = null;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.1;
 
@@ -77,7 +86,8 @@ class Game {
     this.pmremGenerator.compileEquirectangularShader();
 
     this.bloomPass = new UnrealBloomPass(
-      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      // Half-resolution bloom — visually near-identical, ~4x cheaper.
+      new THREE.Vector2(window.innerWidth / 2, window.innerHeight / 2),
       0.8,  // strength
       0.5,  // radius
       0.6   // threshold
@@ -87,8 +97,7 @@ class Game {
     this.outputPass = new OutputPass();
     this.composer.addPass(this.outputPass);
 
-    // ─── Settings (persisted) ───────────────
-    this.settings = new Settings();
+    // (Settings were created above, before the renderer.)
 
     // ─── Systems ───────────────────────────
     this.auth = new Auth();
@@ -1251,9 +1260,9 @@ class Game {
       this.audio.playUIClick && this.audio.playUIClick();
       return;
     }
-    // Screen splatter
+    // Screen splatter + wet splat sound (distinct from a bird hit)
     if (this.hud.showPoopSplat) this.hud.showPoopSplat();
-    this.audio.playBirdHit && this.audio.playBirdHit();
+    this.audio.playPoopSplat && this.audio.playPoopSplat();
     // Movement slow (unless gear grants immunity) — mild, lasts as long as the
     // splat is on screen (~5s).
     if (!def.slowImmune) {
@@ -1389,7 +1398,7 @@ class Game {
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.composer.setSize(window.innerWidth, window.innerHeight);
-    this.bloomPass.resolution.set(window.innerWidth, window.innerHeight);
+    this.bloomPass.resolution.set(window.innerWidth / 2, window.innerHeight / 2);
   }
 
   // ─── Main Loop ─────────────────────────────
@@ -1414,8 +1423,20 @@ class Game {
     this.sky.update(dt);
     this.particles.update(dt);
 
-    // Render with post-processing
-    this.composer.render();
+    // Static shadows: re-render the shadow map only when the world changes
+    // (the sun is fixed, so per-frame shadow passes are wasted work).
+    if (this.renderer.shadowMap.enabled && this.world && this.world.currentKey !== this._lastShadowKey) {
+      this._lastShadowKey = this.world.currentKey;
+      this.renderer.shadowMap.needsUpdate = true;
+    }
+
+    // Render — skip the post-processing composer entirely when bloom is off
+    // (low/medium), which avoids several full-screen passes per frame.
+    if (this.bloomPass.enabled) {
+      this.composer.render();
+    } else {
+      this.renderer.render(this.scene, this.camera);
+    }
   }
 
   _updateHunt(dt) {
@@ -1790,21 +1811,26 @@ class Game {
   _applyGraphicsQuality(quality) {
     switch (quality) {
       case 'low':
-        this.renderer.shadowMap.enabled = false;
-        this.renderer.setPixelRatio(1);
-        this.bloomPass.enabled = false;
+        this.renderer.shadowMap.enabled = false;   // no shadows at all
+        this.renderer.setPixelRatio(1);            // 1:1 pixels — huge win on HiDPI
+        this.bloomPass.enabled = false;            // bypasses the whole composer
         break;
       case 'medium':
         this.renderer.shadowMap.enabled = true;
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        this.renderer.shadowMap.type = THREE.PCFShadowMap; // cheaper than PCFSoft
+        this.renderer.setPixelRatio(1);
         this.bloomPass.enabled = false;
         break;
       default: // 'high'
         this.renderer.shadowMap.enabled = true;
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
         this.bloomPass.enabled = true;
         break;
     }
+    // Force the static shadow map to re-render for the new setting.
+    this._lastShadowKey = null;
+    if (this.renderer.shadowMap.enabled) this.renderer.shadowMap.needsUpdate = true;
   }
 
   _toggleFullscreen() {

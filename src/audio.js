@@ -78,12 +78,12 @@ export class AudioSystem {
     osc.stop(t + 0.15);
   }
 
-  // ─── Bird Hit (feather poof) ───────────────
+  // ─── Bird Hit (feather poof + soft body thwack) ───────────────
   playBirdHit() {
     this.ensureCtx();
     const t = this.ctx.currentTime;
 
-    // Short soft noise
+    // Airy feather poof (high-pass noise)
     const bufferSize = this.ctx.sampleRate * 0.1;
     const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
     const data = buffer.getChannelData(0);
@@ -99,7 +99,7 @@ export class AudioSystem {
     filter.frequency.value = 2000;
 
     const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0.3, t);
+    gain.gain.setValueAtTime(0.28, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
 
     noise.connect(filter);
@@ -107,6 +107,81 @@ export class AudioSystem {
     gain.connect(this.masterGain);
     noise.start(t);
     noise.stop(t + 0.1);
+
+    // Soft mid "thwack" so a hit feels like impact, not just hiss
+    const thwack = this.ctx.createOscillator();
+    thwack.type = 'triangle';
+    thwack.frequency.setValueAtTime(420, t);
+    thwack.frequency.exponentialRampToValueAtTime(180, t + 0.06);
+    const tg = this.ctx.createGain();
+    tg.gain.setValueAtTime(0.18, t);
+    tg.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+    thwack.connect(tg);
+    tg.connect(this.masterGain);
+    thwack.start(t);
+    thwack.stop(t + 0.08);
+  }
+
+  // ─── Poop Splat (wet squelch) — distinct from a bird hit ───────
+  playPoopSplat() {
+    this.ensureCtx();
+    const t = this.ctx.currentTime;
+
+    // 1) Wet noise smear — resonant low-pass that closes down (the "splat")
+    const dur = 0.3;
+    const bufferSize = Math.floor(this.ctx.sampleRate * dur);
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 1.4);
+    }
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+    const lp = this.ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(1900, t);
+    lp.frequency.exponentialRampToValueAtTime(240, t + dur);
+    lp.Q.value = 7; // resonance gives it a squelchy character
+    const ng = this.ctx.createGain();
+    ng.gain.setValueAtTime(0.0001, t);
+    ng.gain.exponentialRampToValueAtTime(0.55, t + 0.025);
+    ng.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    noise.connect(lp);
+    lp.connect(ng);
+    ng.connect(this.masterGain);
+    noise.start(t);
+    noise.stop(t + dur);
+
+    // 2) Low wet "plop" — a fast descending sine (the mass landing)
+    const plop = this.ctx.createOscillator();
+    plop.type = 'sine';
+    plop.frequency.setValueAtTime(230, t);
+    plop.frequency.exponentialRampToValueAtTime(65, t + 0.18);
+    const pg = this.ctx.createGain();
+    pg.gain.setValueAtTime(0.5, t);
+    pg.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    plop.connect(pg);
+    pg.connect(this.masterGain);
+    plop.start(t);
+    plop.stop(t + 0.2);
+
+    // 3) Squelch texture — band-passed saw wobble
+    const sq = this.ctx.createOscillator();
+    sq.type = 'sawtooth';
+    sq.frequency.setValueAtTime(170, t);
+    sq.frequency.exponentialRampToValueAtTime(55, t + 0.13);
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 480;
+    bp.Q.value = 3.5;
+    const sg = this.ctx.createGain();
+    sg.gain.setValueAtTime(0.22, t);
+    sg.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    sq.connect(bp);
+    bp.connect(sg);
+    sg.connect(this.masterGain);
+    sq.start(t);
+    sq.stop(t + 0.15);
   }
 
   // ─── Cash Register ─────────────────────────

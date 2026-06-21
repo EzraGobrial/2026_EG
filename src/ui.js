@@ -854,7 +854,7 @@ export class UI {
             <div class="result-bird-dot" style="background:${rarityColor}"></div>
             <span class="result-bird-name">${bird.name} x${data.count}</span>
           </div>
-          <span class="result-bird-price">$${data.totalValue}</span>
+          <span class="result-bird-price">${fmtMoney(data.totalValue)}</span>
         `;
         summary.appendChild(row);
       }
