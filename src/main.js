@@ -1869,6 +1869,7 @@ class Game {
     // Spacebar scope (hold)
     if (e.code === 'Space' && this.state === STATE.HUNTING && !e.repeat) {
       e.preventDefault();
+      if (this.economy.currentWeapon === 'slomo_gun' && !this._scoping && this._slomoCooldown <= 0) this.audio.playSloMoWhoosh();
       this._scoping = true;
 
       // First time scoping in: dismiss the hint for good
