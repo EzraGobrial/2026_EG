@@ -12,6 +12,8 @@ export class AudioSystem {
     this._splatBuffer = null;   // decoded splat.mp3
     this._splatLoading = false;
     this._railBuffer = null;    // decoded railgun.mp3
+    this._whooshBuffer = null;   // decoded whoosh.mp3
+    this._whooshLoading = false;
     this._railLoading = false;
     this._railSource = null;    // active looping beam source
     this._railGain = null;
@@ -26,6 +28,7 @@ export class AudioSystem {
     this.initialized = true;
     this._loadSplat();    // preload the poop splat sound
     this._loadRailgun();  // preload the rail gun beam sound
+    this._loadWhoosh();    // preload the slo-mo scope whoosh
   }
 
   // Load + decode the uploaded splat.mp3 once (fire-and-forget).
@@ -50,6 +53,31 @@ export class AudioSystem {
       .then(decoded => { this._railBuffer = decoded; })
       .catch(e => console.warn('railgun.mp3 load failed:', e))
       .finally(() => { this._railLoading = false; });
+  }
+
+  // Load + decode the slo-mo scope whoosh once (fire-and-forget).
+  _loadWhoosh() {
+    if (this._whooshBuffer || this._whooshLoading || !this.ctx) return;
+    this._whooshLoading = true;
+    fetch('sounds/whoosh.mp3')
+      .then(r => r.arrayBuffer())
+      .then(buf => this.ctx.decodeAudioData(buf))
+      .then(decoded => { this._whooshBuffer = decoded; })
+      .catch(e => console.warn('whoosh.mp3 load failed:', e))
+      .finally(() => { this._whooshLoading = false; });
+  }
+
+  // Play the slo-mo scope whoosh once (one-shot, no loop).
+  playSloMoWhoosh() {
+    this.ensureCtx();
+    if (!this._whooshBuffer) { this._loadWhoosh(); return; }
+    const src = this.ctx.createBufferSource();
+    src.buffer = this._whooshBuffer;
+    const g = this.ctx.createGain();
+    g.gain.value = 0.85;
+    src.connect(g);
+    g.connect(this.masterGain);
+    src.start();
   }
 
   // Start the looping rail-gun beam sound (no-op if already playing).
