@@ -4,7 +4,7 @@
 // Persistence via Firebase Firestore
 // ═══════════════════════════════════════════════
 
-import { doc, setDoc, getDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, getDocs, deleteDoc } from 'firebase/firestore';
 import { db } from './firebase.js';
 import { serializeChallenges, deserializeChallenges, generateDailyChallenges, getRealDayKey } from './challenges.js';
 
@@ -1444,6 +1444,100 @@ export class Economy {
     this.petBoosts.push({ rarity: b.rarity, expiresAt: Date.now() + b.hours * 3600 * 1000 });
     this.save();
     return true;
+  }
+
+  // ─── Pet trading (global; any player, any dimension) ───
+  async _myName() {
+    if (this._cachedName) return this._cachedName;
+    try { const s = await getDoc(doc(db, 'leaderboard', this.uid)); if (s.exists()) this._cachedName = s.data().name || 'Player'; } catch (e) {}
+    return this._cachedName || 'Player';
+  }
+
+  async findPlayerByName(name) {
+    try {
+      const snap = await getDocs(collection(db, 'leaderboard'));
+      const lower = (name || '').trim().toLowerCase();
+      let found = null;
+      snap.forEach(d => { const n = (d.data().name || ''); if (n.toLowerCase() === lower) found = { uid: d.id, name: n }; });
+      return found;
+    } catch (e) { return null; }
+  }
+
+  async sendPetTrade(toName, petId) {
+    if (!this.uid) return { error: 'You are not signed in.' };
+    const pet = this.getPet(petId);
+    if (!pet) return { error: 'Pet not found.' };
+    const target = await this.findPlayerByName(toName);
+    if (!target) return { error: 'No player found with that name.' };
+    if (target.uid === this.uid) return { error: 'You cannot trade with yourself.' };
+    const fromName = await this._myName();
+    this.petInventory = (this.petInventory || []).filter(p => p.id !== petId);
+    this.equippedPets = (this.equippedPets || []).filter(id => id !== petId);
+    const id = 't' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+    try {
+      await setDoc(doc(db, 'trades', id), { id, fromUid: this.uid, fromName, toUid: target.uid, toName: target.name, pet, status: 'pending', createdAt: Date.now() });
+      this.save();
+      return { ok: true, toName: target.name };
+    } catch (e) {
+      this.petInventory.push(pet);
+      this.save();
+      return { error: 'Trade failed (network or permissions).' };
+    }
+  }
+
+  async getMyTrades() {
+    const incoming = [], outgoing = [];
+    if (!this.uid) return { incoming, outgoing };
+    try {
+      const snap = await getDocs(collection(db, 'trades'));
+      const reclaim = [];
+      snap.forEach(d => {
+        const t = d.data();
+        if (t.toUid === this.uid && t.status === 'pending') incoming.push(t);
+        else if (t.fromUid === this.uid) {
+          if (t.status === 'returned') reclaim.push(t);
+          else if (t.status === 'pending') outgoing.push(t);
+        }
+      });
+      for (const t of reclaim) {
+        if (t.pet && !this.getPet(t.pet.id)) this.petInventory.push(t.pet);
+        try { await deleteDoc(doc(db, 'trades', t.id)); } catch (e) {}
+      }
+      if (reclaim.length) this.save();
+    } catch (e) {}
+    return { incoming, outgoing };
+  }
+
+  async acceptTrade(tradeId) {
+    if (!this.uid) return false;
+    try {
+      const s = await getDoc(doc(db, 'trades', tradeId));
+      if (!s.exists()) return false;
+      const t = s.data();
+      if (t.toUid !== this.uid || t.status !== 'pending') return false;
+      if (t.pet && !this.getPet(t.pet.id)) this.petInventory.push(t.pet);
+      await deleteDoc(doc(db, 'trades', tradeId));
+      this.save();
+      return true;
+    } catch (e) { return false; }
+  }
+
+  async declineTrade(tradeId) {
+    try { await setDoc(doc(db, 'trades', tradeId), { status: 'returned' }, { merge: true }); return true; } catch (e) { return false; }
+  }
+
+  async cancelTrade(tradeId) {
+    if (!this.uid) return false;
+    try {
+      const s = await getDoc(doc(db, 'trades', tradeId));
+      if (!s.exists()) return false;
+      const t = s.data();
+      if (t.fromUid !== this.uid) return false;
+      if (t.pet && !this.getPet(t.pet.id)) this.petInventory.push(t.pet);
+      await deleteDoc(doc(db, 'trades', tradeId));
+      this.save();
+      return true;
+    } catch (e) { return false; }
   }
 
   getEarnBonus() {
