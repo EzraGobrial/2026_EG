@@ -156,7 +156,7 @@ export async function declineTrade(tradeId) {
 }
 
 /**
- * Get players in a specific dimension (for trade partner selection)
+ * Get all other players (for trade partner selection) — no dimension limit
  */
 export async function getPlayersInDimension(dimension, excludeUid) {
   try {
@@ -166,7 +166,7 @@ export async function getPlayersInDimension(dimension, excludeUid) {
     snap.forEach(d => {
       const data = d.data();
       const playerDim = Number(data.dimension) || 1;
-      if (playerDim === targetDim && d.id !== excludeUid) {
+      if (d.id !== excludeUid) {
         players.push({
           uid: d.id,
           name: data.name || 'Unknown',
