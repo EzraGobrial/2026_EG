@@ -817,22 +817,40 @@ function generateDimension(id) {
       birdKeys.push(key);
     }
     const wk0 = 'd' + id + '_w0', wk1 = 'd' + id + '_w1';
-    WEAPONS[wk0] = {
-      name: name + ' Lance', cost: Math.round(topVal * 8), dimension: id,
-      tier: 6 + tier, power: 4 + tier, pierce: true,
-      description: 'Precision energy lance from the ' + name + ' dimension. Pierces every bird in its path.',
-      fireRate: Math.max(0.35, 1.4 - 0.04 * tier), accuracy: Math.min(0.99, 0.9 + 0.012 * tier),
-      ammo: 3 + tier, reloadTime: Math.max(0.7, 1.9 - 0.08 * tier),
-      spread: 0.012, hasScope: true, isShotgun: false, owned: false
+    // Every dimension unlocks 2 distinct weapons drawn from real, implemented
+    // mechanics. Each description matches exactly what the weapon does.
+    const _acc = Math.min(0.99, 0.88 + 0.012 * tier);
+    const _fr = (base, dec, floor) => Math.max(floor, base - dec * tier);
+    const ARCH = {
+      sniper:     { suffix: ' Marksman', power: 4 + tier, hasScope: true, spread: 0.006, ammo: 2, reload: _fr(1.8,0.04,1.0), rate: _fr(1.4,0.02,0.8), desc: 'Scope in for a pinpoint shot. Tiny spread, hits hard enough to drop a boss fast.' },
+      autocannon: { suffix: ' Autocannon', power: 2 + Math.floor(tier/2), spread: 0.03, ammo: 10 + tier, reload: _fr(2.4,0.05,1.3), rate: _fr(0.28,0.004,0.12), desc: 'Rapid-fire. Hold the trigger and melt whole flocks. Huge magazine, empties fast.' },
+      scatter:    { suffix: ' Scattergun', power: 3 + Math.floor(tier/2), spread: 0.15, pellets: 9 + tier, isShotgun: true, ammo: 4 + Math.floor(tier/2), reload: _fr(2.6,0.06,1.2), rate: _fr(1.0,0.02,0.5), desc: 'Fires a wide cone of pellets. Devastating up close, useless at range.' },
+      lance:      { suffix: ' Lance', power: 4 + tier, pierce: true, hasScope: true, spread: 0.012, ammo: 3 + tier, reload: _fr(1.9,0.08,0.7), rate: _fr(1.4,0.04,0.35), desc: 'A piercing energy lance. The shot passes straight through every bird in a line.' },
+      laser:      { suffix: ' Laser', power: 5 + tier, pierce: true, spread: 0, ammo: 4 + tier, reload: _fr(1.6,0.05,0.8), rate: _fr(0.9,0.02,0.4), desc: 'Instant-hit beam. No spread, no travel time, burns through a whole row at once.' },
+      grenade:    { suffix: ' Grenade Launcher', power: 3 + Math.floor(tier/2), explosive: true, blastRadius: 6 + tier*0.3, spread: 0.02, ammo: 2, reload: _fr(2.6,0.05,1.3), rate: _fr(1.6,0.03,0.9), desc: 'Lobs an explosive round that detonates on impact, killing every bird in the blast.' },
+      tesla:      { suffix: ' Tesla Coil', power: 3 + Math.floor(tier/2), chain: 3 + Math.floor(tier/3), chainRange: 9 + tier*0.3, spread: 0.02, ammo: 5 + tier, reload: _fr(2.0,0.04,1.0), rate: _fr(1.0,0.02,0.5), desc: 'Arcs a bolt of lightning that chains between nearby birds, frying several at once.' },
+      seeker:     { suffix: ' Seeker', power: 3 + Math.floor(tier/2), seek: true, seekAngle: 0.93, spread: 0.01, ammo: 6 + tier, reload: _fr(2.0,0.04,1.0), rate: _fr(0.7,0.012,0.35), desc: 'Auto-targeting rounds curve toward the nearest bird. Just aim roughly and fire.' },
+      chrono:     { suffix: ' Chrono Rifle', power: 3 + Math.floor(tier/2), isSlomo: true, hasScope: true, spread: 0.016, ammo: 2 + Math.floor(tier/2), reload: _fr(1.8,0.04,1.0), rate: _fr(1.6,0.03,0.9), desc: 'Slows time the instant you scope in, giving you a window to line up every shot.' },
+      cannon:     { suffix: ' Hand Cannon', power: 7 + tier, spread: 0.02, ammo: 1, reload: _fr(3.0,0.05,1.6), rate: _fr(1.8,0.03,1.0), desc: 'One devastating shot. Enormous damage, but slow to reload.' }
     };
-    WEAPONS[wk1] = {
-      name: name + ' Scattergun', cost: Math.round(topVal * 16), dimension: id,
-      tier: 6 + tier, power: 3 + Math.floor(tier / 2),
-      description: 'Devastating spread weapon from the ' + name + ' dimension.',
-      fireRate: Math.max(0.5, 1.1 - 0.02 * tier), accuracy: 0.6,
-      ammo: 4 + Math.floor(tier / 2), reloadTime: Math.max(1.2, 2.6 - 0.06 * tier),
-      spread: 0.14, pellets: 8 + tier, isShotgun: true, owned: false
+    const ORDER = ['lance','scatter','sniper','grenade','autocannon','tesla','laser','seeker','chrono','cannon'];
+    const CURATED = [['scatter','sniper'],['grenade','autocannon'],['lance','tesla'],['seeker','cannon'],['laser','scatter'],['chrono','grenade'],['sniper','tesla'],['autocannon','seeker'],['lance','cannon'],['grenade','laser'],['tesla','chrono'],['scatter','seeker'],['cannon','sniper'],['laser','autocannon'],['grenade','tesla'],['seeker','chrono'],['lance','scatter'],['sniper','cannon'],['autocannon','grenade'],['tesla','laser'],['chrono','seeker'],['scatter','cannon'],['lance','sniper'],['grenade','seeker'],['laser','chrono'],['tesla','autocannon']];
+    const idx = id - 5;
+    const pair = (idx >= 0 && idx < CURATED.length) ? CURATED[idx] : [ORDER[id % ORDER.length], ORDER[(id + 4) % ORDER.length]];
+    const mkW = (key, costMult) => {
+      const a = ARCH[key];
+      const w = { name: name + a.suffix, cost: Math.round(topVal * costMult), dimension: id, tier: 6 + tier, power: a.power, description: a.desc, fireRate: a.rate, accuracy: _acc, ammo: a.ammo, reloadTime: a.reload, spread: a.spread, isShotgun: !!a.isShotgun, owned: false };
+      if (a.pellets) w.pellets = a.pellets;
+      if (a.hasScope) w.hasScope = true;
+      if (a.pierce) w.pierce = true;
+      if (a.isSlomo) w.isSlomo = true;
+      if (a.explosive) { w.explosive = true; w.blastRadius = a.blastRadius; }
+      if (a.chain) { w.chain = a.chain; w.chainRange = a.chainRange; }
+      if (a.seek) { w.seek = true; w.seekAngle = a.seekAngle; }
+      return w;
     };
+    WEAPONS[wk0] = mkW(pair[0], 8);
+    WEAPONS[wk1] = mkW(pair[1], 16);
     const LOCN = ['Gateway', 'Wilds', 'Depths', 'Spires', 'Sanctum'];
     const COSTM = [72, 130, 210, 330, 480];
     const SETS = [[0, 1], [0, 1, 2], [1, 2, 3], [2, 3, 4], [3, 4, 5]];
