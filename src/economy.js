@@ -604,6 +604,40 @@ export const PETS = {
   }
 };
 
+// ─── Pet rarities (per-equipped-pet money multiplier, combined multiplicatively) ───
+export const PET_RARITIES = {
+  common:     { name: 'Common',       mult: 0.05, color: '#9aa0a6' },
+  uncommon:   { name: 'Uncommon',     mult: 0.12, color: '#43c34a' },
+  rare:       { name: 'Rare',         mult: 0.25, color: '#3b9dff' },
+  epic:       { name: 'Epic',         mult: 0.50, color: '#b15cff' },
+  legendary:  { name: 'Legendary',    mult: 1.00, color: '#ffb02e' },
+  unique:     { name: 'Unique',       mult: 2.00, color: '#ff4d4d' },
+  outofwhack: { name: 'Out of Whack', mult: 3.00, color: '#00f5d4', hidden: true }
+};
+const PET_RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'unique'];
+
+// Published mystery-box odds (percent). Identical in every dimension; only price scales.
+export const MYSTERY_BOXES = {
+  1: { common: 67, uncommon: 17, rare: 9.45, epic: 4.5, legendary: 2, unique: 0.05 },
+  2: { common: 60, uncommon: 15, rare: 12, epic: 8, legendary: 4.5, unique: 0.5 },
+  3: { common: 50, uncommon: 15, rare: 17.5, epic: 10, legendary: 6, unique: 1.5 }
+};
+const OOW_CHANCE = 0.00005; // 0.005% hidden out-of-whack, rolled before the published table
+const OOW_EFFECTS = ['infiniteAmmo', 'noCooldown', 'autoReload', 'luck'];
+const PET_NOUNS = ['Cub','Sprite','Wisp','Hound','Drake','Owl','Fox','Moth','Serpent','Imp','Golem','Phantom','Yeti','Raven','Lynx','Beetle','Stag','Toad','Crane','Mole'];
+const OOW_NAMES = ['Glitch','Anomaly','Paradox','Voidling','Static','Null'];
+const MAX_PETS = 10;
+
+// Temporary pet-slot boosts: each grants +1 equip slot for a rarity-based duration (up to 24h).
+export const PET_BOOSTS = {
+  boost_common:    { name: 'Tiny Whistle',  rarity: 'common',    hours: 1,  cost: 500000 },
+  boost_uncommon:  { name: 'Brass Whistle', rarity: 'uncommon',  hours: 3,  cost: 5000000 },
+  boost_rare:      { name: 'Silver Horn',   rarity: 'rare',      hours: 6,  cost: 50000000 },
+  boost_epic:      { name: 'Golden Horn',   rarity: 'epic',      hours: 12, cost: 500000000 },
+  boost_legendary: { name: 'Crystal Horn',  rarity: 'legendary', hours: 18, cost: 5000000000 },
+  boost_unique:    { name: 'Eternal Horn',  rarity: 'unique',    hours: 24, cost: 50000000000 }
+};
+
 // ─── Defensive gear (persistent; counters bird attacks on higher dimensions) ───
 // Owned once, always active. `poopBlock` is the chance (0–1) to fully avoid an
 // incoming poop hit; `slowImmune` removes the movement-slow penalty.
@@ -906,6 +940,10 @@ export class Economy {
     this.activePet = null;
     this.ownedGear = [];          // persistent defensive gear (anti-bird)
     this.bestKillstreak = 0;      // longest kill streak in a single game (hunt)
+    this.petInventory = [];
+    this.equippedPets = [];
+    this.petSlotUpgrades = 0;
+    this.petBoosts = [];
     this.clanId = null;
     this.xp = 0;
     this.rank = 1;
@@ -946,6 +984,10 @@ export class Economy {
       challengeDay: this.challengeDay || 0,
       challengeChestClaimed: this.challengeChestClaimed || false,
       ownedPets: this.ownedPets || [],
+        petInventory: this.petInventory || [],
+        equippedPets: this.equippedPets || [],
+        petSlotUpgrades: this.petSlotUpgrades || 0,
+        petBoosts: this.petBoosts || [],
       activePet: this.activePet || null,
       ownedGear: this.ownedGear || [],
       bestKillstreak: this.bestKillstreak || 0,
@@ -1009,6 +1051,10 @@ export class Economy {
       if (data.dailyChallenges) this.dailyChallenges = deserializeChallenges(data.dailyChallenges);
       if (data.challengeChestClaimed !== undefined) this.challengeChestClaimed = data.challengeChestClaimed;
       if (data.ownedPets) this.ownedPets = data.ownedPets;
+        if (data.petInventory) this.petInventory = data.petInventory;
+        if (data.equippedPets) this.equippedPets = data.equippedPets;
+        if (data.petSlotUpgrades !== undefined) this.petSlotUpgrades = data.petSlotUpgrades;
+        if (data.petBoosts) this.petBoosts = data.petBoosts;
       if (data.activePet) this.activePet = data.activePet;
       if (data.ownedGear) this.ownedGear = data.ownedGear;
       if (data.bestKillstreak !== undefined) this.bestKillstreak = data.bestKillstreak;
@@ -1069,6 +1115,10 @@ export class Economy {
     this.loadout = [];
     this.ownedPets = [];
     this.activePet = null;
+    this.petInventory = [];
+    this.equippedPets = [];
+    this.petSlotUpgrades = 0;
+    this.petBoosts = [];
     this.clanId = null;
     this.xp = 0;
     this.rank = 1;
@@ -1281,6 +1331,121 @@ export class Economy {
   }
 
   // Passive earnings bonus from the currently-equipped pet (0 = none).
+  // ─── Pets & mystery boxes ───────────────────────────────
+  mysteryBoxCost(dim, boxNum) {
+    const base = [50000, 300000, 1500000][boxNum - 1] || 50000;
+    return Math.round(base * Math.pow(1.7, Math.max(0, dim - 1)));
+  }
+
+  _makePet(dim, rarity) {
+    const theme = (DIMENSIONS[dim - 1] && DIMENSIONS[dim - 1].name) || ('Dim ' + dim);
+    const isOOW = rarity === 'outofwhack';
+    const pool = isOOW ? OOW_NAMES : PET_NOUNS;
+    const noun = pool[Math.floor(Math.random() * pool.length)];
+    return {
+      id: 'p' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36),
+      dim, rarity,
+      name: isOOW ? noun : (theme + ' ' + noun),
+      isOOW,
+      mult: PET_RARITIES[rarity].mult,
+      effects: isOOW ? OOW_EFFECTS.slice() : []
+    };
+  }
+
+  rollMysteryBox(dim, boxNum) {
+    const cost = this.mysteryBoxCost(dim, boxNum);
+    if (this.money < cost) return null;
+    this.money -= cost;
+    let rarity;
+    if (Math.random() < OOW_CHANCE) {
+      rarity = 'outofwhack';
+    } else {
+      const odds = MYSTERY_BOXES[boxNum] || MYSTERY_BOXES[1];
+      const r = Math.random() * 100;
+      let acc = 0;
+      rarity = 'common';
+      for (const k of PET_RARITY_ORDER) {
+        acc += odds[k] || 0;
+        if (r <= acc) { rarity = k; break; }
+      }
+    }
+    const pet = this._makePet(dim, rarity);
+    this.petInventory = this.petInventory || [];
+    this.petInventory.push(pet);
+    this.save();
+    return pet;
+  }
+
+  getPet(id) { return (this.petInventory || []).find(p => p.id === id) || null; }
+
+  activeBoostCount() {
+    const now = Date.now();
+    this.petBoosts = (this.petBoosts || []).filter(b => b.expiresAt > now);
+    return this.petBoosts.length;
+  }
+
+  petSlotCap() {
+    return Math.min(MAX_PETS, 1 + (this.petSlotUpgrades || 0) + this.activeBoostCount());
+  }
+
+  equipPetInstance(id) {
+    this.equippedPets = (this.equippedPets || []).filter(x => this.getPet(x));
+    if (this.equippedPets.includes(id)) return true;
+    if (!this.getPet(id)) return false;
+    if (this.equippedPets.length >= this.petSlotCap()) return false;
+    this.equippedPets.push(id);
+    this.save();
+    return true;
+  }
+
+  unequipPet(id) {
+    this.equippedPets = (this.equippedPets || []).filter(x => x !== id);
+    this.save();
+  }
+
+  petMultiplier() {
+    let m = 1;
+    const cap = this.petSlotCap();
+    for (const id of (this.equippedPets || []).slice(0, cap)) {
+      const p = this.getPet(id);
+      if (p) m *= (1 + p.mult);
+    }
+    return m;
+  }
+
+  hasPetEffect(effect) {
+    const cap = this.petSlotCap();
+    for (const id of (this.equippedPets || []).slice(0, cap)) {
+      const p = this.getPet(id);
+      if (p && p.effects && p.effects.includes(effect)) return true;
+    }
+    return false;
+  }
+
+  petUpgradeCost() {
+    if ((this.petSlotUpgrades || 0) >= MAX_PETS - 1) return null;
+    return Math.round(20e9 * Math.pow(1.75, this.petSlotUpgrades || 0));
+  }
+
+  buyPetSlotUpgrade() {
+    const cost = this.petUpgradeCost();
+    if (cost == null || this.money < cost) return false;
+    this.money -= cost;
+    this.petSlotUpgrades = (this.petSlotUpgrades || 0) + 1;
+    this.save();
+    return true;
+  }
+
+  buyPetBoost(key) {
+    const b = PET_BOOSTS[key];
+    if (!b || this.money < b.cost) return false;
+    this.money -= b.cost;
+    this.petBoosts = this.petBoosts || [];
+    this.petBoosts.push({ rarity: b.rarity, expiresAt: Date.now() + b.hours * 3600 * 1000 });
+    this.save();
+    return true;
+  }
+
   getEarnBonus() {
     const pet = this.activePet && PETS[this.activePet];
     return (pet && pet.earnBonus) ? pet.earnBonus : 0;
