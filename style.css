@@ -3051,3 +3051,15 @@ body {
   margin-bottom: 4px;
 }
 
+
+
+/* ─── Compact results screen so it fits without scrolling ─── */
+.results-panel { padding: 18px 16px !important; max-width: 100%; box-sizing: border-box; }
+.results-panel .panel-title { font-size: 22px; margin-bottom: 12px; }
+.results-summary { gap: 5px; margin-bottom: 12px; max-height: 34vh; }
+.result-row { padding: 7px 12px; }
+.result-bird-name { font-size: 14px; }
+.result-bird-price { font-size: 15px; }
+.results-total { padding: 10px 4px; margin-bottom: 12px; font-size: 15px; }
+.results-money { font-size: 22px; }
+.results-panel .btn { display: block; width: 100%; box-sizing: border-box; margin-top: 7px; padding: 10px 12px; font-size: 14px; }
