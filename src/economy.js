@@ -906,7 +906,6 @@ export class Economy {
     this.activePet = null;
     this.ownedGear = [];          // persistent defensive gear (anti-bird)
     this.bestKillstreak = 0;      // longest kill streak in a single game (hunt)
-    this.streakResetV = 0;          // bump to force a one-time leaderboard streak reset
     this.clanId = null;
     this.xp = 0;
     this.rank = 1;
@@ -950,7 +949,6 @@ export class Economy {
       activePet: this.activePet || null,
       ownedGear: this.ownedGear || [],
       bestKillstreak: this.bestKillstreak || 0,
-      streakResetV: this.streakResetV || 0,
       clanId: this.clanId || null,
       xp: this.xp || 0,
       rank: this.rank || 1,
@@ -1014,14 +1012,6 @@ export class Economy {
       if (data.activePet) this.activePet = data.activePet;
       if (data.ownedGear) this.ownedGear = data.ownedGear;
       if (data.bestKillstreak !== undefined) this.bestKillstreak = data.bestKillstreak;
-    // One-time reset: zero out legacy/incorrect longest-streak values so the
-    // leaderboard reflects only real single-hunt streaks from now on.
-    this.streakResetV = data.streakResetV || 0;
-    if (this.streakResetV < 1) {
-      this.bestKillstreak = 0;
-      this.streakResetV = 1;
-      if (this.uid) { try { setDoc(doc(db, 'leaderboard', this.uid), { killstreak: 0 }, { merge: true }); } catch (e) {} }
-    }
       if (data.clanId) this.clanId = data.clanId;
       if (data.xp !== undefined) this.xp = data.xp;
       if (data.rank !== undefined) this.rank = data.rank;
