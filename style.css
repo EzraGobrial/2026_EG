@@ -3063,3 +3063,19 @@ body {
 .results-total { padding: 10px 4px; margin-bottom: 12px; font-size: 15px; }
 .results-money { font-size: 22px; }
 .results-panel .btn { display: block; width: 100%; box-sizing: border-box; margin-top: 7px; padding: 10px 12px; font-size: 14px; }
+
+
+/* ─── Stylish rank medals (premium metallic look, glow no longer clipped) ─── */
+.rank-badge-medal { overflow: visible !important; display: flex !important; align-items: center; justify-content: center;
+  box-shadow: 0 3px 7px rgba(0,0,0,.5), inset 0 2px 3px rgba(255,255,255,.55), inset 0 -3px 5px rgba(0,0,0,.4); }
+.rank-badge-medal::after { content: ''; position: absolute; inset: -26%; border-radius: 50%; z-index: -1;
+  background: radial-gradient(circle, var(--mg, rgba(255,210,120,.6)) 0%, transparent 66%); }
+.rank-badge-medal::before { display: none !important; }
+.rank-badge-medal .medal-star { font-size: 0 !important; width: 60%; height: 60%;
+  background: linear-gradient(135deg, #fffdf2, #ffeec0 55%, #f7d98f);
+  -webkit-clip-path: polygon(50% 2%,61% 35%,96% 35%,68% 57%,79% 92%,50% 71%,21% 92%,32% 57%,4% 35%,39% 35%); clip-path: polygon(50% 2%,61% 35%,96% 35%,68% 57%,79% 92%,50% 71%,21% 92%,32% 57%,4% 35%,39% 35%);
+  filter: drop-shadow(0 1px 1.2px rgba(0,0,0,.6)) drop-shadow(0 0 3px rgba(255,240,180,.5)); }
+.rank-badge-bronze { background: radial-gradient(circle at 35% 28%, #f3b878, #cd7f32 46%, #7a4a1e 100%) !important; border-color: #e0a060 !important; --mg: rgba(205,127,50,.6); }
+.rank-badge-silver { background: radial-gradient(circle at 35% 28%, #ffffff, #cdcdd3 46%, #85858c 100%) !important; border-color: #efeff3 !important; --mg: rgba(220,225,235,.55); }
+.rank-badge-gold { background: radial-gradient(circle at 35% 28%, #fff4c2, #f0bd33 46%, #9a6f12 100%) !important; border-color: #ffe28e !important; --mg: rgba(255,200,60,.65); }
+.rank-badge-large .rank-badge-medal { width: 46px !important; height: 46px !important; border-width: 2.5px; }
