@@ -1272,6 +1272,31 @@ class Game {
   }
 
   // ─── Input ─────────────────────────────────
+  _applyHitEffects(wpn, point, power, primary) {
+    if (wpn.explosive) {
+      const r = wpn.blastRadius || 6;
+      for (const b of this.birds.birdsInRadius(point, r, primary)) {
+        this.particles.spawnFeatherBurst(b.mesh.position.clone(), b.data.bodyColor, b.data.wingColor);
+        if (this.birds.hit(b, power)) this._awardKill(b);
+      }
+    }
+    if (wpn.chain) {
+      const range = wpn.chainRange || 9;
+      let from = point.clone();
+      const seen = new Set([primary]);
+      for (let i = 0; i < wpn.chain; i++) {
+        const cands = this.birds.birdsInRadius(from, range).filter(b => !seen.has(b));
+        if (!cands.length) break;
+        let nb = cands[0], nd = nb.mesh.position.distanceToSquared(from);
+        for (const c of cands) { const d = c.mesh.position.distanceToSquared(from); if (d < nd) { nd = d; nb = c; } }
+        seen.add(nb);
+        this.particles.spawnFeatherBurst(nb.mesh.position.clone(), nb.data.bodyColor, nb.data.wingColor);
+        if (this.birds.hit(nb, power)) this._awardKill(nb);
+        from = nb.mesh.position.clone();
+      }
+    }
+  }
+
 
   _onMouseDown(e) {
     if (this.state !== STATE.HUNTING) return;
@@ -1326,6 +1351,11 @@ class Game {
     const power = wpn.power || 1;
     let hitSomething = false;
 
+    if (wpn.seek && raycasters[0]) {
+      const tgt = this.birds.nearestAimBird(raycasters[0], wpn.seekAngle || 0.9);
+      if (tgt) raycasters[0].ray.direction.copy(tgt.mesh.position.clone().sub(raycasters[0].ray.origin).normalize());
+    }
+
     if (wpn.pierce) {
       // Piercing weapon — the shot passes through every bird in line.
       const pierced = this.birds.raycastPierce(raycasters[0]);
@@ -1355,6 +1385,7 @@ class Game {
 
           // Hit the bird (boss birds take multiple hits; power = weapon damage)
           const killed = this.birds.hit(bird, power);
+          if (wpn.explosive || wpn.chain) this._applyHitEffects(wpn, point, power, bird);
 
           if (!killed) {
             // Boss took a hit but isn't dead — show HP bar
