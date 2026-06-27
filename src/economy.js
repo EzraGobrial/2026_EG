@@ -630,12 +630,12 @@ const MAX_PETS = 10;
 
 // Temporary pet-slot boosts: each grants +1 equip slot for a rarity-based duration (up to 24h).
 export const PET_BOOSTS = {
-  boost_common:    { name: 'Tiny Whistle',  rarity: 'common',    hours: 1,  cost: 500000 },
-  boost_uncommon:  { name: 'Brass Whistle', rarity: 'uncommon',  hours: 3,  cost: 5000000 },
-  boost_rare:      { name: 'Silver Horn',   rarity: 'rare',      hours: 6,  cost: 50000000 },
-  boost_epic:      { name: 'Golden Horn',   rarity: 'epic',      hours: 12, cost: 500000000 },
-  boost_legendary: { name: 'Crystal Horn',  rarity: 'legendary', hours: 18, cost: 5000000000 },
-  boost_unique:    { name: 'Eternal Horn',  rarity: 'unique',    hours: 24, cost: 50000000000 }
+  boost_common:    { name: 'Tiny Whistle',  rarity: 'common',    hours: 1,  cost: 50000 },
+  boost_uncommon:  { name: 'Brass Whistle', rarity: 'uncommon',  hours: 3,  cost: 500000 },
+  boost_rare:      { name: 'Silver Horn',   rarity: 'rare',      hours: 6,  cost: 5000000 },
+  boost_epic:      { name: 'Golden Horn',   rarity: 'epic',      hours: 12, cost: 50000000 },
+  boost_legendary: { name: 'Crystal Horn',  rarity: 'legendary', hours: 18, cost: 500000000 },
+  boost_unique:    { name: 'Eternal Horn',  rarity: 'unique',    hours: 24, cost: 5000000000 }
 };
 
 // ─── Defensive gear (persistent; counters bird attacks on higher dimensions) ───
