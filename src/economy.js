@@ -1347,7 +1347,7 @@ export class Economy {
       dim, rarity,
       name: isOOW ? noun : (theme + ' ' + noun),
       isOOW,
-      mult: PET_RARITIES[rarity].mult,
+      mult: Math.round(PET_RARITIES[rarity].mult * (1 + (dim - 1) * 0.25) * 1000) / 1000,
       effects: isOOW ? OOW_EFFECTS.slice() : []
     };
   }
