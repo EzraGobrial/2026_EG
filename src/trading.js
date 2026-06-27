@@ -20,12 +20,14 @@ export async function sendTrade(fromUid, fromName, toUid, toName, dimension, off
     offering: {
       weapons: offering.weapons || [],
       locations: offering.locations || [],
-      money: offering.money || 0
+      money: offering.money || 0,
+      pets: offering.pets || []
     },
     requesting: {
       weapons: requesting.weapons || [],
       locations: requesting.locations || [],
-      money: requesting.money || 0
+      money: requesting.money || 0,
+      pets: requesting.pets || []
     },
     status: 'pending',
     createdAt: Date.now()
@@ -124,6 +126,18 @@ export async function acceptTrade(tradeId) {
 
     fromSave.locationUnlocked = fromLocs;
     toSave.locationUnlocked = toLocs;
+
+    // Transfer pets (move live instances by id; drop equipped status)
+    const offPetIds = new Set((trade.offering.pets || []).map(p => p.id));
+    const reqPetIds = new Set((trade.requesting.pets || []).map(p => p.id));
+    const fromPets = fromSave.petInventory || [];
+    const toPets = toSave.petInventory || [];
+    const toReceiver = fromPets.filter(p => offPetIds.has(p.id));
+    const toSender = toPets.filter(p => reqPetIds.has(p.id));
+    fromSave.petInventory = fromPets.filter(p => !offPetIds.has(p.id)).concat(toSender);
+    toSave.petInventory = toPets.filter(p => !reqPetIds.has(p.id)).concat(toReceiver);
+    fromSave.equippedPets = (fromSave.equippedPets || []).filter(id => !offPetIds.has(id));
+    toSave.equippedPets = (toSave.equippedPets || []).filter(id => !reqPetIds.has(id));
 
     // Write both saves + mark trade as accepted
     await Promise.all([
