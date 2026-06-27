@@ -730,6 +730,7 @@ class Game {
     let earnedValue = Math.round(birdData.value * fluctuation);
     if (this._doubleMoneyActive) earnedValue *= 2;
     earnedValue = Math.round(earnedValue * (1 + this.economy.getEarnBonus()));
+    earnedValue = Math.round(earnedValue * this.economy.petMultiplier());
     this.huntBag.push({ key: bird.birdKey, combo: comboMultiplier, earnedValue: earnedValue });
     this.economy.totalBirdsKilled++;
     this.huntStats.moneyEarned += earnedValue;
@@ -1152,6 +1153,7 @@ class Game {
     let earnedValue = Math.round(birdData.value * fluctuation);
     if (this._doubleMoneyActive) earnedValue *= 2;
     earnedValue = Math.round(earnedValue * (1 + this.economy.getEarnBonus()));
+    earnedValue = Math.round(earnedValue * this.economy.petMultiplier());
     this.huntBag.push({ key: bird.birdKey, combo: comboMultiplier, earnedValue });
     this.economy.totalBirdsKilled++;
     this.huntStats.moneyEarned += earnedValue;
@@ -1401,7 +1403,7 @@ class Game {
 
     // Deduct ammo only on a MISS — hitting a bird doesn't cost a bullet
     const wd = this.economy.getWeapon();
-    if (!wd.noReload && !hitSomething) {
+    if (!wd.noReload && !hitSomething && !this.economy.hasPetEffect('infiniteAmmo')) {
       this.weapons.ammo--;
       if (this.weapons.ammo <= 0) {
         this.weapons.startReload();
@@ -1512,7 +1514,7 @@ class Game {
         this._scoping = false;
         this._slomoTimer = 0;
         this._slomoActive = false;
-        this._slomoCooldown = 5.0;
+        this._slomoCooldown = this.economy.hasPetEffect('noCooldown') ? 0 : 5.0;
         this.birdSpeedMultiplier = 1;
       }
     } else {
@@ -1538,7 +1540,7 @@ class Game {
     if (this.economy.currentWeapon === 'rail_gun') {
       if (this._beamCooldown > 0) { this._beamCooldown -= dt; this._beamFiring = false; }
       if (this._beamFiring) {
-        this._beamHeat += dt;
+        if (!this.economy.hasPetEffect('noCooldown')) this._beamHeat += dt;
         this._fireBeamTick();
         this._showBeam(true);
         this.audio.startRailgun();   // loop the beam sound while firing
