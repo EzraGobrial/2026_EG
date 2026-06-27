@@ -1372,6 +1372,98 @@ export class UI {
     container.appendChild(grid);
   }
 
+  _showSendPetPanel() {
+    const eco = this.economy;
+    const inv = eco.petInventory || [];
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.78);display:flex;align-items:center;justify-content:center;z-index:99999';
+    const box = document.createElement('div');
+    box.style.cssText = 'background:#1a1d24;border:2px solid #d4a853;border-radius:14px;padding:22px 26px;max-width:380px;width:90%;max-height:80vh;overflow:auto';
+    let opts = '';
+    for (const p of inv) { const r = PET_RARITIES[p.rarity] || PET_RARITIES.common; opts += '<option value="' + p.id + '">' + p.name + ' (' + r.name + ')</option>'; }
+    box.innerHTML = '<div style="font-size:18px;color:#fff;margin-bottom:12px">Send a Pet</div>' +
+      (inv.length ? ('<select id="trade-pet-sel" style="width:100%;padding:8px;margin-bottom:10px;background:#11141a;color:#fff;border:1px solid #333;border-radius:6px">' + opts + '</select>' +
+      '<input id="trade-name" placeholder="Recipient username" style="width:100%;padding:8px;margin-bottom:12px;background:#11141a;color:#fff;border:1px solid #333;border-radius:6px">') :
+      '<div style="color:#cfd3da;margin-bottom:12px">You have no pets to trade.</div>');
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:8px';
+    const cancel = document.createElement('button');
+    cancel.className = 'btn btn-secondary'; cancel.textContent = 'Cancel'; cancel.style.flex = '1';
+    cancel.addEventListener('click', () => { this.audio.playUIClick(); ov.remove(); });
+    row.appendChild(cancel);
+    if (inv.length) {
+      const send = document.createElement('button');
+      send.className = 'btn btn-accent'; send.textContent = 'Send'; send.style.flex = '1';
+      send.addEventListener('click', async () => {
+        this.audio.playUIClick();
+        const petId = box.querySelector('#trade-pet-sel').value;
+        const name = box.querySelector('#trade-name').value.trim();
+        if (!name) { this.toast('Enter a username.', 'error'); return; }
+        send.disabled = true; send.textContent = 'Sending...';
+        const res = await eco.sendPetTrade(name, petId);
+        if (res && res.ok) { this.toast('Pet sent to ' + res.toName + '!', 'success'); ov.remove(); this._renderLockerTab('pets'); }
+        else { this.toast((res && res.error) || 'Trade failed.', 'error'); send.disabled = false; send.textContent = 'Send'; }
+      });
+      row.appendChild(send);
+    }
+    box.appendChild(row);
+    ov.appendChild(box);
+    ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
+    document.body.appendChild(ov);
+  }
+
+  async _showTradesPanel() {
+    const eco = this.economy;
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.78);display:flex;align-items:center;justify-content:center;z-index:99999';
+    const box = document.createElement('div');
+    box.style.cssText = 'background:#1a1d24;border:2px solid #d4a853;border-radius:14px;padding:22px 26px;max-width:420px;width:92%;max-height:82vh;overflow:auto';
+    box.innerHTML = '<div style="font-size:18px;color:#fff">Trades</div><div style="color:#cfd3da;margin-top:8px">Loading...</div>';
+    ov.appendChild(box);
+    ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
+    document.body.appendChild(ov);
+    const { incoming, outgoing } = await eco.getMyTrades();
+    box.innerHTML = '<div style="font-size:18px;color:#fff;margin-bottom:6px">Trades</div>';
+    const mkSection = (title, list, kind) => {
+      const h = document.createElement('div');
+      h.style.cssText = 'color:#d4a853;font-size:13px;margin:10px 0 6px';
+      h.textContent = title + ' (' + list.length + ')';
+      box.appendChild(h);
+      if (!list.length) { const ee = document.createElement('div'); ee.style.cssText = 'color:#888;font-size:12px'; ee.textContent = 'None.'; box.appendChild(ee); return; }
+      for (const t of list) {
+        const r = PET_RARITIES[t.pet.rarity] || PET_RARITIES.common;
+        const card = document.createElement('div');
+        card.style.cssText = 'background:#11141a;border:1px solid ' + r.color + ';border-radius:8px;padding:10px;margin-bottom:8px';
+        card.innerHTML = '<div style="color:' + r.color + ';font-weight:600">' + t.pet.name + '</div>' +
+          '<div style="font-size:11px;color:#cfd3da">' + r.name + ' - +' + Math.round(t.pet.mult * 100) + '% - ' + (kind === 'in' ? ('from ' + t.fromName) : ('to ' + t.toName)) + '</div>';
+        const brow = document.createElement('div');
+        brow.style.cssText = 'display:flex;gap:6px;margin-top:8px';
+        if (kind === 'in') {
+          const acc = document.createElement('button');
+          acc.className = 'btn btn-accent'; acc.textContent = 'Accept'; acc.style.cssText = 'flex:1;padding:6px;font-size:13px';
+          acc.addEventListener('click', async () => { this.audio.playUIClick(); acc.disabled = true; if (await eco.acceptTrade(t.id)) { this.toast('Got ' + t.pet.name + '!', 'success'); ov.remove(); this._renderLockerTab('pets'); } else { this.toast('Could not accept.', 'error'); acc.disabled = false; } });
+          const dec = document.createElement('button');
+          dec.className = 'btn btn-secondary'; dec.textContent = 'Decline'; dec.style.cssText = 'flex:1;padding:6px;font-size:13px';
+          dec.addEventListener('click', async () => { this.audio.playUIClick(); dec.disabled = true; await eco.declineTrade(t.id); card.remove(); });
+          brow.appendChild(acc); brow.appendChild(dec);
+        } else {
+          const can = document.createElement('button');
+          can.className = 'btn btn-secondary'; can.textContent = 'Cancel & Reclaim'; can.style.cssText = 'flex:1;padding:6px;font-size:13px';
+          can.addEventListener('click', async () => { this.audio.playUIClick(); can.disabled = true; if (await eco.cancelTrade(t.id)) { this.toast('Trade cancelled.', 'success'); ov.remove(); this._renderLockerTab('pets'); } else { this.toast('Could not cancel.', 'error'); can.disabled = false; } });
+          brow.appendChild(can);
+        }
+        card.appendChild(brow);
+        box.appendChild(card);
+      }
+    };
+    mkSection('Incoming', incoming, 'in');
+    mkSection('Outgoing', outgoing, 'out');
+    const close = document.createElement('button');
+    close.className = 'btn btn-secondary'; close.textContent = 'Close'; close.style.cssText = 'width:100%;margin-top:12px';
+    close.addEventListener('click', () => { this.audio.playUIClick(); ov.remove(); });
+    box.appendChild(close);
+  }
+
   _renderShopPets(container) {
     const eco = this.economy;
     const dim = eco.dimension || 1;
@@ -1482,6 +1574,16 @@ export class UI {
     desc.className = 'loadout-desc';
     desc.textContent = 'Equipped ' + equipped.length + ' / ' + cap + ' pets  -  Money multiplier ' + mult.toFixed(2) + 'x. Tap a pet to equip or unequip.';
     content.appendChild(desc);
+    const tradeBar = document.createElement('div');
+    tradeBar.style.cssText = 'display:flex;gap:8px;margin-bottom:10px';
+    const inBtn = document.createElement('button');
+    inBtn.className = 'btn btn-secondary'; inBtn.textContent = 'Incoming Trades'; inBtn.style.flex = '1';
+    inBtn.addEventListener('click', () => { this.audio.playUIClick(); this._showTradesPanel(); });
+    const sendBtn = document.createElement('button');
+    sendBtn.className = 'btn btn-accent'; sendBtn.textContent = 'Send a Pet'; sendBtn.style.flex = '1';
+    sendBtn.addEventListener('click', () => { this.audio.playUIClick(); this._showSendPetPanel(); });
+    tradeBar.appendChild(inBtn); tradeBar.appendChild(sendBtn);
+    content.appendChild(tradeBar);
     const inv = (eco.petInventory || []).slice().sort((a, b) => order.indexOf(a.rarity) - order.indexOf(b.rarity));
     if (!inv.length) {
       const e = document.createElement('div');
