@@ -638,6 +638,33 @@ export class BirdSystem {
   /**
    * Raycast hit check
    */
+  // ── Helpers for area/chain/seeking weapon effects ──
+  birdsInRadius(point, radius, exclude) {
+    const r2 = radius * radius;
+    const out = [];
+    for (const b of this.birds) {
+      if (!b.alive || b.state === 'FALLING' || b === exclude) continue;
+      if (b.mesh.position.distanceToSquared(point) <= r2) out.push(b);
+    }
+    return out;
+  }
+
+  nearestAimBird(raycaster, cosThreshold) {
+    const origin = raycaster.ray.origin;
+    const dir = raycaster.ray.direction;
+    let best = null, bestDot = cosThreshold || 0.9;
+    for (const b of this.birds) {
+      if (!b.alive || b.state === 'FALLING') continue;
+      const to = b.mesh.position.clone().sub(origin);
+      const dist = to.length();
+      if (dist < 0.001) continue;
+      to.divideScalar(dist);
+      const d = to.dot(dir);
+      if (d > bestDot) { bestDot = d; best = b; }
+    }
+    return best;
+  }
+
   raycastHit(raycaster) {
     let closestBird = null;
     let closestDist = Infinity;
