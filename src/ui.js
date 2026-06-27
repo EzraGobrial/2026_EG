@@ -1937,7 +1937,7 @@ export class UI {
     playersEl.innerHTML = '';
 
     if (playersInDim.length === 0) {
-      playersEl.innerHTML = '<div class="trade-empty">No other players in your dimension</div>';
+      playersEl.innerHTML = '<div class="trade-empty">No other players found</div>';
     } else {
       for (const player of playersInDim) {
         const item = document.createElement('div');
