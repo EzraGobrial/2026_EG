@@ -3,7 +3,7 @@
 // Menu screens: title, morning, results, shop, sleep, win
 // ═══════════════════════════════════════════════
 
-import { Economy, BIRDS, RARITY_COLORS, DIMENSIONS, WEAPONS, BANNERS, TAGS, CONSUMABLES, WEAPON_SKINS, PETS, GEAR, RANKS, MAX_WEAPON_LEVEL, fmtMoney, fmtNum } from './economy.js';
+import { Economy, BIRDS, RARITY_COLORS, DIMENSIONS, WEAPONS, BANNERS, TAGS, CONSUMABLES, WEAPON_SKINS, PETS, GEAR, RANKS, MAX_WEAPON_LEVEL, PET_RARITIES, MYSTERY_BOXES, PET_BOOSTS, fmtMoney, fmtNum } from './economy.js';
 
 /**
  * Generate HTML for a rank badge (CSS-styled, not emoji)
@@ -1030,6 +1030,7 @@ export class UI {
 
     switch(tab) {
       case 'weapons': this._renderShopWeapons(content); break;
+        case 'pets': this._renderShopPets(content); break;
       case 'locations': this._renderShopLocations(content); break;
       case 'banners': this._renderShopBanners(content); break;
       case 'tags': this._renderShopTags(content); break;
@@ -1369,6 +1370,146 @@ export class UI {
       }
     }
     container.appendChild(grid);
+  }
+
+  _renderShopPets(container) {
+    const eco = this.economy;
+    const dim = eco.dimension || 1;
+    const order = ['common','uncommon','rare','epic','legendary','unique'];
+    const t1 = document.createElement('div');
+    t1.className = 'loadout-desc';
+    t1.textContent = 'Mystery Boxes — Dimension ' + dim + '. Better boxes give better odds; prices rise each dimension. Pets only come from boxes.';
+    container.appendChild(t1);
+    const grid = document.createElement('div');
+    grid.className = 'shop-grid';
+    for (let n = 1; n <= 3; n++) {
+      const cost = eco.mysteryBoxCost(dim, n);
+      const odds = MYSTERY_BOXES[n];
+      const cant = eco.money < cost;
+      const item = document.createElement('div');
+      item.className = 'shop-item' + (cant ? ' cant-afford' : '');
+      let oddsStr = '';
+      for (const k of order) { const rr = PET_RARITIES[k]; oddsStr += '<span style="color:' + rr.color + '">' + rr.name + ' ' + odds[k] + '%</span> '; }
+      item.innerHTML = '<div class="shop-item-name">Box ' + n + '</div>' +
+        '<div style="font-size:11px;opacity:0.85;margin:4px 0;line-height:1.6">' + oddsStr + '</div>' +
+        '<div class="shop-item-price">' + fmtMoney(cost) + '</div>';
+      if (!cant) item.addEventListener('click', () => {
+        this.audio.playUIClick();
+        const pet = eco.rollMysteryBox(dim, n);
+        if (!pet) return;
+        this.audio.playCashRegister();
+        document.getElementById('shop-money').textContent = fmtMoney(eco.money);
+        this._showPetReveal(pet);
+        this._renderShopTab('pets');
+      });
+      grid.appendChild(item);
+    }
+    container.appendChild(grid);
+    const cap = eco.petSlotCap();
+    const t2 = document.createElement('div');
+    t2.className = 'loadout-desc';
+    t2.textContent = 'Pet Slots — you can equip ' + cap + ' pet(s). Buy permanent slots (max 10).';
+    container.appendChild(t2);
+    const sgrid = document.createElement('div');
+    sgrid.className = 'shop-grid';
+    const upCost = eco.petUpgradeCost();
+    const up = document.createElement('div');
+    if (upCost == null) {
+      up.className = 'shop-item owned';
+      up.innerHTML = '<div class="shop-item-name">Pet Slots Maxed</div><div class="shop-item-price">10 / 10</div>';
+    } else {
+      const cant = eco.money < upCost;
+      up.className = 'shop-item' + (cant ? ' cant-afford' : '');
+      up.innerHTML = '<div class="shop-item-name">+1 Permanent Pet Slot</div><div class="shop-item-price">' + fmtMoney(upCost) + '</div>';
+      if (!cant) up.addEventListener('click', () => {
+        this.audio.playUIClick();
+        if (eco.buyPetSlotUpgrade()) { this.audio.playCashRegister(); document.getElementById('shop-money').textContent = fmtMoney(eco.money); this._renderShopTab('pets'); }
+      });
+    }
+    sgrid.appendChild(up);
+    container.appendChild(sgrid);
+    const t3 = document.createElement('div');
+    t3.className = 'loadout-desc';
+    t3.textContent = 'Slot Boosts — each grants +1 equip slot for a limited time (by rarity).';
+    container.appendChild(t3);
+    const bgrid = document.createElement('div');
+    bgrid.className = 'shop-grid';
+    for (const key of Object.keys(PET_BOOSTS)) {
+      const b = PET_BOOSTS[key];
+      const cant = eco.money < b.cost;
+      const it = document.createElement('div');
+      it.className = 'shop-item' + (cant ? ' cant-afford' : '');
+      it.innerHTML = '<div class="shop-item-name" style="color:' + PET_RARITIES[b.rarity].color + '">' + b.name + '</div>' +
+        '<div style="font-size:11px;opacity:0.8">+1 slot for ' + b.hours + 'h</div>' +
+        '<div class="shop-item-price">' + fmtMoney(b.cost) + '</div>';
+      if (!cant) it.addEventListener('click', () => {
+        this.audio.playUIClick();
+        if (eco.buyPetBoost(key)) { this.audio.playCashRegister(); document.getElementById('shop-money').textContent = fmtMoney(eco.money); this._renderShopTab('pets'); }
+      });
+      bgrid.appendChild(it);
+    }
+    container.appendChild(bgrid);
+  }
+
+  _showPetReveal(pet) {
+    const rar = PET_RARITIES[pet.rarity] || PET_RARITIES.common;
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.78);display:flex;align-items:center;justify-content:center;z-index:99999';
+    const inner = document.createElement('div');
+    inner.style.cssText = 'background:#1a1d24;border:2px solid ' + rar.color + ';border-radius:14px;padding:26px 34px;text-align:center;max-width:340px;box-shadow:0 0 50px ' + rar.color;
+    inner.innerHTML = '<div style="font-size:13px;letter-spacing:2px;color:' + rar.color + ';text-transform:uppercase">' + rar.name + (pet.isOOW ? ' — OUT OF WHACK' : '') + '</div>' +
+      '<div style="font-size:22px;margin:10px 0;color:#fff">' + pet.name + '</div>' +
+      '<div style="font-size:14px;color:#cfd3da">+' + Math.round(pet.mult * 100) + '% money per kill' + (pet.isOOW ? '<br>Special powers: infinite ammo, no cooldown!' : '') + '</div>';
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-accent';
+    btn.style.marginTop = '18px';
+    btn.textContent = 'Add to Locker';
+    btn.addEventListener('click', () => { this.audio.playUIClick(); ov.remove(); });
+    inner.appendChild(btn);
+    ov.appendChild(inner);
+    ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
+    document.body.appendChild(ov);
+  }
+
+  _renderLockerPets(content) {
+    const eco = this.economy;
+    content.innerHTML = '';
+    const cap = eco.petSlotCap();
+    const equipped = (eco.equippedPets || []).filter(id => eco.getPet(id));
+    const mult = eco.petMultiplier();
+    const order = ['outofwhack','unique','legendary','epic','rare','uncommon','common'];
+    const desc = document.createElement('div');
+    desc.className = 'loadout-desc';
+    desc.textContent = 'Equipped ' + equipped.length + ' / ' + cap + ' pets  -  Money multiplier ' + mult.toFixed(2) + 'x. Tap a pet to equip or unequip.';
+    content.appendChild(desc);
+    const inv = (eco.petInventory || []).slice().sort((a, b) => order.indexOf(a.rarity) - order.indexOf(b.rarity));
+    if (!inv.length) {
+      const e = document.createElement('div');
+      e.className = 'loadout-desc';
+      e.textContent = 'No pets yet — open mystery boxes in the shop to find some!';
+      content.appendChild(e);
+      return;
+    }
+    const grid = document.createElement('div');
+    grid.className = 'locker-items';
+    for (const pet of inv) {
+      const isEq = equipped.includes(pet.id);
+      const rar = PET_RARITIES[pet.rarity] || PET_RARITIES.common;
+      const it = document.createElement('div');
+      it.className = 'shop-item' + (isEq ? ' owned' : '');
+      it.style.borderColor = rar.color;
+      it.innerHTML = '<div class="shop-item-name" style="color:' + rar.color + '">' + pet.name + '</div>' +
+        '<div style="font-size:11px;opacity:0.85">' + rar.name + ' - +' + Math.round(pet.mult * 100) + '% money' + (pet.isOOW ? ' - special' : '') + '</div>' +
+        '<div class="shop-item-price">' + (isEq ? 'EQUIPPED' : 'Equip') + '</div>';
+      it.addEventListener('click', () => {
+        this.audio.playUIClick();
+        if (isEq) eco.unequipPet(pet.id);
+        else if (!eco.equipPetInstance(pet.id)) this.toast('No free pet slots — unequip one or buy a slot.', 'error');
+        this._renderLockerTab('pets');
+      });
+      grid.appendChild(it);
+    }
+    content.appendChild(grid);
   }
 
   _renderShopBanners(container) {
@@ -1935,6 +2076,8 @@ export class UI {
   _renderLockerTab(tab) {
     const content = document.getElementById('locker-content');
     const eco = this.economy;
+
+    if (tab === 'pets') { this._renderLockerPets(content); return; }
 
     if (tab === 'loadout') {
       content.innerHTML = '';
