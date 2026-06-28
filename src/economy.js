@@ -1396,6 +1396,20 @@ export class Economy {
     };
   }
 
+  grantPetFromBox(dim, boxNum) {
+    let rarity;
+    if (Math.random() < OOW_CHANCE) { rarity = 'outofwhack'; }
+    else {
+      const odds = MYSTERY_BOXES[boxNum] || MYSTERY_BOXES[1];
+      const r = Math.random() * 100; let acc = 0; rarity = 'common';
+      for (const k of PET_RARITY_ORDER) { acc += odds[k] || 0; if (r <= acc) { rarity = k; break; } }
+    }
+    const pet = this._makePet(dim, rarity);
+    this.petInventory = this.petInventory || [];
+    this.petInventory.push(pet);
+    return pet;
+  }
+
   rollMysteryBox(dim, boxNum) {
     const cost = this.mysteryBoxCost(dim, boxNum);
     if (this.money < cost) return null;
@@ -1463,7 +1477,7 @@ export class Economy {
     if (!r) return { error: 'No reward.' };
     let msg = '';
     if (r.type === 'money') { this.money += r.amount; this.totalMoneyEarned += r.amount; msg = 'Earned $' + r.amount.toLocaleString(); }
-    else if (r.type === 'box') { const pet = this.rollMysteryBox(this.dimension, r.box); msg = pet ? ('Unboxed ' + pet.name + '!') : 'Mystery box opened.'; }
+    else if (r.type === 'box') { const pet = this.grantPetFromBox(this.dimension, r.box); msg = pet ? ('Unboxed ' + pet.name + '!') : 'Mystery box opened.'; }
     else if (r.type === 'gun') { if (this.weapons[r.weapon]) this.weapons[r.weapon].owned = true; msg = (r.label || 'Weapon') + ' unlocked!'; }
     else if (r.type === 'slot') { this.bonusPetSlots = (this.bonusPetSlots || 0) + r.amount; msg = '+' + r.amount + ' pet slot' + (r.amount > 1 ? 's' : '') + '!'; }
     const list = track === 'premium' ? (this.bpClaimedPremium = this.bpClaimedPremium || []) : (this.bpClaimedFree = this.bpClaimedFree || []);
