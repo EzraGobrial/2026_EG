@@ -3,7 +3,7 @@
 // Menu screens: title, morning, results, shop, sleep, win
 // ═══════════════════════════════════════════════
 
-import { Economy, BIRDS, RARITY_COLORS, DIMENSIONS, WEAPONS, BANNERS, TAGS, CONSUMABLES, WEAPON_SKINS, PETS, GEAR, RANKS, MAX_WEAPON_LEVEL, PET_RARITIES, MYSTERY_BOXES, PET_BOOSTS, fmtMoney, fmtNum } from './economy.js';
+import { Economy, BIRDS, RARITY_COLORS, DIMENSIONS, WEAPONS, BANNERS, TAGS, CONSUMABLES, WEAPON_SKINS, PETS, GEAR, RANKS, MAX_WEAPON_LEVEL, PET_RARITIES, MYSTERY_BOXES, PET_BOOSTS, BATTLE_PASS, BP_MAX_TIER, fmtMoney, fmtNum } from './economy.js';
 
 /**
  * Generate HTML for a rank badge (CSS-styled, not emoji)
@@ -821,6 +821,84 @@ export class UI {
     panel.appendChild(grid);
   }
 
+  renderBattlePass() {
+    const eco = this.economy;
+    const host = document.getElementById('battlepass-section');
+    if (!host) return;
+    const tier = eco.bpTier();
+    const prog = eco.bpProgress();
+    const pct = prog.need ? Math.min(100, Math.round(prog.into / prog.need * 100)) : 100;
+    const premium = !!eco.premiumPass;
+    const rdisp = (r) => {
+      if (!r) return '';
+      if (r.type === 'money') return '$' + (r.amount >= 1000000 ? +(r.amount / 1000000).toFixed(2) + 'M' : r.amount.toLocaleString());
+      if (r.type === 'box') return 'Box ' + (r.box === 1 ? 'I' : r.box === 2 ? 'II' : 'III');
+      return r.label || '';
+    };
+    let cols = '';
+    for (let t = 1; t <= BP_MAX_TIER; t++) {
+      const pr = BATTLE_PASS.premium[t - 1];
+      const fr = BATTLE_PASS.free[t - 1];
+      const isCur = (t === tier);
+      const pClaimed = eco.bpIsClaimed(t, 'premium');
+      const pCan = eco.bpCanClaim(t, 'premium');
+      const pState = pClaimed ? 'claimed' : (t <= tier ? 'unlocked' : 'locked');
+      const pClaim = pCan ? ('<button class="bp-claim" data-bp-tier="' + t + '" data-bp-track="premium">Claim</button>') : (pClaimed ? '<div class="bp-claimed-tag">Claimed</div>' : '');
+      const fClaimed = eco.bpIsClaimed(t, 'free');
+      const fCan = eco.bpCanClaim(t, 'free');
+      const fState = fClaimed ? 'claimed' : (t <= tier ? 'unlocked' : 'locked');
+      const fClaim = fCan ? ('<button class="bp-claim" data-bp-tier="' + t + '" data-bp-track="free">Claim</button>') : (fClaimed ? '<div class="bp-claimed-tag">Claimed</div>' : '');
+      cols +=
+        '<div class="bp-col' + (isCur ? ' bp-current' : '') + '" data-bp-col="' + t + '">' +
+          '<div class="bp-cell bp-prem bp-' + pState + (premium ? '' : ' bp-noprem') + ' bp-type-' + pr.type + '">' +
+            '<div class="bp-reward">' + rdisp(pr) + '</div>' + pClaim +
+          '</div>' +
+          '<div class="bp-tiernum">' + t + '</div>' +
+          '<div class="bp-cell bp-free bp-' + fState + ' bp-type-' + fr.type + '">' +
+            '<div class="bp-reward">' + rdisp(fr) + '</div>' + fClaim +
+          '</div>' +
+        '</div>';
+    }
+    const premBtn = premium
+      ? '<div class="bp-premium-status">\u2605 Premium Active</div>'
+      : '<button id="bp-go-premium" class="bp-premium-btn">Go Premium \u00b7 $5</button>';
+    host.innerHTML =
+      '<div class="bp-header">' +
+        '<div class="bp-titlewrap"><span class="bp-title">Battle Pass</span><span class="bp-tier-badge">Tier ' + tier + '</span></div>' +
+        '<div class="bp-xpwrap"><div class="bp-xpbar"><div class="bp-xpfill" style="width:' + pct + '%"></div></div>' +
+        '<span class="bp-xptext">' + (prog.need ? (prog.into + ' / ' + prog.need + ' XP') : 'MAX') + '</span></div>' +
+        premBtn +
+      '</div>' +
+      '<div class="bp-rowlabels"><span class="bp-rowlabel bp-rowlabel-prem">PREMIUM</span><span class="bp-rowlabel bp-rowlabel-free">FREE</span></div>' +
+      '<div class="bp-scroll"><div class="bp-columns">' + cols + '</div></div>';
+    host.querySelectorAll('.bp-claim').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tt = parseInt(btn.getAttribute('data-bp-tier'), 10);
+        const tk = btn.getAttribute('data-bp-track');
+        const res = eco.bpClaim(tt, tk);
+        if (res && res.ok) {
+          if (this.audio && this.audio.playCashRegister) this.audio.playCashRegister();
+          this.renderBattlePass();
+        }
+      });
+    });
+    const gp = document.getElementById('bp-go-premium');
+    if (gp) gp.addEventListener('click', () => this._goPremium());
+    const scroll = host.querySelector('.bp-scroll');
+    const curCol = host.querySelector('.bp-col[data-bp-col="' + tier + '"]');
+    if (scroll && curCol) {
+      const prevCol = host.querySelector('.bp-col[data-bp-col="' + Math.max(1, tier - 1) + '"]');
+      scroll.scrollLeft = Math.max(0, (prevCol || curCol).offsetLeft - 8);
+    }
+  }
+  _goPremium() {
+    const STRIPE_URL = 'https://buy.stripe.com/REPLACE_WITH_YOUR_LINK';
+    if (STRIPE_URL.indexOf('REPLACE') !== -1) { alert('Premium checkout is being set up. Check back soon!'); return; }
+    const uid = this.economy && this.economy.uid;
+    const sep = STRIPE_URL.indexOf('?') === -1 ? '?' : '&';
+    window.open(STRIPE_URL + sep + 'client_reference_id=' + encodeURIComponent(uid || ''), '_blank');
+  }
+
   showResults(huntBag, displayName, xpEarned = 0) {
     this._setupResultsButtons();
     const summary = document.getElementById('results-summary');
@@ -890,6 +968,7 @@ export class UI {
     this._renderLeaderboard(displayName);
 
     this.showScreen('results');
+    this.renderBattlePass();
 
     if (total > 0) {
       this.audio.playCashRegister();
