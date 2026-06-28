@@ -2300,7 +2300,7 @@ function buildProcedural(scene, obstacles, seed) {
   const accent = col((hue + 0.5) % 1, 0.7, 0.6);
   const accent2 = col(hue, 0.75, 0.6);
 
-  if (style === 0 || style === 2) {
+  if (style === 0) {
     // Glowing crystal spires (some big enough to block movement)
     for (let i = 0; i < 16; i++) {
       const x = (Math.random() - 0.5) * 78, z = (Math.random() - 0.5) * 78;
@@ -2339,6 +2339,55 @@ function buildProcedural(scene, obstacles, seed) {
         new THREE.MeshStandardMaterial({ color: accent, emissive: accent, emissiveIntensity: 0.7, roughness: 0.2 }));
       orb.position.set((Math.random() - 0.5) * 70, 2 + Math.random() * 8, (Math.random() - 0.5) * 70);
       group.add(orb);
+    }
+  } else if (style === 2) {
+    // Floating obsidian monoliths ringed with light
+    for (let i = 0; i < 9; i++) {
+      const ang = (i / 9) * Math.PI * 2;
+      const dist = 14 + Math.random() * 26;
+      const x = Math.cos(ang) * dist, z = Math.sin(ang) * dist;
+      const h = 5 + Math.random() * 7;
+      const slab = new THREE.Mesh(new THREE.BoxGeometry(1.6, h, 1.6),
+        new THREE.MeshStandardMaterial({ color: col(hue, 0.3, 0.12), roughness: 0.4, metalness: 0.5, emissive: accent, emissiveIntensity: 0.25 }));
+      slab.position.set(x, h / 2 + 1.5, z);
+      slab.rotation.y = Math.random() * Math.PI;
+      slab.castShadow = true;
+      group.add(slab);
+      if (obstacles) obstacles.push({ type: 'circle', x, z, r: 1.4 });
+    }
+    for (let i = 0; i < 14; i++) {
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.3 + Math.random() * 0.4, 12, 12),
+        new THREE.MeshStandardMaterial({ color: accent2, emissive: accent2, emissiveIntensity: 0.9, roughness: 0.2 }));
+      orb.position.set((Math.random() - 0.5) * 72, 3 + Math.random() * 10, (Math.random() - 0.5) * 72);
+      group.add(orb);
+    }
+  } else if (style === 3) {
+    // Twisted glowing coral trees
+    for (let i = 0; i < 12; i++) {
+      const x = (Math.random() - 0.5) * 76, z = (Math.random() - 0.5) * 76;
+      if (Math.hypot(x, z) < 7) continue;
+      const trunkH = 3 + Math.random() * 4;
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.35, trunkH, 7),
+        new THREE.MeshStandardMaterial({ color: col(hue, 0.45, 0.5), roughness: 0.8 }));
+      trunk.position.set(x, trunkH / 2, z);
+      trunk.castShadow = true;
+      group.add(trunk);
+      const branches = 3 + Math.floor(Math.random() * 3);
+      for (let b = 0; b < branches; b++) {
+        const ba = Math.random() * Math.PI * 2;
+        const bl = 1 + Math.random() * 1.8;
+        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.12, bl, 6),
+          new THREE.MeshStandardMaterial({ color: accent, emissive: accent, emissiveIntensity: 0.5, roughness: 0.4 }));
+        arm.position.set(x + Math.cos(ba) * 0.5, trunkH - 0.3 - b * 0.4, z + Math.sin(ba) * 0.5);
+        arm.rotation.z = Math.cos(ba) * 0.9;
+        arm.rotation.x = Math.sin(ba) * 0.9;
+        group.add(arm);
+        const tip = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 10),
+          new THREE.MeshStandardMaterial({ color: accent2, emissive: accent2, emissiveIntensity: 0.8, roughness: 0.3 }));
+        tip.position.set(x + Math.cos(ba) * (0.5 + bl * 0.5), trunkH - 0.3 - b * 0.4 + Math.sin(bl) * 0.3, z + Math.sin(ba) * (0.5 + bl * 0.5));
+        group.add(tip);
+      }
+      if (obstacles) obstacles.push({ type: 'circle', x, z, r: 0.5 });
     }
   } else {
     // Giant alien mushrooms (stalk + glowing cap)
