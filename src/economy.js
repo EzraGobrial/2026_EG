@@ -651,6 +651,11 @@ function buildBattlePassRewards() {
 }
 export const BATTLE_PASS = buildBattlePassRewards();
 
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(str)));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 // Temporary pet-slot boosts: each grants +1 equip slot for a rarity-based duration (up to 24h).
 export const PET_BOOSTS = {
   boost_common:    { name: 'Tiny Whistle',  rarity: 'common',    hours: 1,  cost: 50000 },
@@ -1027,6 +1032,7 @@ export class Economy {
       bpClaimedFree: this.bpClaimedFree || [],
       bpClaimedPremium: this.bpClaimedPremium || [],
       bonusPetSlots: this.bonusPetSlots || 0,
+      premiumPass: this.premiumPass || false,
       weaponOwned: {},
       locationUnlocked: {}
     };
@@ -1098,10 +1104,7 @@ export class Economy {
       if (data.bpClaimedFree) this.bpClaimedFree = data.bpClaimedFree;
       if (data.bpClaimedPremium) this.bpClaimedPremium = data.bpClaimedPremium;
       if (data.bonusPetSlots !== undefined) this.bonusPetSlots = data.bonusPetSlots;
-      try {
-        const psnap = await getDoc(doc(db, 'premium', this.uid));
-        this.premiumPass = psnap.exists() && psnap.data().active === true;
-      } catch (e) { /* premium stays false */ }
+      if (data.premiumPass !== undefined) this.premiumPass = data.premiumPass;
 
       // Ensure procedurally-generated dimensions exist first
       this._ensureDimensions(this.dimension + 1);
@@ -1394,6 +1397,19 @@ export class Economy {
       mult: Math.round(PET_RARITIES[rarity].mult * (1 + (dim - 1) * 0.25) * 1000) / 1000,
       effects: isOOW ? OOW_EFFECTS.slice() : []
     };
+  }
+
+  async redeemPremiumCode(input) {
+    const code = String(input || '').trim();
+    if (!code) return { error: 'Enter a code.' };
+    const h = await sha256(code);
+    let valid = false;
+    try {
+      const snap = await getDoc(doc(db, 'config', 'premium'));
+      if (snap.exists() && snap.data().codeHash === h) valid = true;
+    } catch (e) {}
+    if (valid) { this.premiumPass = true; this.save(); return { ok: true }; }
+    return { error: 'Invalid code.' };
   }
 
   grantPetFromBox(dim, boxNum) {
