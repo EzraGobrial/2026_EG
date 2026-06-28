@@ -628,6 +628,29 @@ const PET_NOUNS = ['Cub','Sprite','Wisp','Hound','Drake','Owl','Fox','Moth','Ser
 const OOW_NAMES = ['Glitch','Anomaly','Paradox','Voidling','Static','Null'];
 const MAX_PETS = 10;
 
+// ---- Battle Pass config ----
+export const BP_MAX_TIER = 100;
+function bpTierCost(n) { return n >= BP_MAX_TIER ? Infinity : 300 + (n - 1) * 55; }
+const BP_GUN_NAMES = { rail_gun: 'Rail Gun', slomo_gun: 'Slo-Mo Gun', laser_rifle: 'Laser Rifle', plasma_shotgun: 'Plasma Shotgun' };
+function buildBattlePassRewards() {
+  const free = [], prem = [];
+  const guns = ['rail_gun', 'slomo_gun', 'laser_rifle', 'plasma_shotgun'];
+  for (let t = 1; t <= BP_MAX_TIER; t++) {
+    if (t === 100) free.push({ type: 'slot', amount: 1, label: '+1 Pet Slot' });
+    else if (t === 50) free.push({ type: 'gun', weapon: 'rail_gun', label: 'Rail Gun' });
+    else if (t % 25 === 0) free.push({ type: 'box', box: 1, label: 'Mystery Box I' });
+    else if (t % 10 === 0) free.push({ type: 'money', amount: 2000 * t, label: 'Cash' });
+    else free.push({ type: 'money', amount: 500 * t, label: 'Cash' });
+    if (t === 100) prem.push({ type: 'slot', amount: 5, label: '+5 Pet Slots' });
+    else if (t % 25 === 0) { const g = guns[((t / 25) - 1) % guns.length]; prem.push({ type: 'gun', weapon: g, label: BP_GUN_NAMES[g] }); }
+    else if (t % 10 === 0) prem.push({ type: 'box', box: 3, label: 'Mystery Box III' });
+    else if (t % 5 === 0) prem.push({ type: 'box', box: 2, label: 'Mystery Box II' });
+    else prem.push({ type: 'money', amount: 1500 * t, label: 'Cash' });
+  }
+  return { free: free, premium: prem };
+}
+export const BATTLE_PASS = buildBattlePassRewards();
+
 // Temporary pet-slot boosts: each grants +1 equip slot for a rarity-based duration (up to 24h).
 export const PET_BOOSTS = {
   boost_common:    { name: 'Tiny Whistle',  rarity: 'common',    hours: 1,  cost: 50000 },
@@ -948,6 +971,11 @@ export class Economy {
     this.xp = 0;
     this.rank = 1;
     this.seenScopeHint = false;
+    this.battlePassXP = 0;
+    this.bpClaimedFree = [];
+    this.bpClaimedPremium = [];
+    this.premiumPass = false;
+    this.bonusPetSlots = 0;
   }
 
   setUid(uid) {
@@ -995,6 +1023,10 @@ export class Economy {
       xp: this.xp || 0,
       rank: this.rank || 1,
       seenScopeHint: this.seenScopeHint || false,
+      battlePassXP: this.battlePassXP || 0,
+      bpClaimedFree: this.bpClaimedFree || [],
+      bpClaimedPremium: this.bpClaimedPremium || [],
+      bonusPetSlots: this.bonusPetSlots || 0,
       weaponOwned: {},
       locationUnlocked: {}
     };
@@ -1062,6 +1094,14 @@ export class Economy {
       if (data.xp !== undefined) this.xp = data.xp;
       if (data.rank !== undefined) this.rank = data.rank;
       if (data.seenScopeHint !== undefined) this.seenScopeHint = data.seenScopeHint;
+      if (data.battlePassXP !== undefined) this.battlePassXP = data.battlePassXP;
+      if (data.bpClaimedFree) this.bpClaimedFree = data.bpClaimedFree;
+      if (data.bpClaimedPremium) this.bpClaimedPremium = data.bpClaimedPremium;
+      if (data.bonusPetSlots !== undefined) this.bonusPetSlots = data.bonusPetSlots;
+      try {
+        const psnap = await getDoc(doc(db, 'premium', this.uid));
+        this.premiumPass = psnap.exists() && psnap.data().active === true;
+      } catch (e) { /* premium stays false */ }
 
       // Ensure procedurally-generated dimensions exist first
       this._ensureDimensions(this.dimension + 1);
@@ -1122,6 +1162,10 @@ export class Economy {
     this.clanId = null;
     this.xp = 0;
     this.rank = 1;
+    this.battlePassXP = 0;
+    this.bpClaimedFree = [];
+    this.bpClaimedPremium = [];
+    this.bonusPetSlots = 0;
     this.story = null;
     this.save();
   }
@@ -1384,8 +1428,52 @@ export class Economy {
     return this.petBoosts.length;
   }
 
+  // ---- Battle Pass ----
+  bpTier() {
+    let xp = this.battlePassXP || 0, t = 1;
+    while (t < BP_MAX_TIER && xp >= bpTierCost(t)) { xp -= bpTierCost(t); t++; }
+    return t;
+  }
+  bpProgress() {
+    let xp = this.battlePassXP || 0, t = 1;
+    while (t < BP_MAX_TIER && xp >= bpTierCost(t)) { xp -= bpTierCost(t); t++; }
+    const need = bpTierCost(t);
+    return { tier: t, into: xp, need: need === Infinity ? 0 : need };
+  }
+  addBattlePassXP(amount) {
+    this.battlePassXP = (this.battlePassXP || 0) + Math.max(0, Math.round(amount || 0));
+  }
+  bpRewardAt(tier, track) {
+    const arr = track === 'premium' ? BATTLE_PASS.premium : BATTLE_PASS.free;
+    return arr[tier - 1] || null;
+  }
+  bpIsClaimed(tier, track) {
+    const list = track === 'premium' ? (this.bpClaimedPremium || []) : (this.bpClaimedFree || []);
+    return list.includes(tier);
+  }
+  bpCanClaim(tier, track) {
+    if (tier < 1 || tier > BP_MAX_TIER) return false;
+    if (this.bpTier() < tier) return false;
+    if (track === 'premium' && !this.premiumPass) return false;
+    return !this.bpIsClaimed(tier, track);
+  }
+  bpClaim(tier, track) {
+    if (!this.bpCanClaim(tier, track)) return { error: 'Not available.' };
+    const r = this.bpRewardAt(tier, track);
+    if (!r) return { error: 'No reward.' };
+    let msg = '';
+    if (r.type === 'money') { this.money += r.amount; this.totalMoneyEarned += r.amount; msg = 'Earned $' + r.amount.toLocaleString(); }
+    else if (r.type === 'box') { const pet = this.rollMysteryBox(this.dimension, r.box); msg = pet ? ('Unboxed ' + pet.name + '!') : 'Mystery box opened.'; }
+    else if (r.type === 'gun') { if (this.weapons[r.weapon]) this.weapons[r.weapon].owned = true; msg = (r.label || 'Weapon') + ' unlocked!'; }
+    else if (r.type === 'slot') { this.bonusPetSlots = (this.bonusPetSlots || 0) + r.amount; msg = '+' + r.amount + ' pet slot' + (r.amount > 1 ? 's' : '') + '!'; }
+    const list = track === 'premium' ? (this.bpClaimedPremium = this.bpClaimedPremium || []) : (this.bpClaimedFree = this.bpClaimedFree || []);
+    list.push(tier);
+    this.save();
+    return { ok: true, message: msg, reward: r };
+  }
+
   petSlotCap() {
-    return Math.min(MAX_PETS, 1 + (this.petSlotUpgrades || 0) + this.activeBoostCount());
+    return Math.min(MAX_PETS, 1 + (this.petSlotUpgrades || 0) + this.activeBoostCount()) + (this.bonusPetSlots || 0);
   }
 
   equipPetInstance(id) {
