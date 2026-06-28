@@ -733,6 +733,7 @@ class Game {
     earnedValue = Math.round(earnedValue * this.economy.petMultiplier());
     this.huntBag.push({ key: bird.birdKey, combo: comboMultiplier, earnedValue: earnedValue });
     this.economy.totalBirdsKilled++;
+      this.economy.addBattlePassXP(8 + Math.round(comboMultiplier || 1));
     this.huntStats.moneyEarned += earnedValue;
     this.huntStats.totalKills++;
     if (this.comboCount > this.huntStats.maxCombo) this.huntStats.maxCombo = this.comboCount;
@@ -1156,6 +1157,7 @@ class Game {
     earnedValue = Math.round(earnedValue * this.economy.petMultiplier());
     this.huntBag.push({ key: bird.birdKey, combo: comboMultiplier, earnedValue });
     this.economy.totalBirdsKilled++;
+      this.economy.addBattlePassXP(8 + Math.round(comboMultiplier || 1));
     this.huntStats.moneyEarned += earnedValue;
 
     // Hunt stats
