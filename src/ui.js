@@ -861,7 +861,7 @@ export class UI {
     }
     const premBtn = premium
       ? '<div class="bp-premium-status">\u2605 Premium Active</div>'
-      : '<button id="bp-go-premium" class="bp-premium-btn">Go Premium \u00b7 $5</button>';
+      : '<button id="bp-go-premium" class="bp-premium-btn">Unlock Premium</button>';
     host.innerHTML =
       '<div class="bp-header">' +
         '<div class="bp-titlewrap"><span class="bp-title">Battle Pass</span><span class="bp-tier-badge">Tier ' + tier + '</span></div>' +
@@ -891,12 +891,17 @@ export class UI {
       scroll.scrollLeft = Math.max(0, (prevCol || curCol).offsetLeft - 8);
     }
   }
-  _goPremium() {
-    const STRIPE_URL = 'https://buy.stripe.com/REPLACE_WITH_YOUR_LINK';
-    if (STRIPE_URL.indexOf('REPLACE') !== -1) { alert('Premium checkout is being set up. Check back soon!'); return; }
-    const uid = this.economy && this.economy.uid;
-    const sep = STRIPE_URL.indexOf('?') === -1 ? '?' : '&';
-    window.open(STRIPE_URL + sep + 'client_reference_id=' + encodeURIComponent(uid || ''), '_blank');
+  async _goPremium() {
+    const code = window.prompt('Enter your Premium unlock code:');
+    if (code === null) return;
+    const res = await this.economy.redeemPremiumCode(code);
+    if (res && res.ok) {
+      if (this.audio && this.audio.playCashRegister) this.audio.playCashRegister();
+      alert('Premium unlocked! Enjoy your perks.');
+      this.renderBattlePass();
+    } else {
+      alert((res && res.error) || 'Invalid code.');
+    }
   }
 
   showResults(huntBag, displayName, xpEarned = 0) {
