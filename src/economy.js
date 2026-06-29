@@ -1434,11 +1434,11 @@ export class Economy {
   }
   async qualifyReferral() {
     if (!this.referredBy || this.referralQualified) return;
+    if (this.createdAt && (Date.now() - this.createdAt > 30 * 24 * 60 * 60 * 1000)) return;
     this.referralQualified = true;
     try { await setDoc(doc(db, 'referrals', this.uid), { referrer: this.referredBy, qualified: true, ts: Date.now() }, { merge: true }); } catch (e) {}
     this.save();
-  }
-  recordLogin() {
+  }  recordLogin() {
     const now = Date.now();
     if (!this.createdAt) this.createdAt = now;
     const today = new Date().toISOString().slice(0, 10);
@@ -1476,18 +1476,12 @@ export class Economy {
     try {
       const q = query(collection(db, 'referrals'), where('referrer', '==', this.uid));
       const snap = await getDocs(q);
-      let n = 0; const now = Date.now(); const MONTH = 30 * 24 * 60 * 60 * 1000;
-      snap.forEach(d => {
-        const r = d.data();
-        if (!r.qualified) return;
-        const created = r.createdAt || r.ts || now;
-        const fake = (now - created > MONTH) && (r.firstMonthLogins || 0) <= 1;
-        if (!fake) n++;
-      });
+      let n = 0;
+      snap.forEach(d => { if (d.data().qualified) n++; });
       this.referralCount = n;
       if (n >= REFERRALS_NEEDED) { if (!this.premiumPass) { this.premiumPass = true; this.save(); } }
       else if (this.premiumPass) { this.revokePremium(); }
-    } catch (e) { /* network error: keep cached count, do not revoke */ }
+    } catch (e) {}
     return this.referralCount || 0;
   }
 
