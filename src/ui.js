@@ -3,7 +3,7 @@
 // Menu screens: title, morning, results, shop, sleep, win
 // ═══════════════════════════════════════════════
 
-import { Economy, BIRDS, RARITY_COLORS, DIMENSIONS, WEAPONS, BANNERS, TAGS, CONSUMABLES, WEAPON_SKINS, PETS, GEAR, RANKS, MAX_WEAPON_LEVEL, PET_RARITIES, MYSTERY_BOXES, PET_BOOSTS, BATTLE_PASS, BP_MAX_TIER, fmtMoney, fmtNum } from './economy.js';
+import { Economy, BIRDS, RARITY_COLORS, DIMENSIONS, WEAPONS, BANNERS, TAGS, CONSUMABLES, WEAPON_SKINS, PETS, GEAR, RANKS, MAX_WEAPON_LEVEL, PET_RARITIES, MYSTERY_BOXES, PET_BOOSTS, BATTLE_PASS, BP_MAX_TIER, TICKET_SHOP, fmtMoney, fmtNum } from './economy.js';
 
 /**
  * Generate HTML for a rank badge (CSS-styled, not emoji)
@@ -1126,6 +1126,7 @@ export class UI {
     switch(tab) {
       case 'weapons': this._renderShopWeapons(content); break;
         case 'pets': this._renderShopPets(content); break;
+      case 'tickets': this._renderShopTickets(content); break;
       case 'locations': this._renderShopLocations(content); break;
       case 'banners': this._renderShopBanners(content); break;
       case 'tags': this._renderShopTags(content); break;
@@ -1465,6 +1466,33 @@ export class UI {
       }
     }
     container.appendChild(grid);
+  }
+
+  _renderShopTickets(container) {
+    const eco = this.economy;
+    const owned = new Set(eco.ownedSkins || []);
+    let html = '<div class="ticket-balance">\ud83c\udf9f Tickets: <b>' + (eco.tickets || 0) + '</b></div>';
+    html += '<p class="ticket-note">Earn purple tickets from the Battle Pass. Spend them here on exclusives.</p>';
+    html += '<div class="ticket-grid">';
+    for (const item of TICKET_SHOP) {
+      const already = item.type === 'skin' && owned.has(item.skin);
+      const afford = (eco.tickets || 0) >= item.cost;
+      html += '<div class="ticket-item">' +
+        '<div class="ticket-item-name">' + item.name + '</div>' +
+        '<div class="ticket-item-desc">' + item.desc + '</div>' +
+        '<div class="ticket-item-cost">' + item.cost + ' \ud83c\udf9f</div>' +
+        (already ? '<div class="ticket-owned">Owned</div>' : '<button class="btn btn-primary ticket-buy" data-ticket="' + item.key + '"' + (afford ? '' : ' disabled') + '>Buy</button>') +
+        '</div>';
+    }
+    html += '</div>';
+    container.innerHTML = html;
+    container.querySelectorAll('.ticket-buy').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const res = eco.buyTicketItem(btn.getAttribute('data-ticket'));
+        if (res && res.ok && this.audio && this.audio.playCashRegister) this.audio.playCashRegister();
+        this._renderShopTickets(container);
+      });
+    });
   }
 
   _renderShopPets(container) {
