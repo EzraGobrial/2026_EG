@@ -885,10 +885,14 @@ export class UI {
     const gp = document.getElementById('bp-go-premium');
     if (gp) gp.addEventListener('click', () => this._goPremium());
     const scroll = host.querySelector('.bp-scroll');
-    const curCol = host.querySelector('.bp-col[data-bp-col="' + tier + '"]');
-    if (scroll && curCol) {
-      const prevCol = host.querySelector('.bp-col[data-bp-col="' + Math.max(1, tier - 1) + '"]');
-      scroll.scrollLeft = Math.max(0, (prevCol || curCol).offsetLeft - 8);
+    if (scroll) {
+      requestAnimationFrame(() => {
+        const target = host.querySelector('.bp-col[data-bp-col="' + Math.max(1, tier - 1) + '"]') || host.querySelector('.bp-col[data-bp-col="' + tier + '"]');
+        if (!target) return;
+        const sRect = scroll.getBoundingClientRect();
+        const tRect = target.getBoundingClientRect();
+        scroll.scrollLeft += (tRect.left - sRect.left) - 8;
+      });
     }
   }
   async _goPremium() {
