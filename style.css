@@ -3159,3 +3159,9 @@ body {
 #screen-results .results-panel { grid-column: 1; grid-row: 1 / span 2; align-self: stretch; max-width: none; width: auto; }
 #screen-results .leaderboard-panel { grid-column: 2; grid-row: 1; max-width: none; width: auto; }
 #screen-results #battlepass-section { grid-column: 2; grid-row: 2; align-self: start; width: auto; max-width: none; }
+
+
+/* Bigger, bolder PREMIUM / FREE row labels */
+.bp-rowlabel { font-size: 16px !important; font-weight: 900 !important; letter-spacing: 2px !important; text-transform: uppercase; }
+.bp-rowlabel-prem { color: #ffd766 !important; text-shadow: 0 0 8px rgba(240,197,86,0.55); }
+.bp-rowlabel-free { color: #cbb98f !important; }
