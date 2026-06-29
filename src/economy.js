@@ -4,7 +4,7 @@
 // Persistence via Firebase Firestore
 // ═══════════════════════════════════════════════
 
-import { doc, setDoc, getDoc, collection, getDocs, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, getDocs, deleteDoc, query, where } from 'firebase/firestore';
 import { db } from './firebase.js';
 import { serializeChallenges, deserializeChallenges, generateDailyChallenges, getRealDayKey } from './challenges.js';
 
@@ -630,6 +630,7 @@ const MAX_PETS = 10;
 
 // ---- Battle Pass config ----
 export const BP_MAX_TIER = 100;
+const REFERRALS_NEEDED = 5;
 function bpTierCost(n) { return n >= BP_MAX_TIER ? Infinity : 300 + (n - 1) * 55; }
 const BP_GUN_NAMES = { rail_gun: 'Rail Gun', slomo_gun: 'Slo-Mo Gun', laser_rifle: 'Laser Rifle', plasma_shotgun: 'Plasma Shotgun' };
 function buildBattlePassRewards() {
@@ -980,6 +981,9 @@ export class Economy {
     this.bpClaimedFree = [];
     this.bpClaimedPremium = [];
     this.premiumPass = false;
+    this.referredBy = null;
+    this.referralQualified = false;
+    this.referralCount = 0;
     this.bonusPetSlots = 0;
   }
 
@@ -1033,6 +1037,8 @@ export class Economy {
       bpClaimedPremium: this.bpClaimedPremium || [],
       bonusPetSlots: this.bonusPetSlots || 0,
       premiumPass: this.premiumPass || false,
+      referredBy: this.referredBy || null,
+      referralQualified: this.referralQualified || false,
       weaponOwned: {},
       locationUnlocked: {}
     };
@@ -1105,6 +1111,8 @@ export class Economy {
       if (data.bpClaimedPremium) this.bpClaimedPremium = data.bpClaimedPremium;
       if (data.bonusPetSlots !== undefined) this.bonusPetSlots = data.bonusPetSlots;
       if (data.premiumPass !== undefined) this.premiumPass = data.premiumPass;
+      if (data.referredBy !== undefined) this.referredBy = data.referredBy;
+      if (data.referralQualified !== undefined) this.referralQualified = data.referralQualified;
 
       // Ensure procedurally-generated dimensions exist first
       this._ensureDimensions(this.dimension + 1);
@@ -1397,6 +1405,37 @@ export class Economy {
       mult: Math.round(PET_RARITIES[rarity].mult * (1 + (dim - 1) * 0.25) * 1000) / 1000,
       effects: isOOW ? OOW_EFFECTS.slice() : []
     };
+  }
+
+  _refParam() {
+    try { return new URLSearchParams(location.search).get('ref'); } catch (e) { return null; }
+  }
+  referralLink() {
+    return location.origin + location.pathname + '?ref=' + (this.uid || '');
+  }
+  async captureReferral() {
+    const ref = this._refParam();
+    if (!ref || ref === this.uid || this.referredBy) return;
+    this.referredBy = ref;
+    try { await setDoc(doc(db, 'referrals', this.uid), { referrer: ref, qualified: false, ts: Date.now() }); } catch (e) {}
+    this.save();
+  }
+  async qualifyReferral() {
+    if (!this.referredBy || this.referralQualified) return;
+    this.referralQualified = true;
+    try { await setDoc(doc(db, 'referrals', this.uid), { referrer: this.referredBy, qualified: true, ts: Date.now() }, { merge: true }); } catch (e) {}
+    this.save();
+  }
+  async refreshReferrals() {
+    if (!this.uid) return this.referralCount || 0;
+    try {
+      const q = query(collection(db, 'referrals'), where('referrer', '==', this.uid));
+      const snap = await getDocs(q);
+      let n = 0; snap.forEach(d => { if (d.data().qualified) n++; });
+      this.referralCount = n;
+    } catch (e) { /* keep cached count */ }
+    if ((this.referralCount || 0) >= REFERRALS_NEEDED && !this.premiumPass) { this.premiumPass = true; this.save(); }
+    return this.referralCount || 0;
   }
 
   async redeemPremiumCode(input) {
