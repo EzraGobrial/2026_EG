@@ -646,19 +646,27 @@ function buildBattlePassRewards() {
     else if (t === 50) free.push({ type: 'gun', weapon: 'rail_gun', label: 'Rail Gun' });
     else if (t % 20 === 0) { const s = freeSkins[((t / 20) - 1) % freeSkins.length]; free.push({ type: 'skin', skin: s, label: SKIN_LABELS[s] }); }
     else if (t % 25 === 0) free.push({ type: 'box', box: 1, label: 'Mystery Box I' });
-    else if (t % 10 === 0) free.push({ type: 'money', amount: 2000 * t, label: 'Cash' });
-    else free.push({ type: 'money', amount: 500 * t, label: 'Cash' });
+    else if (t % 10 === 0) free.push({ type: 'ticket', amount: 1, label: '1 Ticket' });
+    else free.push({ type: 'ticket', amount: 1, label: '1 Ticket' });
     if (t === 100) prem.push({ type: 'slot', amount: 5, label: '+5 Pet Slots' });
     else if (t === 45) prem.push({ type: 'skin', skin: 'rainbowwave', label: SKIN_LABELS.rainbowwave });
     else if (t === 90) prem.push({ type: 'skin', skin: 'chromaflow', label: SKIN_LABELS.chromaflow });
     else if (t % 25 === 0) { const g = guns[((t / 25) - 1) % guns.length]; prem.push({ type: 'gun', weapon: g, label: BP_GUN_NAMES[g] }); }
     else if (t % 10 === 0) prem.push({ type: 'box', box: 3, label: 'Mystery Box III' });
     else if (t % 5 === 0) prem.push({ type: 'box', box: 2, label: 'Mystery Box II' });
-    else prem.push({ type: 'money', amount: 1500 * t, label: 'Cash' });
+    else prem.push({ type: 'ticket', amount: 2, label: '2 Tickets' });
   }
   return { free: free, premium: prem };
 }
 export const BATTLE_PASS = buildBattlePassRewards();
+
+export const TICKET_SHOP = [
+  { key: 'pet_legendary', name: 'Legendary Pet', desc: 'A guaranteed Legendary pet for your current dimension.', cost: 35, type: 'pet', rarity: 'legendary' },
+  { key: 'pet_unique', name: 'Unique Pet', desc: 'A guaranteed Unique pet \u2014 top tier.', cost: 60, type: 'pet', rarity: 'unique' },
+  { key: 'skin_rainbowwave', name: 'Rainbow Wave Skin', desc: 'Animated rainbow gun skin.', cost: 25, type: 'skin', skin: 'rainbowwave' },
+  { key: 'skin_chromaflow', name: 'Chromaflow Skin', desc: 'Animated moving-pattern gun skin.', cost: 25, type: 'skin', skin: 'chromaflow' },
+  { key: 'petslot', name: '+1 Pet Slot', desc: 'Equip one more pet (stacks beyond the shop max).', cost: 40, type: 'slot', amount: 1 }
+];
 
 async function sha256(str) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(str)));
@@ -993,6 +1001,7 @@ export class Economy {
     this.referralQualified = false;
     this.referralCount = 0;
     this.createdAt = 0;
+    this.tickets = 0;
     this.firstMonthLogins = 0;
     this.lastLoginDay = null;
     this.bpPremiumLedger = [];
@@ -1048,6 +1057,7 @@ export class Economy {
       bpClaimedFree: this.bpClaimedFree || [],
       bpClaimedPremium: this.bpClaimedPremium || [],
       bonusPetSlots: this.bonusPetSlots || 0,
+      tickets: this.tickets || 0,
       premiumPass: this.premiumPass || false,
       referredBy: this.referredBy || null,
       referralQualified: this.referralQualified || false,
@@ -1126,6 +1136,7 @@ export class Economy {
       if (data.bpClaimedFree) this.bpClaimedFree = data.bpClaimedFree;
       if (data.bpClaimedPremium) this.bpClaimedPremium = data.bpClaimedPremium;
       if (data.bonusPetSlots !== undefined) this.bonusPetSlots = data.bonusPetSlots;
+      if (data.tickets !== undefined) this.tickets = data.tickets;
       if (data.premiumPass !== undefined) this.premiumPass = data.premiumPass;
       if (data.referredBy !== undefined) this.referredBy = data.referredBy;
       if (data.referralQualified !== undefined) this.referralQualified = data.referralQualified;
@@ -1197,6 +1208,7 @@ export class Economy {
     this.bpClaimedFree = [];
     this.bpClaimedPremium = [];
     this.bonusPetSlots = 0;
+    this.tickets = 0;
     this.story = null;
     this.save();
   }
@@ -1465,6 +1477,7 @@ export class Economy {
     const led = this.bpPremiumLedger || [];
     for (const g of led) {
       if (g.type === 'money') { this.money = Math.max(0, this.money - (g.amount || 0)); }
+      else if (g.type === 'ticket') { this.tickets = Math.max(0, (this.tickets || 0) - (g.amount || 0)); }
       else if (g.type === 'slot') { this.bonusPetSlots = Math.max(0, (this.bonusPetSlots || 0) - (g.amount || 0)); }
       else if (g.type === 'gun') { if (g.weapon && this.weapons[g.weapon]) this.weapons[g.weapon].owned = false; }
       else if (g.type === 'skin') {
@@ -1508,6 +1521,22 @@ export class Economy {
     } catch (e) {}
     if (valid) { this.premiumPass = true; this.save(); return { ok: true }; }
     return { error: 'Invalid code.' };
+  }
+
+  grantPet(dim, rarity) {
+    const pet = this._makePet(dim, rarity);
+    this.petInventory = this.petInventory || [];
+    this.petInventory.push(pet);
+    return pet;
+  }
+  buyTicketItem(key) {
+    const item = TICKET_SHOP.find(i => i.key === key);
+    if (!item) return { error: 'Unknown item.' };
+    if ((this.tickets || 0) < item.cost) return { error: 'Not enough tickets.' };
+    if (item.type === 'pet') { const pet = this.grantPet(this.dimension, item.rarity); this.tickets -= item.cost; this.save(); return { ok: true, message: pet ? ('Got ' + pet.name + '!') : 'Pet granted!' }; }
+    if (item.type === 'skin') { this.ownedSkins = this.ownedSkins || ['default']; if (this.ownedSkins.includes(item.skin)) return { error: 'Already owned.' }; this.ownedSkins.push(item.skin); this.tickets -= item.cost; this.save(); return { ok: true, message: item.name + ' unlocked!' }; }
+    if (item.type === 'slot') { this.bonusPetSlots = (this.bonusPetSlots || 0) + item.amount; this.tickets -= item.cost; this.save(); return { ok: true, message: '+' + item.amount + ' pet slot!' }; }
+    return { error: 'Cannot buy.' };
   }
 
   grantPetFromBox(dim, boxNum) {
@@ -1591,6 +1620,7 @@ export class Economy {
     if (!r) return { error: 'No reward.' };
     let msg = ''; const led = { tier: tier, type: r.type };
     if (r.type === 'money') { this.money += r.amount; this.totalMoneyEarned += r.amount; led.amount = r.amount; msg = 'Earned $' + r.amount.toLocaleString(); }
+    else if (r.type === 'ticket') { this.tickets = (this.tickets || 0) + r.amount; led.amount = r.amount; msg = '+' + r.amount + ' Ticket' + (r.amount > 1 ? 's' : '') + '!'; }
     else if (r.type === 'box') { const pet = this.grantPetFromBox(this.dimension, r.box); if (pet) led.petId = pet.id; msg = pet ? ('Unboxed ' + pet.name + '!') : 'Mystery box opened.'; }
     else if (r.type === 'gun') { if (this.weapons[r.weapon]) this.weapons[r.weapon].owned = true; led.weapon = r.weapon; msg = (r.label || 'Weapon') + ' unlocked!'; }
     else if (r.type === 'slot') { this.bonusPetSlots = (this.bonusPetSlots || 0) + r.amount; led.amount = r.amount; msg = '+' + r.amount + ' pet slot' + (r.amount > 1 ? 's' : '') + '!'; }
