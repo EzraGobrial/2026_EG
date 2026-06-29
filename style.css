@@ -3171,3 +3171,16 @@ body {
 .bp-seasonbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid rgba(212,168,83,0.25); }
 .bp-season { font-size: 15px; font-weight: 900; letter-spacing: 1px; color: #e8c879; text-transform: uppercase; }
 .bp-countdown { font-size: 12px; font-weight: 700; color: #cbb98f; }
+
+
+/* Purple ticket currency + ticket shop */
+.bp-type-ticket .bp-reward { color: #c79bff; }
+.ticket-balance { font-size: 18px; font-weight: 800; color: #c79bff; margin-bottom: 6px; }
+.ticket-note { font-size: 12px; color: #b8a878; margin-bottom: 12px; }
+.ticket-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+.ticket-item { background: rgba(123,63,242,0.12); border: 1px solid rgba(160,100,255,0.4); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+.ticket-item-name { font-weight: 800; color: #d9c7ff; font-size: 14px; }
+.ticket-item-desc { font-size: 11px; color: #b8a878; flex: 1; }
+.ticket-item-cost { font-weight: 800; color: #c79bff; }
+.ticket-buy { padding: 6px; font-size: 13px; }
+.ticket-owned { font-size: 12px; font-weight: 700; color: #79d39b; text-align: center; padding: 6px; }
