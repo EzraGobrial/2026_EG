@@ -861,7 +861,7 @@ export class UI {
     }
     const premBtn = premium
       ? '<div class="bp-premium-status">\u2605 Premium Active</div>'
-      : '<div class="bp-share-wrap"><span class="bp-share-text">Share with 5 friends to unlock Premium &mdash; ' + (eco.referralCount || 0) + '/5 joined</span><button id="bp-go-premium" class="bp-premium-btn">Share My Link</button></div>';
+      : '<div class="bp-share-wrap"><span class="bp-share-text">Share with 5 friends to unlock Premium &mdash; ' + (eco.referralCount || 0) + '/5 joined</span><span class="bp-share-warn">Invite real friends only. Fake or one-time accounts are detected and your Premium (and its rewards) will be removed.</span><button id="bp-go-premium" class="bp-premium-btn">Share My Link</button></div>';
     host.innerHTML =
       '<div class="bp-header">' +
         '<div class="bp-titlewrap"><span class="bp-title">Battle Pass</span><span class="bp-tier-badge">Tier ' + tier + '</span></div>' +
