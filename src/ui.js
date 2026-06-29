@@ -99,6 +99,7 @@ export class UI {
 
     bind('btn-start', () => { this.audio.playUIClick(); if (this.onStartGame) this.onStartGame(); });
     bind('btn-hunt', () => { this.audio.playUIClick(); if (this.onStartHunt) this.onStartHunt(); });
+    bind('btn-coop', () => { this.audio.playUIClick(); this._openCoopInvite(); });
     bind('btn-to-shop', () => { this.audio.playUIClick(); if (this.onGoToShop) this.onGoToShop(); });
     bind('btn-to-locker', () => { this.audio.playUIClick(); if (this.onGoToLocker) this.onGoToLocker(); });
     bind('btn-skip-shop', () => { this.audio.playUIClick(); if (this.onSkipToSleep) this.onSkipToSleep(); });
@@ -409,6 +410,7 @@ export class UI {
       // Defer adding the animation class so the browser has a frame to register the unhide
       requestAnimationFrame(() => el.classList.add('screen-fade-in'));
     }
+    if (name === 'title' || name === 'morning') { this._startCoopRequestPolling(); } else { this._stopCoopRequestPolling(); }
   }
 
   // ─── Toast Notifications ─────────────────────
@@ -1466,6 +1468,119 @@ export class UI {
       }
     }
     container.appendChild(grid);
+  }
+
+  _coopOverlay(innerHTML) {
+    const back = document.createElement('div');
+    back.style.cssText = 'position:fixed;inset:0;background:rgba(20,12,2,.74);display:flex;align-items:center;justify-content:center;z-index:10001;';
+    const box = document.createElement('div');
+    box.style.cssText = 'max-width:460px;width:90%;background:linear-gradient(180deg,#2a2008,#1a1406);border:2px solid #8a6d2a;border-radius:16px;padding:24px;box-shadow:0 18px 60px rgba(0,0,0,.6);font-family:system-ui,sans-serif;color:#e8dcc0;';
+    box.innerHTML = innerHTML;
+    back.appendChild(box);
+    document.body.appendChild(box.parentNode ? box.parentNode : back);
+    return { back: back, box: box, close: () => { if (back.parentNode) back.parentNode.removeChild(back); } };
+  }
+
+  _openCoopInvite() {
+    const eco = this.economy;
+    const o = this._coopOverlay(
+      '<div style="font:900 22px system-ui;color:#ffd766;">Hunt with a Friend</div>' +
+      '<div style="font:500 13px system-ui;color:#cbb98f;margin:8px 0 14px;">You each play your own hunt. When you both finish, you EACH get the full combined cash. More XP than solo \u2014 top killer earns MVP.</div>' +
+      '<input id="coop-name" placeholder="Friend username" style="width:100%;box-sizing:border-box;padding:11px;border-radius:9px;border:1px solid #6b5630;background:#16110a;color:#fff;font:600 15px system-ui;">' +
+      '<div id="coop-msg" style="min-height:18px;font:600 13px system-ui;color:#ffe9b0;margin:8px 0;"></div>' +
+      '<button id="coop-send" style="width:100%;padding:11px;border:none;border-radius:10px;background:linear-gradient(180deg,#5bbf5b,#2e9d3a);color:#fff;font:900 15px system-ui;cursor:pointer;">Send Hunt Request</button>' +
+      '<button id="coop-cancel" style="width:100%;margin-top:8px;padding:9px;border:none;border-radius:10px;background:#3a2c10;color:#cbb98f;font:700 13px system-ui;cursor:pointer;">Cancel</button>'
+    );
+    const msg = o.box.querySelector('#coop-msg');
+    const input = o.box.querySelector('#coop-name');
+    let waiting = false;
+    const cleanup = () => { if (this._coopInviteTimer) { clearTimeout(this._coopInviteTimer); this._coopInviteTimer = null; } };
+    const closeAll = () => { cleanup(); if (waiting) { try { eco.cancelCoop(); } catch (e) {} } o.close(); };
+    o.box.querySelector('#coop-cancel').addEventListener('click', closeAll);
+    o.box.querySelector('#coop-send').addEventListener('click', async () => {
+      const name = (input.value || '').trim();
+      if (!name) { msg.textContent = 'Enter a username.'; return; }
+      msg.style.color = '#ffe9b0'; msg.textContent = 'Sending request...';
+      const res = await eco.sendHuntRequest(name);
+      if (res.error) { msg.style.color = '#ff8a8a'; msg.textContent = res.error; return; }
+      waiting = true;
+      o.box.querySelector('#coop-send').style.display = 'none';
+      input.style.display = 'none';
+      msg.style.color = '#9fe0a0';
+      msg.textContent = 'Request sent to ' + res.toName + '. Waiting for them to accept...';
+      const poll = async () => {
+        const st = await eco.coopSessionStatus();
+        if (st && st.status === 'active') { o.close(); cleanup(); if (this.onStartHunt) this.onStartHunt(); return; }
+        if (st && (st.status === 'declined' || st.status === 'cancelled')) { msg.style.color = '#ff8a8a'; msg.textContent = res.toName + ' is not available right now.'; waiting = false; return; }
+        this._coopInviteTimer = setTimeout(poll, 2000);
+      };
+      this._coopInviteTimer = setTimeout(poll, 2000);
+    });
+  }
+
+  _startCoopRequestPolling() {
+    if (this._coopReqTimer) return;
+    const tick = async () => {
+      try {
+        if (this.economy && this.economy.uid && !this._coopReqOpen && !this.economy.coopSessionId) {
+          const reqs = await this.economy.getIncomingHuntRequests();
+          if (reqs && reqs.length) this._showIncomingCoopRequest(reqs[0]);
+        }
+      } catch (e) {}
+      this._coopReqTimer = setTimeout(tick, 4000);
+    };
+    this._coopReqTimer = setTimeout(tick, 600);
+  }
+
+  _stopCoopRequestPolling() { if (this._coopReqTimer) { clearTimeout(this._coopReqTimer); this._coopReqTimer = null; } }
+
+  _showIncomingCoopRequest(rq) {
+    this._coopReqOpen = true;
+    const o = this._coopOverlay(
+      '<div style="font:900 22px system-ui;color:#ffd766;">Co-op Hunt Invite</div>' +
+      '<div style="font:600 15px system-ui;color:#fff;margin:10px 0 6px;"><b style="color:#ffd766;">' + (rq.fromName || 'A friend') + '</b> wants to hunt with you!</div>' +
+      '<div style="font:500 13px system-ui;color:#cbb98f;margin-bottom:16px;">You each play your own hunt and EACH get the full combined cash. More XP than solo, plus MVP for whoever kills more.</div>' +
+      '<button id="coop-accept" style="width:100%;padding:11px;border:none;border-radius:10px;background:linear-gradient(180deg,#5bbf5b,#2e9d3a);color:#fff;font:900 15px system-ui;cursor:pointer;">Accept and Hunt</button>' +
+      '<button id="coop-decline" style="width:100%;margin-top:8px;padding:9px;border:none;border-radius:10px;background:#3a2c10;color:#cbb98f;font:700 13px system-ui;cursor:pointer;">Decline</button>'
+    );
+    const done = () => { this._coopReqOpen = false; o.close(); };
+    o.box.querySelector('#coop-accept').addEventListener('click', async () => {
+      const res = await this.economy.acceptHuntRequest(rq.id);
+      if (res.error) { this.toast(res.error, 'error'); done(); return; }
+      this._stopCoopRequestPolling();
+      done();
+      if (this.onStartHunt) this.onStartHunt();
+    });
+    o.box.querySelector('#coop-decline').addEventListener('click', async () => { try { await this.economy.declineHuntRequest(rq.id); } catch (e) {} done(); });
+  }
+
+  showCoopWaiting(partnerName, onCancel) {
+    if (this._coopWaitClose) { this._coopWaitClose(); this._coopWaitClose = null; }
+    const o = this._coopOverlay(
+      '<div style="font:900 21px system-ui;color:#ffd766;">Hunt Submitted!</div>' +
+      '<div style="font:600 14px system-ui;color:#cbb98f;margin:10px 0 16px;">Waiting for <b style="color:#fff;">' + (partnerName || 'your friend') + '</b> to finish their hunt. You will both get the combined cash.</div>' +
+      '<button id="coop-skip" style="width:100%;padding:10px;border:none;border-radius:10px;background:#3a2c10;color:#cbb98f;font:700 13px system-ui;cursor:pointer;">Keep my earnings and skip</button>'
+    );
+    this._coopWaitClose = o.close;
+    o.box.querySelector('#coop-skip').addEventListener('click', () => { if (onCancel) onCancel(); o.close(); this._coopWaitClose = null; });
+  }
+
+  showCoopResults(r) {
+    if (this._coopWaitClose) { this._coopWaitClose(); this._coopWaitClose = null; }
+    const mvpLine = r.tie ? 'Tie game \u2014 you both earned the MVP bonus!' : (r.iAmMvp ? 'You are the MVP!' : (r.mvpName || 'Your friend') + ' was MVP.');
+    const o = this._coopOverlay(
+      '<div style="font:900 23px system-ui;color:#ffd766;text-shadow:0 0 10px rgba(255,200,80,.4);">Co-op Complete!</div>' +
+      '<div style="font:600 14px system-ui;color:#cbb98f;margin:10px 0 14px;">You and <b style="color:#fff;">' + (r.partnerName || 'your friend') + '</b> hunted together.</div>' +
+      '<div style="display:flex;gap:10px;margin-bottom:12px;">' +
+        '<div style="flex:1;background:#16110a;border:1px solid #6b5630;border-radius:10px;padding:10px;text-align:center;"><div style="font:700 11px system-ui;color:#cbb98f;">YOU EARNED</div><div style="font:900 16px system-ui;color:#9fe0a0;">$' + (r.myMoney || 0).toLocaleString() + '</div></div>' +
+        '<div style="flex:1;background:#16110a;border:1px solid #6b5630;border-radius:10px;padding:10px;text-align:center;"><div style="font:700 11px system-ui;color:#cbb98f;">FRIEND EARNED</div><div style="font:900 16px system-ui;color:#9fe0a0;">$' + (r.partnerMoney || 0).toLocaleString() + '</div></div>' +
+      '</div>' +
+      '<div style="background:linear-gradient(180deg,#5a4416,#3a2c0e);border:2px solid #ffd766;border-radius:12px;padding:14px;text-align:center;margin-bottom:12px;"><div style="font:700 12px system-ui;color:#ffe9b0;">YOU BOTH RECEIVED</div><div style="font:900 28px system-ui;color:#ffd766;">$' + (r.total || 0).toLocaleString() + '</div></div>' +
+      '<div style="font:800 14px system-ui;color:#ffd766;text-align:center;">' + mvpLine + '</div>' +
+      (r.bonusXP ? '<div style="font:600 13px system-ui;color:#9fe0a0;text-align:center;margin-top:4px;">+' + r.bonusXP + ' bonus XP</div>' : '') +
+      '<button id="coop-done" style="width:100%;margin-top:16px;padding:11px;border:none;border-radius:10px;background:linear-gradient(180deg,#5bbf5b,#2e9d3a);color:#fff;font:900 15px system-ui;cursor:pointer;">Nice!</button>'
+    );
+    o.box.querySelector('#coop-done').addEventListener('click', o.close);
   }
 
   showDailyReward(info) {
