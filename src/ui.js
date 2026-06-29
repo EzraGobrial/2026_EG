@@ -861,7 +861,7 @@ export class UI {
     }
     const premBtn = premium
       ? '<div class="bp-premium-status">\u2605 Premium Active</div>'
-      : '<button id="bp-go-premium" class="bp-premium-btn">Unlock Premium</button>';
+      : '<div class="bp-share-wrap"><span class="bp-share-text">Share with 5 friends to unlock Premium &mdash; ' + (eco.referralCount || 0) + '/5 joined</span><button id="bp-go-premium" class="bp-premium-btn">Share My Link</button></div>';
     host.innerHTML =
       '<div class="bp-header">' +
         '<div class="bp-titlewrap"><span class="bp-title">Battle Pass</span><span class="bp-tier-badge">Tier ' + tier + '</span></div>' +
@@ -892,15 +892,17 @@ export class UI {
     }
   }
   async _goPremium() {
-    const code = window.prompt('Enter your Premium unlock code:');
-    if (code === null) return;
-    const res = await this.economy.redeemPremiumCode(code);
-    if (res && res.ok) {
-      if (this.audio && this.audio.playCashRegister) this.audio.playCashRegister();
-      alert('Premium unlocked! Enjoy your perks.');
-      this.renderBattlePass();
-    } else {
-      alert((res && res.error) || 'Invalid code.');
+    const link = this.economy.referralLink();
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "Gary's Life", text: 'Play Gary\'s Life with me and help me unlock Premium!', url: link });
+      } else {
+        await navigator.clipboard.writeText(link);
+        alert('Your invite link was copied! Share it with 5 friends:\n\n' + link);
+      }
+    } catch (e) {
+      try { await navigator.clipboard.writeText(link); alert('Your invite link was copied!\n\n' + link); }
+      catch (e2) { window.prompt('Copy your invite link:', link); }
     }
   }
 
@@ -973,6 +975,8 @@ export class UI {
     this._renderLeaderboard(displayName);
 
     this.showScreen('results');
+    this.economy.qualifyReferral();
+    this.economy.refreshReferrals().then(() => this.renderBattlePass());
     this.renderBattlePass();
 
     if (total > 0) {
