@@ -636,24 +636,28 @@ const REFERRALS_NEEDED = 5;
 function bpTierCost(n) { return n >= BP_MAX_TIER ? Infinity : 300 + (n - 1) * 55; }
 const BP_GUN_NAMES = { rail_gun: 'Rail Gun', slomo_gun: 'Slo-Mo Gun', laser_rifle: 'Laser Rifle', plasma_shotgun: 'Plasma Shotgun' };
 function buildBattlePassRewards() {
-  const guns = ['rail_gun', 'slomo_gun', 'laser_rifle', 'plasma_shotgun'];
-  const freeSkins = ['emerald', 'molten', 'obsidian', 'rose_gold'];
-  const SKIN_LABELS = { emerald: 'Emerald Skin', molten: 'Molten Skin', obsidian: 'Obsidian Skin', rose_gold: 'Rose Gold Skin', rainbowwave: 'Rainbow Wave (Animated)', chromaflow: 'Chromaflow (Animated)' };
+  const SKIN_LABELS = { emerald: 'Emerald Skin', molten: 'Molten Skin', obsidian: 'Obsidian Skin', rose_gold: 'Rose Gold Skin', gold: 'Gold Skin', arctic_camo: 'Arctic Camo Skin', shadow: 'Shadow Skin', neon: 'Neon Skin', galaxy: 'Galaxy Skin', prismatic: 'Prismatic Skin', diamond: 'Diamond Skin', champion_gold: 'Champion Gold Skin', rainbowwave: 'Rainbow Wave (Animated)', chromaflow: 'Chromaflow (Animated)' };
+  const POTION_LABELS = { double_money: 'Double Money', extra_time: 'Extra Time', bird_magnet: 'Bird Magnet', steady_hands: 'Steady Hands', lucky_charm: 'Lucky Charm', bird_swarm: 'Bird Swarm' };
+  const skin = (k) => ({ type: 'skin', skin: k, label: SKIN_LABELS[k] || 'Skin' });
+  const potion = (k, n) => ({ type: 'potion', potion: k, amount: n || 1, label: ((n || 1) > 1 ? (n + 'x ') : '') + (POTION_LABELS[k] || 'Potion') + ' Potion' });
+  const box = (n) => ({ type: 'box', box: n, label: 'Mystery Box ' + (n === 1 ? 'I' : (n === 2 ? 'II' : 'III')) });
+  const gun = (k) => ({ type: 'gun', weapon: k, label: (BP_GUN_NAMES[k] || 'Weapon') });
   const free = new Array(BP_MAX_TIER).fill(null);
   const prem = new Array(BP_MAX_TIER).fill(null);
-  for (let t = 1; t <= BP_MAX_TIER; t++) {
-    const i = t - 1;
-    if (t === 100) free[i] = { type: 'slot', amount: 1, label: '+1 Pet Slot' };
-    else if (t === 50) free[i] = { type: 'gun', weapon: 'rail_gun', label: 'Rail Gun' };
-    else if (t % 20 === 0) { const s = freeSkins[((t / 20) - 1) % freeSkins.length]; free[i] = { type: 'skin', skin: s, label: SKIN_LABELS[s] }; }
-    else if (t % 25 === 0) free[i] = { type: 'box', box: 1, label: 'Mystery Box I' };
-    if (t === 100) prem[i] = { type: 'slot', amount: 5, label: '+5 Pet Slots' };
-    else if (t === 45) prem[i] = { type: 'skin', skin: 'rainbowwave', label: SKIN_LABELS.rainbowwave };
-    else if (t === 90) prem[i] = { type: 'skin', skin: 'chromaflow', label: SKIN_LABELS.chromaflow };
-    else if (t % 25 === 0) { const g = guns[((t / 25) - 1) % guns.length]; prem[i] = { type: 'gun', weapon: g, label: BP_GUN_NAMES[g] }; }
-    else if (t % 10 === 0) prem[i] = { type: 'box', box: 3, label: 'Mystery Box III' };
-    else if (t % 5 === 0) prem[i] = { type: 'box', box: 2, label: 'Mystery Box II' };
-  }
+  const F = {}; const P = {};
+  F[100] = { type: 'slot', amount: 1, label: '+1 Pet Slot' };
+  F[50] = gun('rail_gun');
+  F[20] = skin('emerald'); F[40] = skin('molten'); F[60] = skin('rose_gold'); F[80] = skin('obsidian'); F[10] = skin('gold'); F[70] = skin('arctic_camo');
+  F[25] = box(1); F[75] = box(1);
+  F[8] = potion('extra_time', 1); F[28] = potion('steady_hands', 1); F[48] = potion('bird_magnet', 1); F[68] = potion('extra_time', 1); F[88] = potion('steady_hands', 1);
+  P[100] = { type: 'slot', amount: 5, label: '+5 Pet Slots' };
+  P[45] = skin('rainbowwave'); P[90] = skin('chromaflow');
+  P[5] = skin('shadow'); P[15] = skin('galaxy'); P[35] = skin('prismatic'); P[55] = skin('neon'); P[65] = skin('diamond'); P[85] = skin('champion_gold');
+  P[25] = gun('slomo_gun'); P[50] = gun('laser_rifle'); P[75] = gun('plasma_shotgun');
+  P[8] = potion('double_money', 2); P[18] = potion('lucky_charm', 2); P[28] = potion('bird_swarm', 2); P[38] = potion('double_money', 2); P[58] = potion('lucky_charm', 2); P[68] = potion('bird_swarm', 2); P[78] = potion('double_money', 2); P[95] = potion('lucky_charm', 3);
+  [20, 30, 40, 60, 70, 80].forEach((t) => { if (!P[t]) P[t] = box(3); });
+  [12, 32, 52, 72, 92].forEach((t) => { if (!P[t]) P[t] = box(2); });
+  for (let t = 1; t <= BP_MAX_TIER; t++) { if (F[t]) free[t - 1] = F[t]; if (P[t]) prem[t - 1] = P[t]; }
   function fillTickets(arr, count) {
     const idx = [];
     for (let i = 0; i < arr.length; i++) if (arr[i] === null) idx.push(i);
@@ -1524,6 +1528,7 @@ export class Economy {
       else if (g.type === 'ticket') { this.tickets = Math.max(0, (this.tickets || 0) - (g.amount || 0)); }
       else if (g.type === 'slot') { this.bonusPetSlots = Math.max(0, (this.bonusPetSlots || 0) - (g.amount || 0)); }
       else if (g.type === 'gun') { if (g.weapon && this.weapons[g.weapon]) this.weapons[g.weapon].owned = false; }
+      else if (g.type === 'potion' && g.potion) { if (this.ownedConsumables && this.ownedConsumables[g.potion]) { this.ownedConsumables[g.potion] = Math.max(0, this.ownedConsumables[g.potion] - (g.amount || 0)); if (this.ownedConsumables[g.potion] <= 0) delete this.ownedConsumables[g.potion]; } }
       else if (g.type === 'skin') {
         this.ownedSkins = (this.ownedSkins || []).filter(s => s !== g.skin);
         for (const k in (this.equippedSkins || {})) { if (this.equippedSkins[k] === g.skin) this.equippedSkins[k] = 'default'; }
@@ -1670,6 +1675,7 @@ export class Economy {
     else if (r.type === 'gun') { if (this.weapons[r.weapon]) this.weapons[r.weapon].owned = true; led.weapon = r.weapon; msg = (r.label || 'Weapon') + ' unlocked!'; }
     else if (r.type === 'slot') { this.bonusPetSlots = (this.bonusPetSlots || 0) + r.amount; led.amount = r.amount; msg = '+' + r.amount + ' pet slot' + (r.amount > 1 ? 's' : '') + '!'; }
     else if (r.type === 'skin') { this.ownedSkins = this.ownedSkins || ['default']; if (!this.ownedSkins.includes(r.skin)) this.ownedSkins.push(r.skin); led.skin = r.skin; msg = (r.label || 'Skin') + ' unlocked!'; }
+    else if (r.type === 'potion') { const n = r.amount || 1; this.ownedConsumables = this.ownedConsumables || {}; this.ownedConsumables[r.potion] = (this.ownedConsumables[r.potion] || 0) + n; led.potion = r.potion; led.amount = n; msg = '+' + n + ' ' + (r.label || 'Potion') + '!'; }
     const list = track === 'premium' ? (this.bpClaimedPremium = this.bpClaimedPremium || []) : (this.bpClaimedFree = this.bpClaimedFree || []);
     list.push(tier);
     if (track === 'premium') { this.bpPremiumLedger = this.bpPremiumLedger || []; this.bpPremiumLedger.push(led); }
