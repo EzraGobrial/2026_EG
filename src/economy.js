@@ -647,14 +647,15 @@ function buildBattlePassRewards() {
     else if (t % 20 === 0) { const s = freeSkins[((t / 20) - 1) % freeSkins.length]; free.push({ type: 'skin', skin: s, label: SKIN_LABELS[s] }); }
     else if (t % 25 === 0) free.push({ type: 'box', box: 1, label: 'Mystery Box I' });
     else if (t % 10 === 0) free.push({ type: 'ticket', amount: 1, label: '1 Ticket' });
-    else free.push({ type: 'ticket', amount: 1, label: '1 Ticket' });
+    else if (t % 2 === 0) free.push({ type: 'ticket', amount: 1, label: '1 Ticket' });
+    else free.push({ type: 'empty', label: '\u2014' });
     if (t === 100) prem.push({ type: 'slot', amount: 5, label: '+5 Pet Slots' });
     else if (t === 45) prem.push({ type: 'skin', skin: 'rainbowwave', label: SKIN_LABELS.rainbowwave });
     else if (t === 90) prem.push({ type: 'skin', skin: 'chromaflow', label: SKIN_LABELS.chromaflow });
     else if (t % 25 === 0) { const g = guns[((t / 25) - 1) % guns.length]; prem.push({ type: 'gun', weapon: g, label: BP_GUN_NAMES[g] }); }
     else if (t % 10 === 0) prem.push({ type: 'box', box: 3, label: 'Mystery Box III' });
     else if (t % 5 === 0) prem.push({ type: 'box', box: 2, label: 'Mystery Box II' });
-    else prem.push({ type: 'ticket', amount: 2, label: '2 Tickets' });
+    else prem.push({ type: 'ticket', amount: 1, label: '1 Ticket' });
   }
   return { free: free, premium: prem };
 }
@@ -1610,6 +1611,7 @@ export class Economy {
   }
   bpCanClaim(tier, track) {
     if (tier < 1 || tier > BP_MAX_TIER) return false;
+    const _r = this.bpRewardAt(tier, track); if (!_r || _r.type === 'empty') return false;
     if (this.bpTier() < tier) return false;
     if (track === 'premium' && !this.premiumPass) return false;
     return !this.bpIsClaimed(tier, track);
