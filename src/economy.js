@@ -959,6 +959,16 @@ function generateDimension(id) {
 const GRANDPA_WEAPONS = ['old_rifle', 'grandpas_shotgun', 'grandpas_rifle'];
 
 // Maximum weapon upgrade level (stars shown in the shop)
+export const DAILY_REWARDS = [
+  { money: 250, label: '$250' },
+  { money: 400, label: '$400' },
+  { money: 700, label: '$700' },
+  { ticket: 1, label: '1 Ticket' },
+  { money: 1200, label: '$1.2k' },
+  { money: 2000, label: '$2k' },
+  { ticket: 3, label: '3 Tickets' }
+];
+
 export const MAX_WEAPON_LEVEL = 5;
 
 export class Economy {
@@ -1014,6 +1024,8 @@ export class Economy {
     this.tickets = 0;
     this.firstMonthLogins = 0;
     this.lastLoginDay = null;
+    this.lastDailyDay = null;
+    this.dailyStreak = 0;
     this.bpPremiumLedger = [];
     this.bonusPetSlots = 0;
   }
@@ -1074,6 +1086,8 @@ export class Economy {
       createdAt: this.createdAt || 0,
       firstMonthLogins: this.firstMonthLogins || 0,
       lastLoginDay: this.lastLoginDay || null,
+      lastDailyDay: this.lastDailyDay || null,
+      dailyStreak: this.dailyStreak || 0,
       bpPremiumLedger: this.bpPremiumLedger || [],
       weaponOwned: {},
       locationUnlocked: {}
@@ -1153,6 +1167,8 @@ export class Economy {
       if (data.createdAt !== undefined) this.createdAt = data.createdAt;
       if (data.firstMonthLogins !== undefined) this.firstMonthLogins = data.firstMonthLogins;
       if (data.lastLoginDay !== undefined) this.lastLoginDay = data.lastLoginDay;
+    if (data.lastDailyDay !== undefined) this.lastDailyDay = data.lastDailyDay;
+    if (data.dailyStreak !== undefined) this.dailyStreak = data.dailyStreak;
       if (data.bpPremiumLedger) this.bpPremiumLedger = data.bpPremiumLedger;
 
       // Ensure procedurally-generated dimensions exist first
@@ -1482,6 +1498,22 @@ export class Economy {
     }
     this.save();
   }
+  claimDailyReward() {
+    const today = new Date().toISOString().slice(0, 10);
+    if (this.lastDailyDay === today) return { claimed: false };
+    const yest = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    if (this.lastDailyDay === yest) this.dailyStreak = (this.dailyStreak || 0) + 1;
+    else this.dailyStreak = 1;
+    this.lastDailyDay = today;
+    const idx = ((this.dailyStreak - 1) % 7);
+    const r = DAILY_REWARDS[idx] || DAILY_REWARDS[0];
+    let money = 0, tickets = 0;
+    if (r.money) { this.money += r.money; money = r.money; }
+    if (r.ticket) { this.tickets = (this.tickets || 0) + r.ticket; tickets = r.ticket; }
+    this.save();
+    return { claimed: true, day: this.dailyStreak, dayInCycle: idx + 1, money, tickets };
+  }
+
   revokePremium() {
     this.premiumPass = false;
     const led = this.bpPremiumLedger || [];
