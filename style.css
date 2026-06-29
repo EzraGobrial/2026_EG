@@ -3121,3 +3121,5 @@ body {
 /* Battle Pass share-to-unlock */
 .bp-share-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .bp-share-text { font-size: 11px; color: #c79bff; font-weight: 700; text-align: right; max-width: 220px; }
+
+.bp-share-warn { font-size: 10px; color: #ff8c8c; font-weight: 600; text-align: right; max-width: 240px; line-height: 1.25; }
