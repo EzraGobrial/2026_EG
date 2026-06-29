@@ -3165,3 +3165,9 @@ body {
 .bp-rowlabel { font-size: 16px !important; font-weight: 900 !important; letter-spacing: 2px !important; text-transform: uppercase; }
 .bp-rowlabel-prem { color: #ffd766 !important; text-shadow: 0 0 8px rgba(240,197,86,0.55); }
 .bp-rowlabel-free { color: #cbb98f !important; }
+
+
+/* Battle Pass season banner */
+.bp-seasonbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid rgba(212,168,83,0.25); }
+.bp-season { font-size: 15px; font-weight: 900; letter-spacing: 1px; color: #e8c879; text-transform: uppercase; }
+.bp-countdown { font-size: 12px; font-weight: 700; color: #cbb98f; }
