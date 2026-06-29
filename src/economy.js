@@ -636,27 +636,36 @@ const REFERRALS_NEEDED = 5;
 function bpTierCost(n) { return n >= BP_MAX_TIER ? Infinity : 300 + (n - 1) * 55; }
 const BP_GUN_NAMES = { rail_gun: 'Rail Gun', slomo_gun: 'Slo-Mo Gun', laser_rifle: 'Laser Rifle', plasma_shotgun: 'Plasma Shotgun' };
 function buildBattlePassRewards() {
-  const free = [], prem = [];
   const guns = ['rail_gun', 'slomo_gun', 'laser_rifle', 'plasma_shotgun'];
   const freeSkins = ['emerald', 'molten', 'obsidian', 'rose_gold'];
-  const premSkins = ['rainbowwave', 'chromaflow'];
   const SKIN_LABELS = { emerald: 'Emerald Skin', molten: 'Molten Skin', obsidian: 'Obsidian Skin', rose_gold: 'Rose Gold Skin', rainbowwave: 'Rainbow Wave (Animated)', chromaflow: 'Chromaflow (Animated)' };
+  const free = new Array(BP_MAX_TIER).fill(null);
+  const prem = new Array(BP_MAX_TIER).fill(null);
   for (let t = 1; t <= BP_MAX_TIER; t++) {
-    if (t === 100) free.push({ type: 'slot', amount: 1, label: '+1 Pet Slot' });
-    else if (t === 50) free.push({ type: 'gun', weapon: 'rail_gun', label: 'Rail Gun' });
-    else if (t % 20 === 0) { const s = freeSkins[((t / 20) - 1) % freeSkins.length]; free.push({ type: 'skin', skin: s, label: SKIN_LABELS[s] }); }
-    else if (t % 25 === 0) free.push({ type: 'box', box: 1, label: 'Mystery Box I' });
-    else if (t % 10 === 0) free.push({ type: 'ticket', amount: 1, label: '1 Ticket' });
-    else if (t % 2 === 0) free.push({ type: 'ticket', amount: 1, label: '1 Ticket' });
-    else free.push({ type: 'empty', label: '\u2014' });
-    if (t === 100) prem.push({ type: 'slot', amount: 5, label: '+5 Pet Slots' });
-    else if (t === 45) prem.push({ type: 'skin', skin: 'rainbowwave', label: SKIN_LABELS.rainbowwave });
-    else if (t === 90) prem.push({ type: 'skin', skin: 'chromaflow', label: SKIN_LABELS.chromaflow });
-    else if (t % 25 === 0) { const g = guns[((t / 25) - 1) % guns.length]; prem.push({ type: 'gun', weapon: g, label: BP_GUN_NAMES[g] }); }
-    else if (t % 10 === 0) prem.push({ type: 'box', box: 3, label: 'Mystery Box III' });
-    else if (t % 5 === 0) prem.push({ type: 'box', box: 2, label: 'Mystery Box II' });
-    else prem.push({ type: 'ticket', amount: 1, label: '1 Ticket' });
+    const i = t - 1;
+    if (t === 100) free[i] = { type: 'slot', amount: 1, label: '+1 Pet Slot' };
+    else if (t === 50) free[i] = { type: 'gun', weapon: 'rail_gun', label: 'Rail Gun' };
+    else if (t % 20 === 0) { const s = freeSkins[((t / 20) - 1) % freeSkins.length]; free[i] = { type: 'skin', skin: s, label: SKIN_LABELS[s] }; }
+    else if (t % 25 === 0) free[i] = { type: 'box', box: 1, label: 'Mystery Box I' };
+    if (t === 100) prem[i] = { type: 'slot', amount: 5, label: '+5 Pet Slots' };
+    else if (t === 45) prem[i] = { type: 'skin', skin: 'rainbowwave', label: SKIN_LABELS.rainbowwave };
+    else if (t === 90) prem[i] = { type: 'skin', skin: 'chromaflow', label: SKIN_LABELS.chromaflow };
+    else if (t % 25 === 0) { const g = guns[((t / 25) - 1) % guns.length]; prem[i] = { type: 'gun', weapon: g, label: BP_GUN_NAMES[g] }; }
+    else if (t % 10 === 0) prem[i] = { type: 'box', box: 3, label: 'Mystery Box III' };
+    else if (t % 5 === 0) prem[i] = { type: 'box', box: 2, label: 'Mystery Box II' };
   }
+  function fillTickets(arr, count) {
+    const idx = [];
+    for (let i = 0; i < arr.length; i++) if (arr[i] === null) idx.push(i);
+    const set = new Set();
+    if (count > 0 && idx.length > 0) {
+      const step = idx.length / count;
+      for (let k = 0; k < count; k++) set.add(idx[Math.min(idx.length - 1, Math.floor(k * step))]);
+    }
+    for (const i of idx) arr[i] = set.has(i) ? { type: 'ticket', amount: 1, label: '1 Ticket' } : { type: 'empty', label: '\u2014' };
+  }
+  fillTickets(free, 33);
+  fillTickets(prem, 50);
   return { free: free, premium: prem };
 }
 export const BATTLE_PASS = buildBattlePassRewards();
