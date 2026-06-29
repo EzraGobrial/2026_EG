@@ -882,6 +882,21 @@ class Game {
     if (ch) { ch.classList.add('hidden'); ch.style.display = ''; }
   }
 
+  async _coopAfterHunt(huntXP) {
+    try { await this.economy.coopSubmit(this.huntStats.moneyEarned, this.huntStats.totalKills, huntXP); } catch (e) {}
+    this._coopPollStop = false;
+    this.ui.showCoopWaiting('your friend', () => { this._coopPollStop = true; if (this._coopTimer) { clearTimeout(this._coopTimer); this._coopTimer = null; } try { this.economy.cancelCoop(); } catch (e) {} });
+    const poll = async () => {
+      if (this._coopPollStop) return;
+      let r = null;
+      try { r = await this.economy.coopCheckSettle(); } catch (e) {}
+      if (r && r.settled && !r.already) { this.ui.showCoopResults(r); return; }
+      if (r && r.gone) { return; }
+      this._coopTimer = setTimeout(poll, 2500);
+    };
+    this._coopTimer = setTimeout(poll, 1500);
+  }
+
   _endHunt() {
     let rankUpResult = null;
     try {
@@ -926,6 +941,9 @@ class Game {
         console.error('[endHunt] showResults error:', err);
         // Fallback: force results screen visible so player is never stuck
         this.ui.showScreen('results');
+      }
+      if (this.economy.coopSessionId) {
+        try { this._coopAfterHunt(huntXP); } catch (e) {}
       }
     } catch (fatalErr) {
       console.error('[endHunt] FATAL ERROR:', fatalErr);
