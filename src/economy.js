@@ -1026,6 +1026,8 @@ export class Economy {
     this.lastLoginDay = null;
     this.lastDailyDay = null;
     this.dailyStreak = 0;
+    this.coopSessionId = null;
+    this.coopRole = null;
     this.bpPremiumLedger = [];
     this.bonusPetSlots = 0;
   }
@@ -1829,6 +1831,105 @@ export class Economy {
       this.save();
       return true;
     } catch (e) { return false; }
+  }
+
+  async sendHuntRequest(toName) {
+    if (!this.uid) return { error: 'You are not signed in.' };
+    const target = await this.findPlayerByName(toName);
+    if (!target) return { error: 'No player found with that name.' };
+    if (target.uid === this.uid) return { error: 'You cannot hunt with yourself.' };
+    const myName = await this._myName();
+    const sessionId = 'coop_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+    try {
+      await setDoc(doc(db, 'coopSessions', sessionId), { id: sessionId, hostUid: this.uid, hostName: myName, guestUid: target.uid, guestName: target.name, status: 'waiting', contributions: {}, createdAt: Date.now() });
+      const reqId = 'req_' + this.uid + '_' + target.uid;
+      await setDoc(doc(db, 'coopRequests', reqId), { id: reqId, fromUid: this.uid, fromName: myName, toUid: target.uid, toName: target.name, sessionId: sessionId, status: 'pending', createdAt: Date.now() });
+      this.coopSessionId = sessionId; this.coopRole = 'host';
+      return { sessionId: sessionId, toName: target.name };
+    } catch (e) { return { error: 'Could not send request (network or permissions).' }; }
+  }
+
+  async getIncomingHuntRequests() {
+    if (!this.uid) return [];
+    try {
+      const snap = await getDocs(collection(db, 'coopRequests'));
+      const out = []; const now = Date.now();
+      snap.forEach(d => { const rq = d.data();
+        if (rq.toUid === this.uid && rq.status === 'pending') {
+          if (now - (rq.createdAt || 0) > 120000) { try { deleteDoc(doc(db, 'coopRequests', rq.id)); } catch (e) {} }
+          else out.push(rq);
+        } });
+      return out;
+    } catch (e) { return []; }
+  }
+
+  async acceptHuntRequest(reqId) {
+    try {
+      const s = await getDoc(doc(db, 'coopRequests', reqId));
+      if (!s.exists()) return { error: 'That request is no longer available.' };
+      const rq = s.data();
+      await setDoc(doc(db, 'coopSessions', rq.sessionId), { status: 'active' }, { merge: true });
+      await deleteDoc(doc(db, 'coopRequests', reqId));
+      this.coopSessionId = rq.sessionId; this.coopRole = 'guest';
+      return { sessionId: rq.sessionId, fromName: rq.fromName };
+    } catch (e) { return { error: 'Could not accept (network).' }; }
+  }
+
+  async declineHuntRequest(reqId) {
+    try {
+      const s = await getDoc(doc(db, 'coopRequests', reqId));
+      if (s.exists()) { const rq = s.data(); await setDoc(doc(db, 'coopSessions', rq.sessionId), { status: 'declined' }, { merge: true }); }
+      await deleteDoc(doc(db, 'coopRequests', reqId));
+    } catch (e) {}
+  }
+
+  async coopSessionStatus() {
+    if (!this.coopSessionId) return null;
+    try { const s = await getDoc(doc(db, 'coopSessions', this.coopSessionId)); return s.exists() ? s.data() : null; } catch (e) { return null; }
+  }
+
+  cancelCoop() {
+    const id = this.coopSessionId; this.coopSessionId = null; this.coopRole = null;
+    if (id) { try { setDoc(doc(db, 'coopSessions', id), { status: 'cancelled' }, { merge: true }); } catch (e) {} }
+  }
+
+  async coopSubmit(money, kills, xp) {
+    if (!this.coopSessionId || !this.uid) return;
+    const myName = await this._myName();
+    try {
+      const obj = {}; obj[this.uid] = { uid: this.uid, name: myName, money: money || 0, kills: kills || 0, xp: xp || 0, done: true };
+      await setDoc(doc(db, 'coopSessions', this.coopSessionId), { contributions: obj }, { merge: true });
+    } catch (e) {}
+  }
+
+  async coopCheckSettle() {
+    if (!this.coopSessionId || !this.uid) return { settled: false };
+    let data;
+    try { const s = await getDoc(doc(db, 'coopSessions', this.coopSessionId)); if (!s.exists()) return { settled: false, gone: true }; data = s.data(); } catch (e) { return { settled: false }; }
+    const c = data.contributions || {};
+    const mine = c[this.uid];
+    if (!mine || !mine.done) return { settled: false };
+    const partnerUid = (this.uid === data.hostUid) ? data.guestUid : data.hostUid;
+    const partnerName = (this.uid === data.hostUid) ? data.guestName : data.hostName;
+    const partner = c[partnerUid];
+    if (!partner || !partner.done) return { settled: false, waitingFor: partnerName };
+    if (mine.settled) return { settled: true, already: true };
+    const bonusMoney = partner.money || 0;
+    const total = (mine.money || 0) + (partner.money || 0);
+    const myKills = mine.kills || 0, pKills = partner.kills || 0;
+    const tie = myKills === pKills;
+    const iAmMvp = myKills > pKills;
+    const coopBonusXP = Math.round((mine.xp || 0) * 0.5);
+    const mvpBonusXP = (iAmMvp || tie) ? Math.round((mine.xp || 0) * 0.5) : 0;
+    const totalBonusXP = coopBonusXP + mvpBonusXP;
+    this.money += bonusMoney;
+    let rankUp = null;
+    if (totalBonusXP > 0) rankUp = this.addXP(totalBonusXP);
+    try { const obj = {}; obj[this.uid] = Object.assign({}, mine, { settled: true }); await setDoc(doc(db, 'coopSessions', this.coopSessionId), { contributions: obj }, { merge: true }); } catch (e) {}
+    this.save();
+    const res = { settled: true, myMoney: mine.money || 0, partnerMoney: partner.money || 0, total: total, partnerName: partner.name || partnerName, myKills: myKills, partnerKills: pKills, mvpName: tie ? null : (iAmMvp ? (mine.name || 'You') : (partner.name || partnerName)), iAmMvp: iAmMvp, tie: tie, bonusXP: totalBonusXP, rankUp: rankUp };
+    this.coopSessionId = null; this.coopRole = null;
+    return res;
   }
 
   getEarnBonus() {
