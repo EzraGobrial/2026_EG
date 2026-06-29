@@ -300,6 +300,7 @@ class Game {
       this.economy.setUid(this.auth.getUid());
       this.economy.setDisplayName(this.auth.getDisplayName());
       await this.economy.load();
+      try { await this.economy.captureReferral(); await this.economy.refreshReferrals(); } catch (e) {}
       // Restore story state from cloud save
       if (this.economy.story) this.story.deserialize(this.economy.story);
 
