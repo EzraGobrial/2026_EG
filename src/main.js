@@ -1441,6 +1441,23 @@ class Game {
 
   // ─── Main Loop ─────────────────────────────
 
+  _animateGunSkin() {
+    const wk = this.economy.currentWeapon;
+    const sk = (this.economy.equippedSkins || {})[wk];
+    const skin = sk && WEAPON_SKINS[sk];
+    if (!skin || !skin.anim) return;
+    const gun = this.weapons && this.weapons.currentGun;
+    if (!gun) return;
+    const t = this.clock.getElapsedTime();
+    let i = 0;
+    gun.traverse(o => {
+      if (!o.isMesh || !o.material || !o.material.color) return;
+      if (skin.anim === 'rainbow') o.material.color.setHSL((t * 0.25) % 1, 0.85, 0.55);
+      else if (skin.anim === 'pattern') o.material.color.setHSL(((t * 0.4) + i * 0.13) % 1, 0.8, 0.5);
+      i++;
+    });
+  }
+
   _animate() {
     requestAnimationFrame(() => this._animate());
     const dt = Math.min(this.clock.getDelta(), 0.05); // cap dt
@@ -1593,6 +1610,7 @@ class Game {
 
     // Weapon update
     this.weapons.update(dt, this.player.isMoving());
+    this._animateGunSkin();
 
     // Reload indicator
     const reloadProgress = this.weapons.getReloadProgress();
