@@ -862,7 +862,10 @@ export class UI {
     const premBtn = premium
       ? '<div class="bp-premium-status">\u2605 Premium Active</div>'
       : '<div class="bp-share-wrap"><span class="bp-share-text">Share with 5 friends to unlock Premium &mdash; ' + (eco.referralCount || 0) + '/5 joined</span><span class="bp-share-warn">Invite real friends only. Fake or one-time accounts are detected and your Premium (and its rewards) will be removed.</span><button id="bp-go-premium" class="bp-premium-btn">Share My Link</button></div>';
+    const SEASON_END = new Date('2026-09-01T00:00:00').getTime();
+    const daysLeft = Math.max(0, Math.ceil((SEASON_END - Date.now()) / 86400000));
     host.innerHTML =
+      '<div class="bp-seasonbar"><span class="bp-season">Season 1 \u00b7 First Flight</span><span class="bp-countdown">Season ends in ' + daysLeft + ' days</span></div>' +
       '<div class="bp-header">' +
         '<div class="bp-titlewrap"><span class="bp-title">Battle Pass</span><span class="bp-tier-badge">Tier ' + tier + '</span></div>' +
         '<div class="bp-xpwrap"><div class="bp-xpbar"><div class="bp-xpfill" style="width:' + pct + '%"></div></div>' +
