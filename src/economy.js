@@ -554,7 +554,7 @@ export const CONSUMABLES = {
 };
 
 export const WEAPON_SKINS = {
-  prismatic:      { name: 'Prismatic',     cost: 0, colors: { stock: 0xff3366, metal: 0xff66aa }, anim: 'rainbow' },
+  rainbowwave:    { name: 'Rainbow Wave',  cost: 0, colors: { stock: 0xff3366, metal: 0xff66aa }, anim: 'rainbow' },
   chromaflow:     { name: 'Chromaflow',    cost: 0, colors: { stock: 0x33ddff, metal: 0x9966ff }, anim: 'pattern' },
   default:        { name: 'Default',        cost: 0,    colors: null },
   gold:           { name: 'Gold',           cost: 500,  colors: { stock: 0xbfa24d, metal: 0xd4a853 } },
@@ -639,8 +639,8 @@ function buildBattlePassRewards() {
   const free = [], prem = [];
   const guns = ['rail_gun', 'slomo_gun', 'laser_rifle', 'plasma_shotgun'];
   const freeSkins = ['emerald', 'molten', 'obsidian', 'rose_gold'];
-  const premSkins = ['prismatic', 'chromaflow'];
-  const SKIN_LABELS = { emerald: 'Emerald Skin', molten: 'Molten Skin', obsidian: 'Obsidian Skin', rose_gold: 'Rose Gold Skin', prismatic: 'Prismatic (Animated)', chromaflow: 'Chromaflow (Animated)' };
+  const premSkins = ['rainbowwave', 'chromaflow'];
+  const SKIN_LABELS = { emerald: 'Emerald Skin', molten: 'Molten Skin', obsidian: 'Obsidian Skin', rose_gold: 'Rose Gold Skin', rainbowwave: 'Rainbow Wave (Animated)', chromaflow: 'Chromaflow (Animated)' };
   for (let t = 1; t <= BP_MAX_TIER; t++) {
     if (t === 100) free.push({ type: 'slot', amount: 1, label: '+1 Pet Slot' });
     else if (t === 50) free.push({ type: 'gun', weapon: 'rail_gun', label: 'Rail Gun' });
@@ -649,7 +649,7 @@ function buildBattlePassRewards() {
     else if (t % 10 === 0) free.push({ type: 'money', amount: 2000 * t, label: 'Cash' });
     else free.push({ type: 'money', amount: 500 * t, label: 'Cash' });
     if (t === 100) prem.push({ type: 'slot', amount: 5, label: '+5 Pet Slots' });
-    else if (t === 45) prem.push({ type: 'skin', skin: 'prismatic', label: SKIN_LABELS.prismatic });
+    else if (t === 45) prem.push({ type: 'skin', skin: 'rainbowwave', label: SKIN_LABELS.rainbowwave });
     else if (t === 90) prem.push({ type: 'skin', skin: 'chromaflow', label: SKIN_LABELS.chromaflow });
     else if (t % 25 === 0) { const g = guns[((t / 25) - 1) % guns.length]; prem.push({ type: 'gun', weapon: g, label: BP_GUN_NAMES[g] }); }
     else if (t % 10 === 0) prem.push({ type: 'box', box: 3, label: 'Mystery Box III' });
