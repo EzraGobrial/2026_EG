@@ -554,6 +554,8 @@ export const CONSUMABLES = {
 };
 
 export const WEAPON_SKINS = {
+  prismatic:      { name: 'Prismatic',     cost: 0, colors: { stock: 0xff3366, metal: 0xff66aa }, anim: 'rainbow' },
+  chromaflow:     { name: 'Chromaflow',    cost: 0, colors: { stock: 0x33ddff, metal: 0x9966ff }, anim: 'pattern' },
   default:        { name: 'Default',        cost: 0,    colors: null },
   gold:           { name: 'Gold',           cost: 500,  colors: { stock: 0xbfa24d, metal: 0xd4a853 } },
   arctic_camo:    { name: 'Arctic',         cost: 400,  colors: { stock: 0xccddee, metal: 0xaabbcc } },
@@ -636,13 +638,19 @@ const BP_GUN_NAMES = { rail_gun: 'Rail Gun', slomo_gun: 'Slo-Mo Gun', laser_rifl
 function buildBattlePassRewards() {
   const free = [], prem = [];
   const guns = ['rail_gun', 'slomo_gun', 'laser_rifle', 'plasma_shotgun'];
+  const freeSkins = ['emerald', 'molten', 'obsidian', 'rose_gold'];
+  const premSkins = ['prismatic', 'chromaflow'];
+  const SKIN_LABELS = { emerald: 'Emerald Skin', molten: 'Molten Skin', obsidian: 'Obsidian Skin', rose_gold: 'Rose Gold Skin', prismatic: 'Prismatic (Animated)', chromaflow: 'Chromaflow (Animated)' };
   for (let t = 1; t <= BP_MAX_TIER; t++) {
     if (t === 100) free.push({ type: 'slot', amount: 1, label: '+1 Pet Slot' });
     else if (t === 50) free.push({ type: 'gun', weapon: 'rail_gun', label: 'Rail Gun' });
+    else if (t % 20 === 0) { const s = freeSkins[((t / 20) - 1) % freeSkins.length]; free.push({ type: 'skin', skin: s, label: SKIN_LABELS[s] }); }
     else if (t % 25 === 0) free.push({ type: 'box', box: 1, label: 'Mystery Box I' });
     else if (t % 10 === 0) free.push({ type: 'money', amount: 2000 * t, label: 'Cash' });
     else free.push({ type: 'money', amount: 500 * t, label: 'Cash' });
     if (t === 100) prem.push({ type: 'slot', amount: 5, label: '+5 Pet Slots' });
+    else if (t === 45) prem.push({ type: 'skin', skin: 'prismatic', label: SKIN_LABELS.prismatic });
+    else if (t === 90) prem.push({ type: 'skin', skin: 'chromaflow', label: SKIN_LABELS.chromaflow });
     else if (t % 25 === 0) { const g = guns[((t / 25) - 1) % guns.length]; prem.push({ type: 'gun', weapon: g, label: BP_GUN_NAMES[g] }); }
     else if (t % 10 === 0) prem.push({ type: 'box', box: 3, label: 'Mystery Box III' });
     else if (t % 5 === 0) prem.push({ type: 'box', box: 2, label: 'Mystery Box II' });
@@ -1459,6 +1467,10 @@ export class Economy {
       if (g.type === 'money') { this.money = Math.max(0, this.money - (g.amount || 0)); }
       else if (g.type === 'slot') { this.bonusPetSlots = Math.max(0, (this.bonusPetSlots || 0) - (g.amount || 0)); }
       else if (g.type === 'gun') { if (g.weapon && this.weapons[g.weapon]) this.weapons[g.weapon].owned = false; }
+      else if (g.type === 'skin') {
+        this.ownedSkins = (this.ownedSkins || []).filter(s => s !== g.skin);
+        for (const k in (this.equippedSkins || {})) { if (this.equippedSkins[k] === g.skin) this.equippedSkins[k] = 'default'; }
+      }
       else if (g.type === 'box' && g.petId) {
         this.petInventory = (this.petInventory || []).filter(p => p.id !== g.petId);
         this.equippedPets = (this.equippedPets || []).filter(id => id !== g.petId);
@@ -1582,6 +1594,7 @@ export class Economy {
     else if (r.type === 'box') { const pet = this.grantPetFromBox(this.dimension, r.box); if (pet) led.petId = pet.id; msg = pet ? ('Unboxed ' + pet.name + '!') : 'Mystery box opened.'; }
     else if (r.type === 'gun') { if (this.weapons[r.weapon]) this.weapons[r.weapon].owned = true; led.weapon = r.weapon; msg = (r.label || 'Weapon') + ' unlocked!'; }
     else if (r.type === 'slot') { this.bonusPetSlots = (this.bonusPetSlots || 0) + r.amount; led.amount = r.amount; msg = '+' + r.amount + ' pet slot' + (r.amount > 1 ? 's' : '') + '!'; }
+    else if (r.type === 'skin') { this.ownedSkins = this.ownedSkins || ['default']; if (!this.ownedSkins.includes(r.skin)) this.ownedSkins.push(r.skin); led.skin = r.skin; msg = (r.label || 'Skin') + ' unlocked!'; }
     const list = track === 'premium' ? (this.bpClaimedPremium = this.bpClaimedPremium || []) : (this.bpClaimedFree = this.bpClaimedFree || []);
     list.push(tier);
     if (track === 'premium') { this.bpPremiumLedger = this.bpPremiumLedger || []; this.bpPremiumLedger.push(led); }
