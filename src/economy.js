@@ -984,6 +984,10 @@ export class Economy {
     this.referredBy = null;
     this.referralQualified = false;
     this.referralCount = 0;
+    this.createdAt = 0;
+    this.firstMonthLogins = 0;
+    this.lastLoginDay = null;
+    this.bpPremiumLedger = [];
     this.bonusPetSlots = 0;
   }
 
@@ -1039,6 +1043,10 @@ export class Economy {
       premiumPass: this.premiumPass || false,
       referredBy: this.referredBy || null,
       referralQualified: this.referralQualified || false,
+      createdAt: this.createdAt || 0,
+      firstMonthLogins: this.firstMonthLogins || 0,
+      lastLoginDay: this.lastLoginDay || null,
+      bpPremiumLedger: this.bpPremiumLedger || [],
       weaponOwned: {},
       locationUnlocked: {}
     };
@@ -1113,6 +1121,10 @@ export class Economy {
       if (data.premiumPass !== undefined) this.premiumPass = data.premiumPass;
       if (data.referredBy !== undefined) this.referredBy = data.referredBy;
       if (data.referralQualified !== undefined) this.referralQualified = data.referralQualified;
+      if (data.createdAt !== undefined) this.createdAt = data.createdAt;
+      if (data.firstMonthLogins !== undefined) this.firstMonthLogins = data.firstMonthLogins;
+      if (data.lastLoginDay !== undefined) this.lastLoginDay = data.lastLoginDay;
+      if (data.bpPremiumLedger) this.bpPremiumLedger = data.bpPremiumLedger;
 
       // Ensure procedurally-generated dimensions exist first
       this._ensureDimensions(this.dimension + 1);
@@ -1426,15 +1438,56 @@ export class Economy {
     try { await setDoc(doc(db, 'referrals', this.uid), { referrer: this.referredBy, qualified: true, ts: Date.now() }, { merge: true }); } catch (e) {}
     this.save();
   }
+  recordLogin() {
+    const now = Date.now();
+    if (!this.createdAt) this.createdAt = now;
+    const today = new Date().toISOString().slice(0, 10);
+    const withinFirstMonth = (now - this.createdAt) <= 30 * 24 * 60 * 60 * 1000;
+    if (this.lastLoginDay !== today) {
+      this.lastLoginDay = today;
+      if (withinFirstMonth) this.firstMonthLogins = (this.firstMonthLogins || 0) + 1;
+    }
+    if (this.referredBy && this.uid) {
+      try { setDoc(doc(db, 'referrals', this.uid), { referrer: this.referredBy, createdAt: this.createdAt, firstMonthLogins: this.firstMonthLogins || 0 }, { merge: true }); } catch (e) {}
+    }
+    this.save();
+  }
+  revokePremium() {
+    this.premiumPass = false;
+    const led = this.bpPremiumLedger || [];
+    for (const g of led) {
+      if (g.type === 'money') { this.money = Math.max(0, this.money - (g.amount || 0)); }
+      else if (g.type === 'slot') { this.bonusPetSlots = Math.max(0, (this.bonusPetSlots || 0) - (g.amount || 0)); }
+      else if (g.type === 'gun') { if (g.weapon && this.weapons[g.weapon]) this.weapons[g.weapon].owned = false; }
+      else if (g.type === 'box' && g.petId) {
+        this.petInventory = (this.petInventory || []).filter(p => p.id !== g.petId);
+        this.equippedPets = (this.equippedPets || []).filter(id => id !== g.petId);
+      }
+    }
+    this.bpPremiumLedger = [];
+    this.bpClaimedPremium = [];
+    const cap = this.petSlotCap();
+    if ((this.equippedPets || []).length > cap) this.equippedPets = this.equippedPets.slice(0, cap);
+    if (this.currentWeapon && this.weapons[this.currentWeapon] && !this.weapons[this.currentWeapon].owned) this.currentWeapon = 'old_rifle';
+    this.save();
+  }
   async refreshReferrals() {
     if (!this.uid) return this.referralCount || 0;
     try {
       const q = query(collection(db, 'referrals'), where('referrer', '==', this.uid));
       const snap = await getDocs(q);
-      let n = 0; snap.forEach(d => { if (d.data().qualified) n++; });
+      let n = 0; const now = Date.now(); const MONTH = 30 * 24 * 60 * 60 * 1000;
+      snap.forEach(d => {
+        const r = d.data();
+        if (!r.qualified) return;
+        const created = r.createdAt || r.ts || now;
+        const fake = (now - created > MONTH) && (r.firstMonthLogins || 0) <= 1;
+        if (!fake) n++;
+      });
       this.referralCount = n;
-    } catch (e) { /* keep cached count */ }
-    if ((this.referralCount || 0) >= REFERRALS_NEEDED && !this.premiumPass) { this.premiumPass = true; this.save(); }
+      if (n >= REFERRALS_NEEDED) { if (!this.premiumPass) { this.premiumPass = true; this.save(); } }
+      else if (this.premiumPass) { this.revokePremium(); }
+    } catch (e) { /* network error: keep cached count, do not revoke */ }
     return this.referralCount || 0;
   }
 
@@ -1530,13 +1583,14 @@ export class Economy {
     if (!this.bpCanClaim(tier, track)) return { error: 'Not available.' };
     const r = this.bpRewardAt(tier, track);
     if (!r) return { error: 'No reward.' };
-    let msg = '';
-    if (r.type === 'money') { this.money += r.amount; this.totalMoneyEarned += r.amount; msg = 'Earned $' + r.amount.toLocaleString(); }
-    else if (r.type === 'box') { const pet = this.grantPetFromBox(this.dimension, r.box); msg = pet ? ('Unboxed ' + pet.name + '!') : 'Mystery box opened.'; }
-    else if (r.type === 'gun') { if (this.weapons[r.weapon]) this.weapons[r.weapon].owned = true; msg = (r.label || 'Weapon') + ' unlocked!'; }
-    else if (r.type === 'slot') { this.bonusPetSlots = (this.bonusPetSlots || 0) + r.amount; msg = '+' + r.amount + ' pet slot' + (r.amount > 1 ? 's' : '') + '!'; }
+    let msg = ''; const led = { tier: tier, type: r.type };
+    if (r.type === 'money') { this.money += r.amount; this.totalMoneyEarned += r.amount; led.amount = r.amount; msg = 'Earned $' + r.amount.toLocaleString(); }
+    else if (r.type === 'box') { const pet = this.grantPetFromBox(this.dimension, r.box); if (pet) led.petId = pet.id; msg = pet ? ('Unboxed ' + pet.name + '!') : 'Mystery box opened.'; }
+    else if (r.type === 'gun') { if (this.weapons[r.weapon]) this.weapons[r.weapon].owned = true; led.weapon = r.weapon; msg = (r.label || 'Weapon') + ' unlocked!'; }
+    else if (r.type === 'slot') { this.bonusPetSlots = (this.bonusPetSlots || 0) + r.amount; led.amount = r.amount; msg = '+' + r.amount + ' pet slot' + (r.amount > 1 ? 's' : '') + '!'; }
     const list = track === 'premium' ? (this.bpClaimedPremium = this.bpClaimedPremium || []) : (this.bpClaimedFree = this.bpClaimedFree || []);
     list.push(tier);
+    if (track === 'premium') { this.bpPremiumLedger = this.bpPremiumLedger || []; this.bpPremiumLedger.push(led); }
     this.save();
     return { ok: true, message: msg, reward: r };
   }
