@@ -898,6 +898,10 @@ export class UI {
         const tRect = target.getBoundingClientRect();
         scroll.scrollLeft += (tRect.left - sRect.left) - 8;
       });
+      if (!scroll._wheelBound) {
+        scroll._wheelBound = true;
+        scroll.addEventListener('wheel', (e) => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { scroll.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
+      }
     }
   }
   async _goPremium() {
