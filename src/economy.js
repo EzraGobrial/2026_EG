@@ -973,6 +973,26 @@ export function bpSeasonInfo(now) {
   return { season: idx + 1, index: idx, start: start, end: start + SEASON_LEN_MS };
 }
 
+const EVENT_PERIOD_MS = 14 * 24 * 60 * 60 * 1000;
+const EVENT_ANCHOR = Date.UTC(2026, 6, 4, 23, 0, 0);
+const EVENT_JOIN_MS = 5 * 60 * 1000;
+const EVENT_HUNT_MS = 3 * 60 * 1000;
+export function eventInfo(now) {
+  const t = now || Date.now();
+  let idx = Math.floor((t - EVENT_ANCHOR) / EVENT_PERIOD_MS);
+  if (idx < 0) idx = 0;
+  let start = EVENT_ANCHOR + idx * EVENT_PERIOD_MS;
+  const fullEnd = start + EVENT_JOIN_MS + EVENT_HUNT_MS;
+  let phase;
+  if (t < start) phase = 'upcoming';
+  else if (t < start + EVENT_JOIN_MS) phase = 'join';
+  else if (t < fullEnd) phase = 'live';
+  else { idx += 1; start = EVENT_ANCHOR + idx * EVENT_PERIOD_MS; phase = 'upcoming'; }
+  const joinEnd = start + EVENT_JOIN_MS;
+  const eventEnd = joinEnd + EVENT_HUNT_MS;
+  return { eventId: 'evt_' + idx, index: idx, start: start, joinEnd: joinEnd, eventEnd: eventEnd, phase: phase, now: t };
+}
+
 export const DAILY_REWARDS = [
   { money: 250, pct: 0.004, label: 'Cash' },
   { money: 400, pct: 0.006, label: 'Cash' },
@@ -1062,6 +1082,7 @@ export class Economy {
     this.achievementsClaimed = [];
     this.coopSessionId = null;
     this.coopRole = null;
+    this.eventId = null;
     this.bpPremiumLedger = [];
     this.bonusPetSlots = 0;
   }
@@ -1586,6 +1607,50 @@ export class Economy {
     this.achievementsClaimed.push(id);
     this.save();
     return { ok: true, message: msg };
+  }
+
+  async eventJoin() {
+    if (!this.uid) return { error: 'You are not signed in.' };
+    const info = eventInfo();
+    if (info.phase !== 'join') return { error: 'No event is open right now.' };
+    const myName = await this._myName();
+    this.eventId = info.eventId;
+    try { const obj = {}; obj[this.uid] = { uid: this.uid, name: myName, joined: true }; await setDoc(doc(db, 'events', info.eventId), { id: info.eventId, participants: obj }, { merge: true }); } catch (e) {}
+    return { ok: true, eventId: info.eventId };
+  }
+
+  async eventSubmit(money, kills) {
+    const info = eventInfo();
+    const eid = this.eventId || info.eventId;
+    if (!this.uid || !eid) return;
+    const myName = await this._myName();
+    try { const obj = {}; obj[this.uid] = { uid: this.uid, name: myName, money: money || 0, kills: kills || 0, done: true }; await setDoc(doc(db, 'events', eid), { contributions: obj }, { merge: true }); } catch (e) {}
+  }
+
+  async eventSettle() {
+    const eid = this.eventId;
+    if (!this.uid || !eid) return { settled: false };
+    let data;
+    try { const s = await getDoc(doc(db, 'events', eid)); if (!s.exists()) return { settled: false }; data = s.data(); } catch (e) { return { settled: false }; }
+    const c = data.contributions || {};
+    const mine = c[this.uid];
+    if (!mine || !mine.done) return { settled: false };
+    let pool = 0, mvpUid = null, mvpKills = -1, mvpName = '', count = 0;
+    for (const k in c) { const en = c[k]; if (!en || !en.done) continue; count++; pool += (en.money || 0); if ((en.kills || 0) > mvpKills) { mvpKills = en.kills || 0; mvpUid = k; mvpName = en.name || 'Player'; } }
+    if (mine.settled) return { settled: true, already: true };
+    const iAmMvp = (mvpUid === this.uid);
+    if (iAmMvp) { this.money += pool; this.totalMoneyEarned += pool; }
+    try { const obj = {}; obj[this.uid] = Object.assign({}, mine, { settled: true }); await setDoc(doc(db, 'events', eid), { contributions: obj }, { merge: true }); } catch (e) {}
+    this.save();
+    const res = { settled: true, pool: pool, players: count, mvpName: mvpName, mvpKills: mvpKills, iAmMvp: iAmMvp, myKills: mine.kills || 0 };
+    this.eventId = null;
+    return res;
+  }
+
+  async eventParticipantCount() {
+    const info = eventInfo();
+    try { const s = await getDoc(doc(db, 'events', info.eventId)); if (s.exists()) { const p = s.data().participants || {}; return Object.keys(p).length; } } catch (e) {}
+    return 0;
   }
 
   claimDailyReward() {
