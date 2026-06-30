@@ -1700,16 +1700,19 @@ export class UI {
   _playSkeet() {
     const o = this._miniOverlay(); const ctx = o.canvas.getContext('2d'); const W = o.canvas.width, H = o.canvas.height;
     let score = 0, combo = 0, timeLeft = 30, last = performance.now(), spawnT = 0, clays = [], parts = [], raf = 0, running = true;
-    const spawn = () => { const fl = Math.random() < 0.5; clays.push({ x: fl ? 30 : W - 30, y: H - 30, vx: (fl ? 1 : -1) * (180 + Math.random() * 130), vy: -(380 + Math.random() * 170), r: 18, hit: false }); };
-    o.canvas.onpointerdown = (e) => { const rc = o.canvas.getBoundingClientRect(); const mx = (e.clientX - rc.left) * (W / rc.width), my = (e.clientY - rc.top) * (H / rc.height); let hit = false; for (const c of clays) { if (!c.hit && Math.hypot(c.x - mx, c.y - my) < c.r + 16) { c.hit = true; hit = true; combo++; score += 10 * Math.min(5, combo); for (let i = 0; i < 12; i++) parts.push({ x: c.x, y: c.y, vx: (Math.random() - 0.5) * 240, vy: (Math.random() - 0.5) * 240, life: 0.5 }); break; } } if (!hit) combo = 0; };
-    o.quit.onclick = () => { running = false; cancelAnimationFrame(raf); o.close(); this.showMinigames(); };
+    const spawn = () => { const fl = Math.random() < 0.5; clays.push({ x: fl ? 30 : W - 30, y: H - 30, vx: (fl ? 1 : -1) * (180 + Math.random() * 130), vy: -(380 + Math.random() * 170), r: 18, hit: false, ph: Math.random() * 6.28, curMult: 1, ringR: 18 }); };
+    o.canvas.onpointerdown = (e) => { const rc = o.canvas.getBoundingClientRect(); const mx = (e.clientX - rc.left) * (W / rc.width), my = (e.clientY - rc.top) * (H / rc.height); let hit = false; for (const c of clays) { if (!c.hit && Math.hypot(c.x - mx, c.y - my) < c.r + 16) { c.hit = true; hit = true; combo++; const m = c.curMult || 1; score += 10 * Math.min(5, combo) * m; if (m > 1) parts.push({ x: c.x, y: c.y - 8, vx: 0, vy: -70, life: 0.9, txt: 'x' + m, col: m === 3 ? '#ffd24a' : '#cfe0ff' }); for (let i = 0; i < 12; i++) parts.push({ x: c.x, y: c.y, vx: (Math.random() - 0.5) * 240, vy: (Math.random() - 0.5) * 240, life: 0.5 }); break; } } if (!hit) combo = 0; };
     const loop = (now) => { if (!running) return; const dt = Math.min(0.05, (now - last) / 1000); last = now; timeLeft -= dt; spawnT -= dt; if (spawnT <= 0) { spawn(); spawnT = 0.65 + Math.random() * 0.6; }
       ctx.fillStyle = '#9ec8ff'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = '#6b8e3a'; ctx.fillRect(0, H - 22, W, 22);
-      for (const c of clays) { if (c.hit) continue; c.vy += 540 * dt; c.x += c.vx * dt; c.y += c.vy * dt; ctx.fillStyle = '#d6582b'; ctx.beginPath(); ctx.ellipse(c.x, c.y, c.r, c.r * 0.5, 0, 0, 7); ctx.fill(); }
+      for (const c of clays) { if (c.hit) continue; c.vy += 540 * dt; c.x += c.vx * dt; c.y += c.vy * dt;
+        const pulse = (Math.sin(now / 220 + c.ph) + 1) / 2; c.ringR = c.r * (0.7 + pulse * 1.5); c.curMult = pulse < 0.18 ? 3 : pulse < 0.5 ? 2 : 1;
+        ctx.fillStyle = '#d6582b'; ctx.beginPath(); ctx.ellipse(c.x, c.y, c.r, c.r * 0.5, 0, 0, 7); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,210,74,0.4)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(c.x, c.y, c.r * 0.7, 0, 7); ctx.stroke();
+        const col = c.curMult === 3 ? '#ffd24a' : c.curMult === 2 ? '#dbe7ff' : 'rgba(255,255,255,0.4)'; ctx.strokeStyle = col; ctx.lineWidth = c.curMult >= 2 ? 3 : 2; ctx.beginPath(); ctx.arc(c.x, c.y, c.ringR, 0, 7); ctx.stroke(); }
       clays = clays.filter((c) => !c.hit && c.y < H + 50 && c.x > -50 && c.x < W + 50);
-      for (const p of parts) { p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; ctx.fillStyle = 'rgba(120,80,50,' + Math.max(0, p.life * 2) + ')'; ctx.fillRect(p.x, p.y, 3, 3); }
+      for (const p of parts) { p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; if (p.txt) { ctx.fillStyle = p.col || '#fff'; ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center'; ctx.globalAlpha = Math.max(0, Math.min(1, p.life * 1.3)); ctx.fillText(p.txt, p.x, p.y); ctx.globalAlpha = 1; ctx.textAlign = 'start'; } else { ctx.fillStyle = 'rgba(120,80,50,' + Math.max(0, p.life * 2) + ')'; ctx.fillRect(p.x, p.y, 3, 3); } }
       parts = parts.filter((p) => p.life > 0);
-      o.hud.textContent = 'Skeet   Score ' + score + '   Combo x' + Math.min(5, combo) + '   ' + Math.ceil(Math.max(0, timeLeft)) + 's';
+      o.hud.textContent = 'Skeet  Score ' + score + '  Combo x' + Math.min(5, combo) + '  ' + Math.ceil(Math.max(0, timeLeft)) + 's   (hit on the gold ring = x3)';
       if (timeLeft <= 0) { running = false; this._miniFinish(o, 'Skeet Shooting', score); return; }
       raf = requestAnimationFrame(loop);
     };
