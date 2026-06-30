@@ -1703,7 +1703,7 @@ export class Economy {
     else if (r.type === 'gun') { if (this.weapons[r.weapon]) this.weapons[r.weapon].owned = true; led.weapon = r.weapon; msg = (r.label || 'Weapon') + ' unlocked!'; }
     else if (r.type === 'slot') { this.bonusPetSlots = Math.min(6, (this.bonusPetSlots || 0) + r.amount); led.amount = r.amount; msg = '+' + r.amount + ' pet slot' + (r.amount > 1 ? 's' : '') + '!'; }
     else if (r.type === 'skin') { this.ownedSkins = this.ownedSkins || ['default']; if (!this.ownedSkins.includes(r.skin)) this.ownedSkins.push(r.skin); led.skin = r.skin; msg = (r.label || 'Skin') + ' unlocked!'; }
-    else if (r.type === 'potion') { const n = r.amount || 1; this.ownedConsumables = this.ownedConsumables || {}; this.ownedConsumables[r.potion] = (this.ownedConsumables[r.potion] || 0) + n; led.potion = r.potion; led.amount = n; msg = '+' + n + ' ' + (r.label || 'Potion') + '!'; }
+    else if (r.type === 'potion') { const n = r.amount || 1; this.ownedConsumables = this.ownedConsumables || {}; this.ownedConsumables[r.potion] = (this.ownedConsumables[r.potion] || 0) + n; led.potion = r.potion; led.amount = n; msg = 'Got ' + (r.label || 'Potion') + '!'; }
     const list = track === 'premium' ? (this.bpClaimedPremium = this.bpClaimedPremium || []) : (this.bpClaimedFree = this.bpClaimedFree || []);
     list.push(tier);
     if (track === 'premium') { this.bpPremiumLedger = this.bpPremiumLedger || []; this.bpPremiumLedger.push(led); }
