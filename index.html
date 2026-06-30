@@ -349,8 +349,10 @@
         </div>
         <div id="challenge-reward-area" class="challenge-reward-area"></div>
         <div id="morning-potions" class="potions-section"></div>
-        <button id="btn-hunt" class="btn btn-primary" style="margin-top:20px;width:100%">Go Hunting!</button>
-        <button id="btn-coop" class="btn btn-secondary" style="margin-top:10px;width:100%">Hunt with a Friend</button>
+        <div style="display:flex;gap:10px;margin-top:20px;">
+          <button id="btn-hunt" class="btn btn-primary" style="flex:1;margin-top:0;width:auto;">Go Hunting!</button>
+          <button id="btn-coop" class="btn btn-secondary" style="flex:1;margin-top:0;width:auto;">Hunt with a Friend</button>
+        </div>
       </div>
     </div>
   </div>
@@ -417,16 +419,21 @@
 
   <!-- Friends Screen -->
   <div id="screen-friends" class="screen hidden">
-    <div class="panel shop-panel">
+    <div class="panel shop-panel" style="max-width:820px;width:94%;">
       <h2 class="panel-title">Friends</h2>
-      <div style="margin-bottom:12px">
-        <input type="text" id="friend-search-input" class="friend-search-input" placeholder="Search players...">
-        <div id="friend-search-results" style="margin-top:8px"></div>
+      <div style="display:flex;gap:24px;align-items:flex-start;text-align:left;">
+        <div style="flex:1;min-width:0;">
+          <h3 style="color:var(--accent-gold);font-size:14px;margin-bottom:8px">Friend Requests</h3>
+          <div id="friend-requests-list"></div>
+          <h3 style="color:var(--accent-gold);font-size:14px;margin:16px 0 8px">My Friends</h3>
+          <div id="friend-list"></div>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <h3 style="color:var(--accent-gold);font-size:14px;margin-bottom:8px">Find Players</h3>
+          <input type="text" id="friend-search-input" class="friend-search-input" placeholder="Search players...">
+          <div id="friend-search-results" style="margin-top:8px"></div>
+        </div>
       </div>
-      <h3 style="color:var(--accent-gold);font-size:14px;margin-bottom:8px">Friend Requests</h3>
-      <div id="friend-requests-list"></div>
-      <h3 style="color:var(--accent-gold);font-size:14px;margin:16px 0 8px">My Friends</h3>
-      <div id="friend-list"></div>
       <button id="btn-friends-back" class="btn btn-secondary" style="margin-top:16px">Back</button>
     </div>
   </div>
