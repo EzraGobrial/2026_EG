@@ -1957,10 +1957,12 @@ export class Economy {
     const mvpBonusXP = (iAmMvp || tie) ? Math.round((mine.xp || 0) * 0.5) : 0;
     const totalBonusXP = coopBonusXP + mvpBonusXP;
     this.money += bonusMoney;
+    this.totalMoneyEarned = (this.totalMoneyEarned || 0) + bonusMoney;
     let rankUp = null;
     if (totalBonusXP > 0) rankUp = this.addXP(totalBonusXP);
     try { const obj = {}; obj[this.uid] = Object.assign({}, mine, { settled: true }); await setDoc(doc(db, 'coopSessions', this.coopSessionId), { contributions: obj }, { merge: true }); } catch (e) {}
     this.save();
+    try { this.updateLeaderboard(this.displayName); } catch (e) {}
     const res = { settled: true, myMoney: mine.money || 0, partnerMoney: partner.money || 0, total: total, partnerName: partner.name || partnerName, myKills: myKills, partnerKills: pKills, mvpName: tie ? null : (iAmMvp ? (mine.name || 'You') : (partner.name || partnerName)), iAmMvp: iAmMvp, tie: tie, bonusXP: totalBonusXP, rankUp: rankUp };
     this.coopSessionId = null; this.coopRole = null;
     return res;
