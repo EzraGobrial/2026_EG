@@ -974,13 +974,31 @@ export function bpSeasonInfo(now) {
 }
 
 export const DAILY_REWARDS = [
-  { money: 250, label: '$250' },
-  { money: 400, label: '$400' },
-  { money: 700, label: '$700' },
+  { money: 250, pct: 0.004, label: 'Cash' },
+  { money: 400, pct: 0.006, label: 'Cash' },
+  { money: 700, pct: 0.009, label: 'Cash' },
   { ticket: 1, label: '1 Ticket' },
-  { money: 1200, label: '$1.2k' },
-  { money: 2000, label: '$2k' },
+  { money: 1200, pct: 0.014, label: 'Cash' },
+  { money: 2000, pct: 0.02, label: 'Cash' },
   { ticket: 3, label: '3 Tickets' }
+];
+
+export const ACHIEVEMENTS = [
+  { id: 'k100', name: 'First Flock', desc: 'Kill 100 birds', stat: 'kills', goal: 100, reward: { type: 'money', amount: 5000 } },
+  { id: 'k1000', name: 'Bird Brain', desc: 'Kill 1,000 birds', stat: 'kills', goal: 1000, reward: { type: 'ticket', amount: 2 } },
+  { id: 'k10000', name: 'Sky Cleaner', desc: 'Kill 10,000 birds', stat: 'kills', goal: 10000, reward: { type: 'ticket', amount: 5 } },
+  { id: 'e100k', name: 'Pocket Money', desc: 'Earn $100,000 total', stat: 'earned', goal: 100000, reward: { type: 'money', amount: 25000 } },
+  { id: 'e1m', name: 'Millionaire', desc: 'Earn $1,000,000 total', stat: 'earned', goal: 1000000, reward: { type: 'ticket', amount: 3 } },
+  { id: 'e10m', name: 'Tycoon', desc: 'Earn $10,000,000 total', stat: 'earned', goal: 10000000, reward: { type: 'box', box: 3 } },
+  { id: 's25', name: 'On a Roll', desc: 'Reach a 25 killstreak', stat: 'streak', goal: 25, reward: { type: 'money', amount: 8000 } },
+  { id: 's50', name: 'Unstoppable', desc: 'Reach a 50 killstreak', stat: 'streak', goal: 50, reward: { type: 'ticket', amount: 3 } },
+  { id: 's100', name: 'Legendary Aim', desc: 'Reach a 100 killstreak', stat: 'streak', goal: 100, reward: { type: 'ticket', amount: 6 } },
+  { id: 'd3', name: 'Explorer', desc: 'Reach dimension 3', stat: 'dimension', goal: 3, reward: { type: 'box', box: 2 } },
+  { id: 'd5', name: 'Dimension Hopper', desc: 'Reach dimension 5', stat: 'dimension', goal: 5, reward: { type: 'box', box: 3 } },
+  { id: 'bp50', name: 'Halfway There', desc: 'Reach Battle Pass tier 50', stat: 'bptier', goal: 50, reward: { type: 'ticket', amount: 3 } },
+  { id: 'bp100', name: 'Pass Master', desc: 'Reach Battle Pass tier 100', stat: 'bptier', goal: 100, reward: { type: 'ticket', amount: 8 } },
+  { id: 'p10', name: 'Pet Collector', desc: 'Own 10 pets', stat: 'pets', goal: 10, reward: { type: 'money', amount: 15000 } },
+  { id: 'p25', name: 'Zookeeper', desc: 'Own 25 pets', stat: 'pets', goal: 25, reward: { type: 'ticket', amount: 4 } }
 ];
 
 export const MAX_WEAPON_LEVEL = 5;
@@ -1041,6 +1059,7 @@ export class Economy {
     this.lastDailyDay = null;
     this.dailyStreak = 0;
     this.bpSeason = 1;
+    this.achievementsClaimed = [];
     this.coopSessionId = null;
     this.coopRole = null;
     this.bpPremiumLedger = [];
@@ -1106,6 +1125,7 @@ export class Economy {
       lastDailyDay: this.lastDailyDay || null,
       dailyStreak: this.dailyStreak || 0,
       bpSeason: this.bpSeason || 1,
+      achievementsClaimed: this.achievementsClaimed || [],
       bpPremiumLedger: this.bpPremiumLedger || [],
       weaponOwned: {},
       locationUnlocked: {}
@@ -1188,6 +1208,7 @@ export class Economy {
     if (data.lastDailyDay !== undefined) this.lastDailyDay = data.lastDailyDay;
     if (data.dailyStreak !== undefined) this.dailyStreak = data.dailyStreak;
     if (data.bpSeason !== undefined) this.bpSeason = data.bpSeason;
+    if (data.achievementsClaimed) this.achievementsClaimed = data.achievementsClaimed;
       if (data.bpPremiumLedger) this.bpPremiumLedger = data.bpPremiumLedger;
 
       // Ensure procedurally-generated dimensions exist first
@@ -1532,6 +1553,41 @@ export class Economy {
     return false;
   }
 
+  _achStat(key) {
+    if (key === 'kills') return this.totalBirdsKilled || 0;
+    if (key === 'earned') return this.totalMoneyEarned || 0;
+    if (key === 'streak') return this.bestKillstreak || 0;
+    if (key === 'dimension') return this.dimension || 1;
+    if (key === 'bptier') return this.bpTier();
+    if (key === 'pets') return (this.petInventory || []).length;
+    return 0;
+  }
+
+  achievementList() {
+    const claimed = this.achievementsClaimed || [];
+    return ACHIEVEMENTS.map((a) => {
+      const cur = this._achStat(a.stat);
+      const done = cur >= a.goal;
+      const isClaimed = claimed.indexOf(a.id) >= 0;
+      return { id: a.id, name: a.name, desc: a.desc, goal: a.goal, current: cur, done: done, claimed: isClaimed, claimable: done && !isClaimed, reward: a.reward };
+    });
+  }
+
+  claimAchievement(id) {
+    const a = ACHIEVEMENTS.find((x) => x.id === id);
+    if (!a) return { error: 'Unknown achievement.' };
+    this.achievementsClaimed = this.achievementsClaimed || [];
+    if (this.achievementsClaimed.indexOf(id) >= 0) return { error: 'Already claimed.' };
+    if (this._achStat(a.stat) < a.goal) return { error: 'Not completed yet.' };
+    const r = a.reward; let msg = '';
+    if (r.type === 'money') { this.money += r.amount; this.totalMoneyEarned += r.amount; msg = 'Earned $' + r.amount.toLocaleString(); }
+    else if (r.type === 'ticket') { this.tickets = (this.tickets || 0) + r.amount; msg = '+' + r.amount + ' Ticket' + (r.amount > 1 ? 's' : '') + '!'; }
+    else if (r.type === 'box') { const pet = this.grantPetFromBox(this.dimension, r.box); msg = pet ? ('Unboxed ' + pet.name + '!') : 'Mystery box opened.'; }
+    this.achievementsClaimed.push(id);
+    this.save();
+    return { ok: true, message: msg };
+  }
+
   claimDailyReward() {
     const today = new Date().toISOString().slice(0, 10);
     if (this.lastDailyDay === today) return { claimed: false };
@@ -1542,7 +1598,7 @@ export class Economy {
     const idx = ((this.dailyStreak - 1) % 7);
     const r = DAILY_REWARDS[idx] || DAILY_REWARDS[0];
     let money = 0, tickets = 0;
-    if (r.money) { this.money += r.money; money = r.money; }
+    if (r.money) { const amt = Math.max(r.money, Math.round((this.totalMoneyEarned || 0) * (r.pct || 0))); this.money += amt; this.totalMoneyEarned += amt; money = amt; }
     if (r.ticket) { this.tickets = (this.tickets || 0) + r.ticket; tickets = r.ticket; }
     this.save();
     return { claimed: true, day: this.dailyStreak, dayInCycle: idx + 1, money, tickets };
