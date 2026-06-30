@@ -300,7 +300,7 @@ class Game {
       this.economy.setUid(this.auth.getUid());
       this.economy.setDisplayName(this.auth.getDisplayName());
       await this.economy.load();
-      try { await this.economy.captureReferral(); this.economy.recordLogin(); await this.economy.refreshReferrals(); const dr = this.economy.claimDailyReward(); if (dr && dr.claimed) setTimeout(() => { try { this.ui.showDailyReward(dr); } catch (e) {} }, 700); } catch (e) {}
+      try { await this.economy.captureReferral(); this.economy.recordLogin(); await this.economy.refreshReferrals(); this.economy.checkSeasonReset(); const dr = this.economy.claimDailyReward(); if (dr && dr.claimed) setTimeout(() => { try { this.ui.showDailyReward(dr); } catch (e) {} }, 700); } catch (e) {}
       // Restore story state from cloud save
       if (this.economy.story) this.story.deserialize(this.economy.story);
 
