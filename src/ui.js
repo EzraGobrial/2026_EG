@@ -47,6 +47,7 @@ export class UI {
       locker: document.getElementById('screen-locker'),
       friends: document.getElementById('screen-friends'),
       stats: document.getElementById('screen-stats'),
+      minigames: document.getElementById('screen-minigames'),
       tournament: document.getElementById('screen-tournament'),
       clan: document.getElementById('screen-clan'),
       sleep: document.getElementById('screen-sleep'),
@@ -123,6 +124,8 @@ export class UI {
     bind('btn-friends', () => { this.audio.playUIClick(); if (this.onFriends) this.onFriends(); });
     bind('btn-stats', () => { this.audio.playUIClick(); this.showStats(); });
     bind('btn-stats-back', () => { this.audio.playUIClick(); this.showScreen('results'); });
+    bind('btn-minigames', () => { this.audio.playUIClick(); this.showMinigames(); });
+    bind('btn-minigames-back', () => { this.audio.playUIClick(); this.showScreen('results'); });
     bind('btn-friends-back', () => { this.audio.playUIClick(); this.showScreen('results'); });
     bind('btn-tournament', () => { this.audio.playUIClick(); if (this.onTournament) this.onTournament(); });
     bind('btn-tournament-back', () => { this.audio.playUIClick(); this.showScreen('results'); });
@@ -1661,6 +1664,93 @@ export class UI {
       '<button id="evt-done" style="width:100%;margin-top:16px;padding:11px;border:none;border-radius:10px;background:linear-gradient(180deg,#5bbf5b,#2e9d3a);color:#fff;font:900 15px system-ui;cursor:pointer;">Nice!</button>'
     );
     const b = o.box.querySelector('#evt-done'); if (b) b.addEventListener('click', o.close);
+  }
+
+  showMinigames() {
+    const cont = document.getElementById('minigames-list');
+    if (cont) {
+      const tile = (id, name, desc) => '<button class="mini-tile" data-mini="' + id + '" style="display:block;width:100%;text-align:left;margin-bottom:10px;padding:14px 16px;border:1px solid #6b5630;border-radius:12px;background:#16110a;color:#fff;cursor:pointer;"><div style="font:900 17px system-ui;color:#ffd766;">' + name + '</div><div style="font:500 12px system-ui;color:#cbb98f;margin-top:3px;">' + desc + '</div></button>';
+      cont.innerHTML = tile('skeet', 'Skeet Shooting', 'Blast clay targets out of the sky. Accuracy + combos.') + tile('quickdraw', 'Quick Draw', 'Test your reflexes &mdash; shoot the instant the bird appears.') + tile('eggcatch', 'Egg Catch', 'Catch falling eggs in your basket. Don\'t drop three!');
+      cont.querySelectorAll('.mini-tile').forEach((b) => b.addEventListener('click', () => { const g = b.getAttribute('data-mini'); if (g === 'skeet') this._playSkeet(); else if (g === 'quickdraw') this._playQuickDraw(); else this._playEggCatch(); }));
+    }
+    this.showScreen('minigames');
+  }
+
+  _miniOverlay() {
+    const back = document.createElement('div');
+    back.style.cssText = 'position:fixed;inset:0;background:#0a0e14;z-index:10060;display:flex;flex-direction:column;align-items:center;justify-content:center;';
+    const hud = document.createElement('div'); hud.style.cssText = 'color:#ffd766;font:800 16px system-ui;margin-bottom:8px;';
+    const canvas = document.createElement('canvas'); canvas.width = 900; canvas.height = 540;
+    canvas.style.cssText = 'max-width:96vw;max-height:78vh;border-radius:12px;background:#9ec8ff;cursor:crosshair;touch-action:none;';
+    const quit = document.createElement('button'); quit.textContent = 'Quit'; quit.style.cssText = 'margin-top:10px;padding:8px 18px;border:none;border-radius:8px;background:#3a2c10;color:#cbb98f;font:700 13px system-ui;cursor:pointer;';
+    back.appendChild(hud); back.appendChild(canvas); back.appendChild(quit);
+    document.body.appendChild(back);
+    return { back: back, canvas: canvas, hud: hud, quit: quit, close: () => { if (back.parentNode) back.parentNode.removeChild(back); } };
+  }
+
+  _miniFinish(o, name, score) {
+    o.close();
+    let res = null;
+    try { res = this.economy.minigameReward(name, score); } catch (e) {}
+    const reward = (res && res.reward) ? res.reward : 'No reward';
+    const ov = this._coopOverlay('<div style="font:900 22px system-ui;color:#ffd766;text-align:center;">' + name + '</div><div style="font:700 18px system-ui;color:#fff;text-align:center;margin:10px 0;">Score: ' + score + '</div><div style="font:700 14px system-ui;color:#9fe0a0;text-align:center;">' + reward + '</div><button id="mini-done" style="width:100%;margin-top:16px;padding:11px;border:none;border-radius:10px;background:linear-gradient(180deg,#5bbf5b,#2e9d3a);color:#fff;font:900 15px system-ui;cursor:pointer;">Back to Games</button>');
+    const b = ov.box.querySelector('#mini-done'); if (b) b.addEventListener('click', () => { ov.close(); this.showMinigames(); });
+  }
+
+  _playSkeet() {
+    const o = this._miniOverlay(); const ctx = o.canvas.getContext('2d'); const W = o.canvas.width, H = o.canvas.height;
+    let score = 0, combo = 0, timeLeft = 30, last = performance.now(), spawnT = 0, clays = [], parts = [], raf = 0, running = true;
+    const spawn = () => { const fl = Math.random() < 0.5; clays.push({ x: fl ? 30 : W - 30, y: H - 30, vx: (fl ? 1 : -1) * (180 + Math.random() * 130), vy: -(380 + Math.random() * 170), r: 18, hit: false }); };
+    o.canvas.onpointerdown = (e) => { const rc = o.canvas.getBoundingClientRect(); const mx = (e.clientX - rc.left) * (W / rc.width), my = (e.clientY - rc.top) * (H / rc.height); let hit = false; for (const c of clays) { if (!c.hit && Math.hypot(c.x - mx, c.y - my) < c.r + 16) { c.hit = true; hit = true; combo++; score += 10 * Math.min(5, combo); for (let i = 0; i < 12; i++) parts.push({ x: c.x, y: c.y, vx: (Math.random() - 0.5) * 240, vy: (Math.random() - 0.5) * 240, life: 0.5 }); break; } } if (!hit) combo = 0; };
+    o.quit.onclick = () => { running = false; cancelAnimationFrame(raf); o.close(); this.showMinigames(); };
+    const loop = (now) => { if (!running) return; const dt = Math.min(0.05, (now - last) / 1000); last = now; timeLeft -= dt; spawnT -= dt; if (spawnT <= 0) { spawn(); spawnT = 0.65 + Math.random() * 0.6; }
+      ctx.fillStyle = '#9ec8ff'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = '#6b8e3a'; ctx.fillRect(0, H - 22, W, 22);
+      for (const c of clays) { if (c.hit) continue; c.vy += 540 * dt; c.x += c.vx * dt; c.y += c.vy * dt; ctx.fillStyle = '#d6582b'; ctx.beginPath(); ctx.ellipse(c.x, c.y, c.r, c.r * 0.5, 0, 0, 7); ctx.fill(); }
+      clays = clays.filter((c) => !c.hit && c.y < H + 50 && c.x > -50 && c.x < W + 50);
+      for (const p of parts) { p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; ctx.fillStyle = 'rgba(120,80,50,' + Math.max(0, p.life * 2) + ')'; ctx.fillRect(p.x, p.y, 3, 3); }
+      parts = parts.filter((p) => p.life > 0);
+      o.hud.textContent = 'Skeet   Score ' + score + '   Combo x' + Math.min(5, combo) + '   ' + Math.ceil(Math.max(0, timeLeft)) + 's';
+      if (timeLeft <= 0) { running = false; this._miniFinish(o, 'Skeet Shooting', score); return; }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+  }
+
+  _playQuickDraw() {
+    const o = this._miniOverlay(); const ctx = o.canvas.getContext('2d'); const W = o.canvas.width, H = o.canvas.height;
+    let round = 0, total = 5, score = 0, state = 'wait', showAt = 0, raf = 0, running = true, msg = 'Get ready...', waitT = 1.3 + Math.random() * 2.4, last = performance.now();
+    o.quit.onclick = () => { running = false; cancelAnimationFrame(raf); o.close(); this.showMinigames(); };
+    o.canvas.onpointerdown = () => { if (!running) return; if (state === 'wait') { msg = 'Too early! Wait for SHOOT.'; waitT = 1.0 + Math.random() * 2.0; } else if (state === 'go') { const rt = performance.now() - showAt; score += Math.max(0, Math.round(1000 - rt)); round++; if (round >= total) { running = false; this._miniFinish(o, 'Quick Draw', score); return; } msg = Math.round(rt) + 'ms'; state = 'wait'; waitT = 1.3 + Math.random() * 2.4; } };
+    const loop = (now) => { if (!running) return; const dt = (now - last) / 1000; last = now;
+      if (state === 'wait') { waitT -= dt; if (waitT <= 0) { state = 'go'; showAt = performance.now(); } }
+      ctx.fillStyle = state === 'go' ? '#2e9d3a' : '#241a08'; ctx.fillRect(0, 0, W, H);
+      ctx.textAlign = 'center'; ctx.fillStyle = '#ffd766'; ctx.font = '900 24px system-ui'; ctx.fillText('Quick Draw   Round ' + Math.min(total, round + 1) + '/' + total + '   Score ' + score, W / 2, 48);
+      if (state === 'go') { ctx.fillStyle = '#fff'; ctx.font = '900 72px system-ui'; ctx.fillText('SHOOT!', W / 2, H / 2 + 20); } else { ctx.fillStyle = '#cbb98f'; ctx.font = '700 22px system-ui'; ctx.fillText(msg, W / 2, H / 2); ctx.font = '600 16px system-ui'; ctx.fillText('Wait for SHOOT, then click as fast as you can', W / 2, H / 2 + 34); }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+  }
+
+  _playEggCatch() {
+    const o = this._miniOverlay(); const ctx = o.canvas.getContext('2d'); const W = o.canvas.width, H = o.canvas.height;
+    let score = 0, misses = 0, basket = W / 2, eggs = [], spawnT = 0, last = performance.now(), raf = 0, running = true;
+    o.canvas.onpointermove = (e) => { const rc = o.canvas.getBoundingClientRect(); basket = (e.clientX - rc.left) * (W / rc.width); };
+    o.quit.onclick = () => { running = false; cancelAnimationFrame(raf); o.close(); this.showMinigames(); };
+    const bw = 96, by = H - 28;
+    const loop = (now) => { if (!running) return; const dt = Math.min(0.05, (now - last) / 1000); last = now; spawnT -= dt; const rate = Math.max(0.42, 1.1 - score * 0.02);
+      if (spawnT <= 0) { eggs.push({ x: 30 + Math.random() * (W - 60), y: -20, vy: 170 + score * 4, done: false }); spawnT = rate; }
+      ctx.fillStyle = '#9ec8ff'; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#8a5a2a'; ctx.fillRect(basket - bw / 2, by, bw, 16); ctx.fillRect(basket - bw / 2, by - 10, 6, 12); ctx.fillRect(basket + bw / 2 - 6, by - 10, 6, 12);
+      for (const eg of eggs) { if (eg.done) continue; eg.y += eg.vy * dt; ctx.fillStyle = '#fff8e0'; ctx.beginPath(); ctx.ellipse(eg.x, eg.y, 11, 14, 0, 0, 7); ctx.fill();
+        if (eg.y > by - 8 && eg.y < by + 16 && Math.abs(eg.x - basket) < bw / 2 + 8) { eg.done = true; score++; }
+        else if (eg.y > H + 20) { eg.done = true; misses++; }
+      }
+      eggs = eggs.filter((e) => !e.done);
+      o.hud.textContent = 'Egg Catch   Caught ' + score + '   Misses ' + misses + '/3';
+      if (misses >= 3) { running = false; this._miniFinish(o, 'Egg Catch', score); return; }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
   }
 
   showStats() {
