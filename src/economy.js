@@ -1080,6 +1080,8 @@ export class Economy {
     this.dailyStreak = 0;
     this.bpSeason = 1;
     this.achievementsClaimed = [];
+    this.minigameDay = null;
+    this.minigamePlaysToday = 0;
     this.coopSessionId = null;
     this.coopRole = null;
     this.eventId = null;
@@ -1147,6 +1149,8 @@ export class Economy {
       dailyStreak: this.dailyStreak || 0,
       bpSeason: this.bpSeason || 1,
       achievementsClaimed: this.achievementsClaimed || [],
+      minigameDay: this.minigameDay || null,
+      minigamePlaysToday: this.minigamePlaysToday || 0,
       bpPremiumLedger: this.bpPremiumLedger || [],
       weaponOwned: {},
       locationUnlocked: {}
@@ -1230,6 +1234,8 @@ export class Economy {
     if (data.dailyStreak !== undefined) this.dailyStreak = data.dailyStreak;
     if (data.bpSeason !== undefined) this.bpSeason = data.bpSeason;
     if (data.achievementsClaimed) this.achievementsClaimed = data.achievementsClaimed;
+    if (data.minigameDay !== undefined) this.minigameDay = data.minigameDay;
+    if (data.minigamePlaysToday !== undefined) this.minigamePlaysToday = data.minigamePlaysToday;
       if (data.bpPremiumLedger) this.bpPremiumLedger = data.bpPremiumLedger;
 
       // Ensure procedurally-generated dimensions exist first
@@ -1651,6 +1657,26 @@ export class Economy {
     const info = eventInfo();
     try { const s = await getDoc(doc(db, 'events', info.eventId)); if (s.exists()) { const p = s.data().participants || {}; return Object.keys(p).length; } } catch (e) {}
     return 0;
+  }
+
+  minigameReward(gameId, score) {
+    const today = new Date().toISOString().slice(0, 10);
+    if (this.minigameDay !== today) { this.minigameDay = today; this.minigamePlaysToday = 0; }
+    const CAP = 20;
+    if ((this.minigamePlaysToday || 0) >= CAP) { this.save(); return { reward: 'Daily reward limit reached \u2014 keep playing for fun!' }; }
+    this.minigamePlaysToday = (this.minigamePlaysToday || 0) + 1;
+    let cash = 0, tickets = 0;
+    if (gameId === 'Skeet Shooting') cash = score * 120;
+    else if (gameId === 'Quick Draw') cash = Math.round(score / 8);
+    else cash = score * 100;
+    cash = Math.max(0, Math.round(cash));
+    if (score > 0 && Math.random() < 0.15) tickets = 1;
+    this.money += cash; this.totalMoneyEarned += cash;
+    if (tickets) this.tickets = (this.tickets || 0) + tickets;
+    this.save();
+    let msg = 'Earned $' + cash.toLocaleString();
+    if (tickets) msg += ' + ' + tickets + ' Ticket';
+    return { reward: msg, cash: cash, tickets: tickets };
   }
 
   claimDailyReward() {
