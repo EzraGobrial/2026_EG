@@ -9,7 +9,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-import { Economy, BIRDS, RARITY_COLORS, WEAPON_SKINS, CONSUMABLES } from './economy.js';
+import { Economy, BIRDS, RARITY_COLORS, WEAPON_SKINS, CONSUMABLES, eventInfo } from './economy.js';
 import { checkChallenges } from './challenges.js';
 import { AudioSystem } from './audio.js';
 import { SkySystem } from './skybox.js';
@@ -257,6 +257,8 @@ class Game {
       const displayName = this.auth.getDisplayName();
       if (uid) this.ui.showFriends(uid, displayName);
     };
+
+    this.ui.onJoinEvent = () => this._joinEvent();
 
     this.ui.onTournament = () => {
       const uid = this.auth.getUid();
@@ -897,6 +899,67 @@ class Game {
     this._coopTimer = setTimeout(poll, 1500);
   }
 
+  async _joinEvent() {
+    const r = await this.economy.eventJoin();
+    if (r && r.error) { try { this.ui.toast(r.error, 'error'); } catch (e) {} return; }
+    this._eventJoined = true;
+    this._eventHunt = false;
+    this._startHunt();
+    this.huntTimer = 99999;
+    this._huntStartTimer = 99999;
+    this._startEventWatch();
+  }
+
+  _startEventWatch() {
+    if (this._eventWatch) { clearInterval(this._eventWatch); }
+    this._eventCountShown = false;
+    this._eventWatch = setInterval(() => {
+      const info = eventInfo();
+      const now = Date.now();
+      if (!this._eventHunt) {
+        if (now >= info.joinEnd) { this._beginEventPhase(); }
+        else {
+          try { this.hud.setTimer(Math.max(0, Math.round((info.joinEnd - now) / 1000))); } catch (e) {}
+          if (info.joinEnd - now <= 5000 && !this._eventCountShown) { this._eventCountShown = true; try { this.ui.showEventCountdown(null); } catch (e) {} }
+        }
+      }
+    }, 500);
+  }
+
+  _beginEventPhase() {
+    if (this._eventHunt) return;
+    this._eventHunt = true;
+    const info = eventInfo();
+    this._eventEndAt = info.eventEnd;
+    this.huntTimer = Math.max(10, Math.round((info.eventEnd - Date.now()) / 1000));
+    this._huntStartTimer = this.huntTimer;
+    this.huntBag = [];
+    this.huntStats = { totalKills: 0, maxCombo: 0, maxKillstreak: 0, missCount: 0, bossKills: 0, earlyKills: 0, moneyEarned: 0 };
+    this._doubleMoneyActive = true;
+    this._birdSwarmActive = true;
+    this.spawnInterval = 1;
+    try { this.hud.setTimer(this.huntTimer); } catch (e) {}
+    try { this.ui.toast('MEGA HUNT \u2014 go!', 'success'); } catch (e) {}
+  }
+
+  async _eventAfter(em, ek) {
+    if (this._eventWatch) { clearInterval(this._eventWatch); this._eventWatch = null; }
+    this._eventJoined = false;
+    try { this.economy.money = Math.max(0, this.economy.money - em); this.economy.totalMoneyEarned = Math.max(0, this.economy.totalMoneyEarned - em); this.economy.save(); } catch (e) {}
+    try { await this.economy.eventSubmit(em, ek); } catch (e) {}
+    this.ui.showEventWaiting();
+    this._eventPollStop = false;
+    const poll = async () => {
+      if (this._eventPollStop) return;
+      if (Date.now() < (this._eventEndAt || 0) + 4000) { this._eventTimer = setTimeout(poll, 2000); return; }
+      let r = null;
+      try { r = await this.economy.eventSettle(); } catch (e) {}
+      if (r && r.settled && !r.already) { this.ui.showEventResults(r); return; }
+      this._eventTimer = setTimeout(poll, 2500);
+    };
+    this._eventTimer = setTimeout(poll, 1500);
+  }
+
   _endHunt() {
     let rankUpResult = null;
     try {
@@ -944,6 +1007,11 @@ class Game {
       }
       if (this.economy.coopSessionId) {
         try { this._coopAfterHunt(huntXP); } catch (e) {}
+      }
+      if (this._eventHunt) {
+        const _em = this.huntStats.moneyEarned, _ek = this.huntStats.totalKills;
+        this._eventHunt = false;
+        try { this._eventAfter(_em, _ek); } catch (e) {}
       }
     } catch (fatalErr) {
       console.error('[endHunt] FATAL ERROR:', fatalErr);
