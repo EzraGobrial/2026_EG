@@ -12,235 +12,88 @@ import { BIRDS } from './economy.js';
  * Each bird is a Group containing body, head, beak, wings, and tail.
  */
 function createBirdModel(birdData) {
+  const bd = birdData;
+  const s = bd.size;
   const bird = new THREE.Group();
-  const s = birdData.size;
+  const bodyMat = new THREE.MeshStandardMaterial({ color: bd.bodyColor, roughness: 0.55, metalness: 0.04 });
+  const bellyMat = new THREE.MeshStandardMaterial({ color: bd.bellyColor, roughness: 0.6 });
+  const headMat = new THREE.MeshStandardMaterial({ color: bd.headColor, roughness: 0.5 });
+  const wingMat = new THREE.MeshStandardMaterial({ color: bd.wingColor, roughness: 0.5, side: THREE.DoubleSide });
+  const beakMat = new THREE.MeshStandardMaterial({ color: bd.beakColor, roughness: 0.3, metalness: 0.1 });
+  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1, metalness: 0.6 });
+  const legMat = new THREE.MeshStandardMaterial({ color: bd.beakColor, roughness: 0.4 });
 
-  // Materials — smoother, more realistic
-  const bodyMat = new THREE.MeshStandardMaterial({
-    color: birdData.bodyColor,
-    roughness: 0.55,
-    metalness: 0.05,
-    flatShading: false
-  });
-  const wingMat = new THREE.MeshStandardMaterial({
-    color: birdData.wingColor,
-    roughness: 0.5,
-    metalness: 0.05,
-    side: THREE.DoubleSide,
-    flatShading: false
-  });
-  const headMat = new THREE.MeshStandardMaterial({
-    color: birdData.headColor,
-    roughness: 0.5
-  });
-  const beakMat = new THREE.MeshStandardMaterial({
-    color: birdData.beakColor,
-    roughness: 0.3,
-    metalness: 0.1
-  });
-  const bellyMat = new THREE.MeshStandardMaterial({
-    color: birdData.bellyColor,
-    roughness: 0.55
-  });
-  const eyeMat = new THREE.MeshStandardMaterial({
-    color: 0x111111,
-    roughness: 0.1,
-    metalness: 0.7
-  });
-  const eyeHighlightMat = new THREE.MeshStandardMaterial({
-    color: 0xffffff,
-    roughness: 0.0,
-    metalness: 0.0,
-    emissive: 0xffffff,
-    emissiveIntensity: 0.3
-  });
-
-  // ─── Body (streamlined teardrop) ──────────
+  // Body: slim streamlined ellipsoid, tapered to the tail
   const bodyGeo = new THREE.SphereGeometry(s * 0.5, 24, 18);
-  // Deform into a teardrop: taper toward the tail (positive Z)
-  const bodyPos = bodyGeo.attributes.position;
-  for (let i = 0; i < bodyPos.count; i++) {
-    let x = bodyPos.getX(i);
-    let y = bodyPos.getY(i);
-    let z = bodyPos.getZ(i);
-
-    // Elongate along Z
-    z *= 1.4;
-
-    // Taper toward tail
-    const zNorm = (z + s * 0.7) / (s * 1.4); // 0 at nose, 1 at tail
-    const taper = 1.0 - Math.pow(Math.max(0, zNorm - 0.5) * 2, 1.5) * 0.45;
-    x *= 0.85 * taper;
-    y *= 0.75 * taper;
-
-    // Slight breast bulge at the front
-    if (zNorm < 0.4) {
-      const bulge = 1.0 + Math.sin(zNorm * Math.PI / 0.4) * 0.08;
-      x *= bulge;
-      y *= bulge;
-    }
-
-    bodyPos.setXYZ(i, x, y, z);
+  const bp = bodyGeo.attributes.position;
+  for (let i = 0; i < bp.count; i++) {
+    let x = bp.getX(i), y = bp.getY(i), z = bp.getZ(i);
+    z *= 1.55;
+    const zn = (z + s * 0.78) / (s * 1.55);
+    const taper = 1 - Math.pow(Math.max(0, zn - 0.45) / 0.55, 1.4) * 0.7;
+    const front = zn < 0.35 ? 1 + (0.35 - zn) * 0.5 : 1;
+    x *= 0.62 * taper * front; y *= 0.6 * taper * front;
+    if (zn < 0.4) y -= s * 0.02;
+    bp.setXYZ(i, x, y, z);
   }
   bodyGeo.computeVertexNormals();
-  const body = new THREE.Mesh(bodyGeo, bodyMat);
-  bird.add(body);
+  const body = new THREE.Mesh(bodyGeo, bodyMat); body.position.set(0, 0, s * 0.05); bird.add(body);
+  const bellyGeo = new THREE.SphereGeometry(s * 0.3, 16, 12); bellyGeo.scale(0.62, 0.5, 1.1);
+  const belly = new THREE.Mesh(bellyGeo, bellyMat); belly.position.set(0, -s * 0.16, -s * 0.05); bird.add(belly);
 
-  // ─── Belly (smooth underside) ─────────────
-  const bellyGeo = new THREE.SphereGeometry(s * 0.47, 20, 12, 0, Math.PI * 2, Math.PI * 0.45, Math.PI * 0.55);
-  bellyGeo.scale(0.8, 0.5, 1.3);
-  const belly = new THREE.Mesh(bellyGeo, bellyMat);
-  belly.position.y = -s * 0.06;
-  bird.add(belly);
+  // Neck + head
+  const neckGeo = new THREE.CylinderGeometry(s * 0.13, s * 0.2, s * 0.32, 12);
+  const neck = new THREE.Mesh(neckGeo, headMat); neck.position.set(0, s * 0.16, -s * 0.5); neck.rotation.x = 0.7; bird.add(neck);
+  const headGeo = new THREE.SphereGeometry(s * 0.21, 18, 16); headGeo.scale(0.95, 1, 1.05);
+  const head = new THREE.Mesh(headGeo, headMat); head.position.set(0, s * 0.34, -s * 0.66); bird.add(head);
+  const beakGeo = new THREE.ConeGeometry(s * 0.08, s * 0.32, 12); beakGeo.rotateX(-Math.PI / 2);
+  const beak = new THREE.Mesh(beakGeo, beakMat); beak.position.set(0, s * 0.32, -s * 0.92); bird.add(beak);
+  const eyeGeo = new THREE.SphereGeometry(s * 0.045, 10, 8);
+  [1, -1].forEach((d) => { const e = new THREE.Mesh(eyeGeo, eyeMat); e.position.set(d * s * 0.13, s * 0.4, -s * 0.74); bird.add(e); });
 
-  // ─── Neck bridge (smooth transition) ──────
-  const neckGeo = new THREE.SphereGeometry(s * 0.22, 16, 12);
-  neckGeo.scale(0.8, 0.9, 1.1);
-  const neck = new THREE.Mesh(neckGeo, headMat);
-  neck.position.set(0, s * 0.15, -s * 0.45);
-  bird.add(neck);
-
-  // ─── Head (smooth sphere) ─────────────────
-  const headGeo = new THREE.SphereGeometry(s * 0.26, 20, 16);
-  headGeo.scale(1.0, 0.95, 1.05);
-  const head = new THREE.Mesh(headGeo, headMat);
-  head.position.set(0, s * 0.27, -s * 0.6);
-  bird.add(head);
-
-  // ─── Eyes (with highlights) ───────────────
-  const eyeGeo = new THREE.SphereGeometry(s * 0.055, 12, 10);
-  const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-  eyeL.position.set(s * 0.14, s * 0.32, -s * 0.75);
-  bird.add(eyeL);
-  const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-  eyeR.position.set(-s * 0.14, s * 0.32, -s * 0.75);
-  bird.add(eyeR);
-
-  // Eye highlights (small white dots)
-  const hlGeo = new THREE.SphereGeometry(s * 0.018, 6, 6);
-  const hlL = new THREE.Mesh(hlGeo, eyeHighlightMat);
-  hlL.position.set(s * 0.155, s * 0.335, -s * 0.79);
-  bird.add(hlL);
-  const hlR = new THREE.Mesh(hlGeo, eyeHighlightMat);
-  hlR.position.set(-s * 0.125, s * 0.335, -s * 0.79);
-  bird.add(hlR);
-
-  // ─── Beak (tapered cone) ──────────────────
-  const beakGeo = new THREE.ConeGeometry(s * 0.065, s * 0.28, 12);
-  beakGeo.rotateX(Math.PI / 2);
-  // Taper the tip
-  const beakPos = beakGeo.attributes.position;
-  for (let i = 0; i < beakPos.count; i++) {
-    const z = beakPos.getZ(i);
-    if (z < -s * 0.1) {
-      const squeeze = 0.6;
-      beakPos.setX(i, beakPos.getX(i) * squeeze);
-      beakPos.setY(i, beakPos.getY(i) * squeeze - s * 0.02);
-    }
+  // Wings: flat swept wings lying horizontal (flap via pivot rotation.z)
+  function wing(sign) {
+    const sh = new THREE.Shape();
+    sh.moveTo(0, -s * 0.28);
+    sh.bezierCurveTo(s * 0.5, -s * 0.34, s * 0.95, -s * 0.18, s * 1.15, s * 0.02);
+    sh.bezierCurveTo(s * 1.0, s * 0.12, s * 0.7, s * 0.16, s * 0.4, s * 0.22);
+    sh.bezierCurveTo(s * 0.2, s * 0.26, s * 0.08, s * 0.28, 0, s * 0.34);
+    sh.lineTo(0, -s * 0.28);
+    const g = new THREE.ExtrudeGeometry(sh, { depth: s * 0.02, bevelEnabled: true, bevelThickness: s * 0.006, bevelSize: s * 0.006, bevelSegments: 1 });
+    const piv = new THREE.Group(); piv.position.set(sign * s * 0.2, s * 0.12, -s * 0.05);
+    const m = new THREE.Mesh(g, wingMat);
+    m.rotation.x = -Math.PI / 2;
+    if (sign < 0) m.scale.x = -1;
+    piv.add(m);
+    bird.add(piv);
+    return piv;
   }
-  beakGeo.computeVertexNormals();
-  const beak = new THREE.Mesh(beakGeo, beakMat);
-  beak.position.set(0, s * 0.22, -s * 0.87);
-  bird.add(beak);
+  bird.userData.leftWingPivot = wing(1);
+  bird.userData.rightWingPivot = wing(-1);
 
-  // ─── Wings (organic curved shape) ─────────
-  const wingShape = new THREE.Shape();
-  wingShape.moveTo(0, 0);
-  wingShape.bezierCurveTo(
-    s * 0.3, s * 0.08,
-    s * 0.7, s * 0.18,
-    s * 1.05, s * 0.08
-  );
-  wingShape.bezierCurveTo(
-    s * 1.1, 0,
-    s * 1.0, -s * 0.08,
-    s * 0.85, -s * 0.12
-  );
-  wingShape.bezierCurveTo(
-    s * 0.5, -s * 0.18,
-    s * 0.2, -s * 0.2,
-    0, -s * 0.15
-  );
-  wingShape.lineTo(0, 0);
-
-  // Extrude slightly for thickness
-  const wingGeo = new THREE.ExtrudeGeometry(wingShape, {
-    depth: s * 0.015,
-    bevelEnabled: true,
-    bevelThickness: s * 0.005,
-    bevelSize: s * 0.005,
-    bevelSegments: 2
-  });
-
-  // Left wing pivot
-  const leftWingPivot = new THREE.Group();
-  leftWingPivot.position.set(s * 0.32, s * 0.12, 0);
-  const leftWing = new THREE.Mesh(wingGeo, wingMat);
-  leftWingPivot.add(leftWing);
-  bird.add(leftWingPivot);
-  bird.userData.leftWingPivot = leftWingPivot;
-
-  // Right wing pivot (mirrored)
-  const rightWingPivot = new THREE.Group();
-  rightWingPivot.position.set(-s * 0.32, s * 0.12, 0);
-  const rightWingGeo = wingGeo.clone();
-  rightWingGeo.scale(-1, 1, 1);
-  const rightWing = new THREE.Mesh(rightWingGeo, wingMat);
-  rightWingPivot.add(rightWing);
-  bird.add(rightWingPivot);
-  bird.userData.rightWingPivot = rightWingPivot;
-
-  // ─── Tail (smooth feather fan) ────────────
-  const tailGroup = new THREE.Group();
-  tailGroup.position.set(0, -s * 0.02, s * 0.6);
-
+  // Tail: flat fanned feathers trailing behind
+  const tail = new THREE.Group(); tail.position.set(0, s * 0.02, s * 0.62); tail.rotation.x = -0.1;
   for (let i = -3; i <= 3; i++) {
-    // Each tail feather is a tapered shape
-    const featherShape = new THREE.Shape();
-    featherShape.moveTo(0, 0);
-    featherShape.bezierCurveTo(
-      s * 0.04, s * 0.12,
-      s * 0.03, s * 0.3,
-      0, s * 0.4
-    );
-    featherShape.bezierCurveTo(
-      -s * 0.03, s * 0.3,
-      -s * 0.04, s * 0.12,
-      0, 0
-    );
-    const featherGeo = new THREE.ShapeGeometry(featherShape, 6);
-    const feather = new THREE.Mesh(featherGeo, wingMat);
-    feather.rotation.y = i * 0.12;
-    feather.rotation.x = 0.25 + Math.abs(i) * 0.03;
-    feather.position.z = s * 0.05;
-    tailGroup.add(feather);
+    const fs = new THREE.Shape(); fs.moveTo(0, 0);
+    fs.bezierCurveTo(s * 0.05, s * 0.15, s * 0.04, s * 0.4, 0, s * 0.55);
+    fs.bezierCurveTo(-s * 0.04, s * 0.4, -s * 0.05, s * 0.15, 0, 0);
+    const fg = new THREE.ShapeGeometry(fs, 6); const f = new THREE.Mesh(fg, wingMat);
+    f.rotation.y = i * 0.16; f.rotation.x = 0.12;
+    tail.add(f);
   }
-  bird.add(tailGroup);
-  bird.userData.tailGroup = tailGroup;
+  bird.add(tail); bird.userData.tailGroup = tail;
 
-  // Shadow
-  bird.traverse(child => {
-    if (child.isMesh) {
-      child.castShadow = true;
-      child.receiveShadow = true;
-    }
+  // Legs (tucked under the body)
+  [1, -1].forEach((d) => {
+    const lg = new THREE.CylinderGeometry(s * 0.025, s * 0.025, s * 0.22, 6);
+    const l = new THREE.Mesh(lg, legMat); l.position.set(d * s * 0.1, -s * 0.22, s * 0.12); l.rotation.x = 0.5; bird.add(l);
+    const ft = new THREE.CylinderGeometry(s * 0.02, s * 0.01, s * 0.12, 6);
+    const foot = new THREE.Mesh(ft, legMat); foot.position.set(d * s * 0.1, -s * 0.32, s * 0.04); foot.rotation.x = 1.3; bird.add(foot);
   });
 
+  bird.traverse((c) => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
   return bird;
 }
-
-/**
- * Flight style enum
- */
-const FLIGHT_STYLE = {
-  FLYBY: 'flyby',       // Straight across the area
-  CIRCLE: 'circle',     // Orbit around a point
-  WANDER: 'wander'      // Random zigzag waypoints
-};
-
-/**
- * Pick a random flight style. Flyby is most common for natural feel.
- */
 function pickFlightStyle() {
   // Favor predictable, shootable paths: mostly straight fly-bys, some gentle
   // circles. The chaotic random-zigzag 'wander' style is no longer used.
