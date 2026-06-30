@@ -410,7 +410,7 @@ export class UI {
       // Defer adding the animation class so the browser has a frame to register the unhide
       requestAnimationFrame(() => el.classList.add('screen-fade-in'));
     }
-    if (name === 'title' || name === 'morning') { this._startCoopRequestPolling(); } else { this._stopCoopRequestPolling(); }
+    this._startCoopRequestPolling();
   }
 
   // ─── Toast Notifications ─────────────────────
@@ -1486,33 +1486,36 @@ export class UI {
     return { back: back, box: box, close: () => { if (back.parentNode) back.parentNode.removeChild(back); } };
   }
 
-  _openCoopInvite() {
+  async _openCoopInvite() {
     const eco = this.economy;
     const o = this._coopOverlay(
       '<div style="font:900 22px system-ui;color:#ffd766;">Hunt with a Friend</div>' +
-      '<div style="font:500 13px system-ui;color:#cbb98f;margin:8px 0 14px;">You each play your own hunt. When you both finish, you EACH get the full combined cash. More XP than solo \u2014 top killer earns MVP.</div>' +
-      '<input id="coop-name" placeholder="Friend username" style="width:100%;box-sizing:border-box;padding:11px;border-radius:9px;border:1px solid #6b5630;background:#16110a;color:#fff;font:600 15px system-ui;">' +
-      '<div id="coop-msg" style="min-height:18px;font:600 13px system-ui;color:#ffe9b0;margin:8px 0;"></div>' +
-      '<button id="coop-send" style="width:100%;padding:11px;border:none;border-radius:10px;background:linear-gradient(180deg,#5bbf5b,#2e9d3a);color:#fff;font:900 15px system-ui;cursor:pointer;">Send Hunt Request</button>' +
-      '<button id="coop-cancel" style="width:100%;margin-top:8px;padding:9px;border:none;border-radius:10px;background:#3a2c10;color:#cbb98f;font:700 13px system-ui;cursor:pointer;">Cancel</button>'
+      '<div style="font:500 13px system-ui;color:#cbb98f;margin:8px 0 12px;">Pick a friend to invite. You both play your own hunt and EACH get the full combined cash. Top killer earns MVP.</div>' +
+      '<div id="coop-friendlist" style="max-height:240px;overflow-y:auto;">Loading friends...</div>' +
+      '<div id="coop-msg" style="min-height:18px;font:600 13px system-ui;color:#ffe9b0;margin:8px 0 0;"></div>' +
+      '<button id="coop-cancel" style="width:100%;margin-top:10px;padding:9px;border:none;border-radius:10px;background:#3a2c10;color:#cbb98f;font:700 13px system-ui;cursor:pointer;">Cancel</button>'
     );
     const msg = o.box.querySelector('#coop-msg');
-    const input = o.box.querySelector('#coop-name');
+    const listEl = o.box.querySelector('#coop-friendlist');
     let waiting = false;
     const cleanup = () => { if (this._coopInviteTimer) { clearTimeout(this._coopInviteTimer); this._coopInviteTimer = null; } };
     const closeAll = () => { cleanup(); if (waiting) { try { eco.cancelCoop(); } catch (e) {} } o.close(); };
     o.box.querySelector('#coop-cancel').addEventListener('click', closeAll);
-    o.box.querySelector('#coop-send').addEventListener('click', async () => {
-      const name = (input.value || '').trim();
-      if (!name) { msg.textContent = 'Enter a username.'; return; }
-      msg.style.color = '#ffe9b0'; msg.textContent = 'Sending request...';
+    let friends = [];
+    try { const fm = await import('./friends.js'); friends = await fm.getFriends(eco.uid); } catch (e) {}
+    if (!friends || !friends.length) {
+      listEl.innerHTML = '<div style="font:600 13px system-ui;color:#cbb98f;padding:8px 0;">You have no friends yet. Add friends in the Friends tab, then invite them here.</div>';
+      return;
+    }
+    listEl.innerHTML = friends.map((f) => '<button class="coop-friend-pick" data-name="' + (f.name || '') + '" style="display:block;width:100%;text-align:left;margin-bottom:6px;padding:10px 12px;border:1px solid #6b5630;border-radius:9px;background:#16110a;color:#fff;font:700 14px system-ui;cursor:pointer;">' + (f.name || 'Friend') + '</button>').join('');
+    const startInvite = async (name) => {
+      msg.style.color = '#ffe9b0'; msg.textContent = 'Inviting ' + name + '...';
       const res = await eco.sendHuntRequest(name);
       if (res.error) { msg.style.color = '#ff8a8a'; msg.textContent = res.error; return; }
       waiting = true;
-      o.box.querySelector('#coop-send').style.display = 'none';
-      input.style.display = 'none';
+      listEl.style.display = 'none';
       msg.style.color = '#9fe0a0';
-      msg.textContent = 'Request sent to ' + res.toName + '. Waiting for them to accept...';
+      msg.textContent = 'Invited ' + res.toName + '. Waiting for them to accept...';
       const poll = async () => {
         const st = await eco.coopSessionStatus();
         if (st && st.status === 'active') { o.close(); cleanup(); if (this.onStartHunt) this.onStartHunt(); return; }
@@ -1520,7 +1523,8 @@ export class UI {
         this._coopInviteTimer = setTimeout(poll, 2000);
       };
       this._coopInviteTimer = setTimeout(poll, 2000);
-    });
+    };
+    listEl.querySelectorAll('.coop-friend-pick').forEach((btn) => btn.addEventListener('click', () => startInvite(btn.getAttribute('data-name'))));
   }
 
   _startCoopRequestPolling() {
@@ -1541,22 +1545,32 @@ export class UI {
 
   _showIncomingCoopRequest(rq) {
     this._coopReqOpen = true;
-    const o = this._coopOverlay(
-      '<div style="font:900 22px system-ui;color:#ffd766;">Co-op Hunt Invite</div>' +
-      '<div style="font:600 15px system-ui;color:#fff;margin:10px 0 6px;"><b style="color:#ffd766;">' + (rq.fromName || 'A friend') + '</b> wants to hunt with you!</div>' +
-      '<div style="font:500 13px system-ui;color:#cbb98f;margin-bottom:16px;">You each play your own hunt and EACH get the full combined cash. More XP than solo, plus MVP for whoever kills more.</div>' +
-      '<button id="coop-accept" style="width:100%;padding:11px;border:none;border-radius:10px;background:linear-gradient(180deg,#5bbf5b,#2e9d3a);color:#fff;font:900 15px system-ui;cursor:pointer;">Accept and Hunt</button>' +
-      '<button id="coop-decline" style="width:100%;margin-top:8px;padding:9px;border:none;border-radius:10px;background:#3a2c10;color:#cbb98f;font:700 13px system-ui;cursor:pointer;">Decline</button>'
-    );
-    const done = () => { this._coopReqOpen = false; o.close(); };
-    o.box.querySelector('#coop-accept').addEventListener('click', async () => {
+    const card = document.createElement('div');
+    card.style.cssText = 'position:fixed;top:20px;right:-380px;width:330px;background:linear-gradient(180deg,#2a2008,#1a1406);border:2px solid #ffd766;border-radius:14px;padding:16px;box-shadow:0 12px 40px rgba(0,0,0,.55);font-family:system-ui,sans-serif;color:#e8dcc0;z-index:10002;transition:right .35s ease, opacity .35s ease;opacity:1;';
+    card.innerHTML = '<div id="coop-count" style="position:absolute;top:10px;right:13px;font:900 14px system-ui;color:#ffd766;">10</div>' +
+      '<div style="font:900 16px system-ui;color:#ffd766;margin-right:26px;">Co-op Hunt Invite</div>' +
+      '<div style="font:600 13px system-ui;color:#fff;margin:6px 0 4px;"><b style="color:#ffd766;">' + (rq.fromName || 'A friend') + '</b> wants to hunt with you!</div>' +
+      '<div style="font:500 12px system-ui;color:#cbb98f;margin-bottom:10px;">You both get the combined cash.</div>' +
+      '<div style="display:flex;gap:8px;"><button id="coop-accept" style="flex:1;padding:9px;border:none;border-radius:8px;background:linear-gradient(180deg,#5bbf5b,#2e9d3a);color:#fff;font:900 13px system-ui;cursor:pointer;">Accept</button>' +
+      '<button id="coop-decline" style="flex:1;padding:9px;border:none;border-radius:8px;background:#3a2c10;color:#cbb98f;font:800 13px system-ui;cursor:pointer;">Decline</button></div>';
+    document.body.appendChild(card);
+    requestAnimationFrame(() => { card.style.right = '20px'; });
+    let n = 10; let done = false;
+    const countEl = card.querySelector('#coop-count');
+    const stopTimer = () => { if (this._coopCountTimer) { clearInterval(this._coopCountTimer); this._coopCountTimer = null; } };
+    const remove = () => { card.style.right = '-380px'; card.style.opacity = '0'; setTimeout(() => { if (card.parentNode) card.parentNode.removeChild(card); }, 400); this._coopReqOpen = false; };
+    const close = () => { if (done) return; done = true; stopTimer(); remove(); };
+    this._coopCountTimer = setInterval(() => { n--; if (countEl) countEl.textContent = n; if (n <= 0) { stopTimer(); try { this.economy.declineHuntRequest(rq.id); } catch (e) {} close(); } }, 1000);
+    card.querySelector('#coop-accept').addEventListener('click', async () => {
+      if (done) return; done = true; stopTimer();
       const res = await this.economy.acceptHuntRequest(rq.id);
-      if (res.error) { this.toast(res.error, 'error'); done(); return; }
+      if (res.error) { this.toast(res.error, 'error'); remove(); return; }
       this._stopCoopRequestPolling();
-      done();
+      if (card.parentNode) card.parentNode.removeChild(card);
+      this._coopReqOpen = false;
       if (this.onStartHunt) this.onStartHunt();
     });
-    o.box.querySelector('#coop-decline').addEventListener('click', async () => { try { await this.economy.declineHuntRequest(rq.id); } catch (e) {} done(); });
+    card.querySelector('#coop-decline').addEventListener('click', async () => { if (done) return; done = true; stopTimer(); try { await this.economy.declineHuntRequest(rq.id); } catch (e) {} remove(); });
   }
 
   showCoopWaiting(partnerName, onCancel) {
@@ -1581,7 +1595,7 @@ export class UI {
         '<div style="flex:1;background:#16110a;border:1px solid #6b5630;border-radius:10px;padding:10px;text-align:center;"><div style="font:700 11px system-ui;color:#cbb98f;">FRIEND EARNED</div><div style="font:900 16px system-ui;color:#9fe0a0;">$' + (r.partnerMoney || 0).toLocaleString() + '</div></div>' +
       '</div>' +
       '<div style="background:linear-gradient(180deg,#5a4416,#3a2c0e);border:2px solid #ffd766;border-radius:12px;padding:14px;text-align:center;margin-bottom:12px;"><div style="font:700 12px system-ui;color:#ffe9b0;">YOU BOTH RECEIVED</div><div style="font:900 28px system-ui;color:#ffd766;">$' + (r.total || 0).toLocaleString() + '</div></div>' +
-      '<div style="font:800 14px system-ui;color:#ffd766;text-align:center;">' + mvpLine + '</div>' +
+      '<div style="font:600 13px system-ui;color:#cbb98f;text-align:center;margin-bottom:4px;">Birds shot &mdash; you ' + (r.myKills || 0) + ' &middot; ' + (r.partnerName || 'friend') + ' ' + (r.partnerKills || 0) + '</div>' + '<div style="font:800 14px system-ui;color:#ffd766;text-align:center;">' + mvpLine + '</div>' +
       (r.bonusXP ? '<div style="font:600 13px system-ui;color:#9fe0a0;text-align:center;margin-top:4px;">+' + r.bonusXP + ' bonus XP</div>' : '') +
       '<button id="coop-done" style="width:100%;margin-top:16px;padding:11px;border:none;border-radius:10px;background:linear-gradient(180deg,#5bbf5b,#2e9d3a);color:#fff;font:900 15px system-ui;cursor:pointer;">Nice!</button>'
     );
