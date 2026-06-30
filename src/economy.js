@@ -633,7 +633,7 @@ const MAX_PETS = 10;
 // ---- Battle Pass config ----
 export const BP_MAX_TIER = 100;
 const REFERRALS_NEEDED = 5;
-function bpTierCost(n) { return n >= BP_MAX_TIER ? Infinity : 300 + (n - 1) * 55; }
+function bpTierCost(n) { return n >= BP_MAX_TIER ? Infinity : Math.round((300 + (n - 1) * 55) * 0.87); }
 const BP_GUN_NAMES = { rail_gun: 'Rail Gun', slomo_gun: 'Slo-Mo Gun', laser_rifle: 'Laser Rifle', plasma_shotgun: 'Plasma Shotgun' };
 function buildBattlePassRewards() {
   const SKIN_LABELS = { emerald: 'Emerald Skin', molten: 'Molten Skin', obsidian: 'Obsidian Skin', rose_gold: 'Rose Gold Skin', gold: 'Gold Skin', arctic_camo: 'Arctic Camo Skin', shadow: 'Shadow Skin', neon: 'Neon Skin', galaxy: 'Galaxy Skin', prismatic: 'Prismatic Skin', diamond: 'Diamond Skin', champion_gold: 'Champion Gold Skin', rainbowwave: 'Rainbow Wave (Animated)', chromaflow: 'Chromaflow (Animated)' };
