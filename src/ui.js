@@ -46,6 +46,7 @@ export class UI {
       tradeBuilder: document.getElementById('trade-builder'),
       locker: document.getElementById('screen-locker'),
       friends: document.getElementById('screen-friends'),
+      stats: document.getElementById('screen-stats'),
       tournament: document.getElementById('screen-tournament'),
       clan: document.getElementById('screen-clan'),
       sleep: document.getElementById('screen-sleep'),
@@ -119,6 +120,8 @@ export class UI {
     bind('btn-trade', () => { this.audio.playUIClick(); if (this.onTrade) this.onTrade(); });
     bind('btn-trade-back', () => { this.audio.playUIClick(); this.showScreen('results'); });
     bind('btn-friends', () => { this.audio.playUIClick(); if (this.onFriends) this.onFriends(); });
+    bind('btn-stats', () => { this.audio.playUIClick(); this.showStats(); });
+    bind('btn-stats-back', () => { this.audio.playUIClick(); this.showScreen('results'); });
     bind('btn-friends-back', () => { this.audio.playUIClick(); this.showScreen('results'); });
     bind('btn-tournament', () => { this.audio.playUIClick(); if (this.onTournament) this.onTournament(); });
     bind('btn-tournament-back', () => { this.audio.playUIClick(); this.showScreen('results'); });
@@ -1600,6 +1603,48 @@ export class UI {
       '<button id="coop-done" style="width:100%;margin-top:16px;padding:11px;border:none;border-radius:10px;background:linear-gradient(180deg,#5bbf5b,#2e9d3a);color:#fff;font:900 15px system-ui;cursor:pointer;">Nice!</button>'
     );
     o.box.querySelector('#coop-done').addEventListener('click', o.close);
+  }
+
+  showStats() {
+    const eco = this.economy;
+    const ss = document.getElementById('stats-summary');
+    if (ss) {
+      const card = (label, val) => '<div style="background:#16110a;border:1px solid #6b5630;border-radius:10px;padding:8px 12px;min-width:118px;text-align:center;"><div style="font:700 10px system-ui;color:#cbb98f;letter-spacing:.5px;">' + label + '</div><div style="font:900 16px system-ui;color:#ffd766;margin-top:2px;">' + val + '</div></div>';
+      ss.innerHTML =
+        card('BIRDS KILLED', fmtNum(eco.totalBirdsKilled || 0)) +
+        card('TOTAL EARNED', '$' + (eco.totalMoneyEarned || 0).toLocaleString()) +
+        card('CURRENT CASH', '$' + (eco.money || 0).toLocaleString()) +
+        card('BEST STREAK', (eco.bestKillstreak || 0)) +
+        card('DIMENSION', (eco.dimension || 1)) +
+        card('DAY', (eco.day || 1)) +
+        card('PASS TIER', eco.bpTier()) +
+        card('TICKETS', (eco.tickets || 0)) +
+        card('PETS', (eco.petInventory || []).length) +
+        card('PREMIUM', eco.premiumPass ? 'Active' : 'No');
+    }
+    const al = document.getElementById('achievements-list');
+    if (al) {
+      const list = eco.achievementList();
+      al.innerHTML = list.map((a) => {
+        const pct = Math.min(100, Math.round(a.current / a.goal * 100));
+        const rw = a.reward.type === 'money' ? ('$' + a.reward.amount.toLocaleString()) : (a.reward.type === 'ticket' ? (a.reward.amount + ' Ticket' + (a.reward.amount > 1 ? 's' : '')) : ('Mystery Box ' + (a.reward.box === 1 ? 'I' : (a.reward.box === 2 ? 'II' : 'III'))));
+        const right = a.claimed ? '<span style="font:800 12px system-ui;color:#9fe0a0;">Claimed</span>' : (a.claimable ? '<button class="ach-claim" data-ach="' + a.id + '" style="padding:7px 14px;border:none;border-radius:8px;background:linear-gradient(180deg,#5bbf5b,#2e9d3a);color:#fff;font:900 12px system-ui;cursor:pointer;">Claim</button>' : '<span style="font:700 12px system-ui;color:#cbb98f;">' + fmtNum(a.current) + ' / ' + fmtNum(a.goal) + '</span>');
+        return '<div style="display:flex;align-items:center;gap:12px;background:' + (a.claimed ? '#1c2814' : '#16110a') + ';border:1px solid ' + (a.claimable ? '#ffd766' : '#3a2c10') + ';border-radius:10px;padding:10px 12px;margin-bottom:6px;">' +
+          '<div style="flex:1;min-width:0;">' +
+            '<div style="font:800 14px system-ui;color:#fff;">' + a.name + ' <span style="font:600 11px system-ui;color:#cbb98f;">&middot; ' + rw + '</span></div>' +
+            '<div style="font:500 12px system-ui;color:#cbb98f;margin:2px 0 5px;">' + a.desc + '</div>' +
+            '<div style="height:7px;background:#000;border-radius:4px;overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:' + (a.done ? '#5bbf5b' : '#c79bff') + ';"></div></div>' +
+          '</div>' +
+          '<div style="flex-shrink:0;">' + right + '</div>' +
+        '</div>';
+      }).join('');
+      al.querySelectorAll('.ach-claim').forEach((b) => b.addEventListener('click', () => {
+        const res = eco.claimAchievement(b.getAttribute('data-ach'));
+        if (res.error) this.toast(res.error, 'error'); else this.toast(res.message || 'Claimed!', 'success');
+        this.showStats();
+      }));
+    }
+    this.showScreen('stats');
   }
 
   showDailyReward(info) {
