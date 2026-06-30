@@ -963,6 +963,16 @@ function generateDimension(id) {
 const GRANDPA_WEAPONS = ['old_rifle', 'grandpas_shotgun', 'grandpas_rifle'];
 
 // Maximum weapon upgrade level (stars shown in the shop)
+const SEASON_LEN_MS = 28 * 24 * 60 * 60 * 1000;
+const SEASON_ANCHOR = Date.UTC(2026, 5, 29, 0, 0, 0);
+export function bpSeasonInfo(now) {
+  const t = (now || Date.now());
+  let idx = Math.floor((t - SEASON_ANCHOR) / SEASON_LEN_MS);
+  if (idx < 0) idx = 0;
+  const start = SEASON_ANCHOR + idx * SEASON_LEN_MS;
+  return { season: idx + 1, index: idx, start: start, end: start + SEASON_LEN_MS };
+}
+
 export const DAILY_REWARDS = [
   { money: 250, label: '$250' },
   { money: 400, label: '$400' },
@@ -1030,6 +1040,7 @@ export class Economy {
     this.lastLoginDay = null;
     this.lastDailyDay = null;
     this.dailyStreak = 0;
+    this.bpSeason = 1;
     this.coopSessionId = null;
     this.coopRole = null;
     this.bpPremiumLedger = [];
@@ -1094,6 +1105,7 @@ export class Economy {
       lastLoginDay: this.lastLoginDay || null,
       lastDailyDay: this.lastDailyDay || null,
       dailyStreak: this.dailyStreak || 0,
+      bpSeason: this.bpSeason || 1,
       bpPremiumLedger: this.bpPremiumLedger || [],
       weaponOwned: {},
       locationUnlocked: {}
@@ -1175,6 +1187,7 @@ export class Economy {
       if (data.lastLoginDay !== undefined) this.lastLoginDay = data.lastLoginDay;
     if (data.lastDailyDay !== undefined) this.lastDailyDay = data.lastDailyDay;
     if (data.dailyStreak !== undefined) this.dailyStreak = data.dailyStreak;
+    if (data.bpSeason !== undefined) this.bpSeason = data.bpSeason;
       if (data.bpPremiumLedger) this.bpPremiumLedger = data.bpPremiumLedger;
 
       // Ensure procedurally-generated dimensions exist first
@@ -1504,6 +1517,21 @@ export class Economy {
     }
     this.save();
   }
+  checkSeasonReset() {
+    const info = bpSeasonInfo();
+    if (!this.bpSeason) this.bpSeason = info.season;
+    if (info.season > this.bpSeason) {
+      this.battlePassXP = 0;
+      this.bpClaimedFree = [];
+      this.bpClaimedPremium = [];
+      this.bpPremiumLedger = [];
+      this.bpSeason = info.season;
+      this.save();
+      return true;
+    }
+    return false;
+  }
+
   claimDailyReward() {
     const today = new Date().toISOString().slice(0, 10);
     if (this.lastDailyDay === today) return { claimed: false };
@@ -1673,7 +1701,7 @@ export class Economy {
     else if (r.type === 'ticket') { this.tickets = (this.tickets || 0) + r.amount; led.amount = r.amount; msg = '+' + r.amount + ' Ticket' + (r.amount > 1 ? 's' : '') + '!'; }
     else if (r.type === 'box') { const pet = this.grantPetFromBox(this.dimension, r.box); if (pet) led.petId = pet.id; msg = pet ? ('Unboxed ' + pet.name + '!') : 'Mystery box opened.'; }
     else if (r.type === 'gun') { if (this.weapons[r.weapon]) this.weapons[r.weapon].owned = true; led.weapon = r.weapon; msg = (r.label || 'Weapon') + ' unlocked!'; }
-    else if (r.type === 'slot') { this.bonusPetSlots = (this.bonusPetSlots || 0) + r.amount; led.amount = r.amount; msg = '+' + r.amount + ' pet slot' + (r.amount > 1 ? 's' : '') + '!'; }
+    else if (r.type === 'slot') { this.bonusPetSlots = Math.min(6, (this.bonusPetSlots || 0) + r.amount); led.amount = r.amount; msg = '+' + r.amount + ' pet slot' + (r.amount > 1 ? 's' : '') + '!'; }
     else if (r.type === 'skin') { this.ownedSkins = this.ownedSkins || ['default']; if (!this.ownedSkins.includes(r.skin)) this.ownedSkins.push(r.skin); led.skin = r.skin; msg = (r.label || 'Skin') + ' unlocked!'; }
     else if (r.type === 'potion') { const n = r.amount || 1; this.ownedConsumables = this.ownedConsumables || {}; this.ownedConsumables[r.potion] = (this.ownedConsumables[r.potion] || 0) + n; led.potion = r.potion; led.amount = n; msg = '+' + n + ' ' + (r.label || 'Potion') + '!'; }
     const list = track === 'premium' ? (this.bpClaimedPremium = this.bpClaimedPremium || []) : (this.bpClaimedFree = this.bpClaimedFree || []);
