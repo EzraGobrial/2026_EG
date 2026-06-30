@@ -3,7 +3,7 @@
 // Menu screens: title, morning, results, shop, sleep, win
 // ═══════════════════════════════════════════════
 
-import { Economy, BIRDS, RARITY_COLORS, DIMENSIONS, WEAPONS, BANNERS, TAGS, CONSUMABLES, WEAPON_SKINS, PETS, GEAR, RANKS, MAX_WEAPON_LEVEL, PET_RARITIES, MYSTERY_BOXES, PET_BOOSTS, BATTLE_PASS, BP_MAX_TIER, TICKET_SHOP, DAILY_REWARDS, bpSeasonInfo, fmtMoney, fmtNum } from './economy.js';
+import { Economy, BIRDS, RARITY_COLORS, DIMENSIONS, WEAPONS, BANNERS, TAGS, CONSUMABLES, WEAPON_SKINS, PETS, GEAR, RANKS, MAX_WEAPON_LEVEL, PET_RARITIES, MYSTERY_BOXES, PET_BOOSTS, BATTLE_PASS, BP_MAX_TIER, TICKET_SHOP, DAILY_REWARDS, bpSeasonInfo, eventInfo, fmtMoney, fmtNum } from './economy.js';
 
 /**
  * Generate HTML for a rank badge (CSS-styled, not emoji)
@@ -60,6 +60,7 @@ export class UI {
     // Callbacks (set by main.js)
     this.onStartGame = null;
     this.onStartHunt = null;
+    this.onJoinEvent = null;
     this.onGoToShop = null;
     this.onGoToLocker = null;
     this.onLockerBack = null;
@@ -414,6 +415,7 @@ export class UI {
       requestAnimationFrame(() => el.classList.add('screen-fade-in'));
     }
     this._startCoopRequestPolling();
+    if (name === 'title') this._startEventBanner();
   }
 
   // ─── Toast Notifications ─────────────────────
@@ -1603,6 +1605,62 @@ export class UI {
       '<button id="coop-done" style="width:100%;margin-top:16px;padding:11px;border:none;border-radius:10px;background:linear-gradient(180deg,#5bbf5b,#2e9d3a);color:#fff;font:900 15px system-ui;cursor:pointer;">Nice!</button>'
     );
     o.box.querySelector('#coop-done').addEventListener('click', o.close);
+  }
+
+  _eventFmt(ms) {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
+    if (d > 0) return d + 'd ' + h + 'h ' + m + 'm';
+    if (h > 0) return h + 'h ' + m + 'm ' + ss + 's';
+    return m + 'm ' + (ss < 10 ? '0' : '') + ss + 's';
+  }
+
+  _updateEventBanner() {
+    const host = document.getElementById('screen-title');
+    if (!host) return;
+    const tc = host.querySelector('.title-content') || host;
+    let el = document.getElementById('event-banner');
+    if (!el) { el = document.createElement('div'); el.id = 'event-banner'; el.style.cssText = 'margin:12px auto;max-width:420px;'; const anchor = document.getElementById('btn-start'); if (anchor && anchor.parentNode === tc) tc.insertBefore(el, anchor); else tc.appendChild(el); }
+    const info = eventInfo();
+    if (info.phase === 'join') {
+      el.innerHTML = '<div style="background:linear-gradient(180deg,#3a2c0e,#241a08);border:2px solid #ffd766;border-radius:12px;padding:12px;text-align:center;box-shadow:0 0 20px rgba(255,200,80,.3);"><div style="font:900 16px system-ui;color:#ffd766;">MEGA HUNT IS LIVE</div><div style="font:600 12px system-ui;color:#cbb98f;margin:4px 0 8px;">Join now &mdash; MVP takes the whole pot! Closes in ' + this._eventFmt(info.joinEnd - Date.now()) + '</div><button id="btn-join-event" style="width:100%;padding:11px;border:none;border-radius:10px;background:linear-gradient(180deg,#ffd766,#e0a020);color:#241a08;font:900 15px system-ui;cursor:pointer;">JOIN MEGA HUNT</button></div>';
+      const b = el.querySelector('#btn-join-event'); if (b) b.onclick = () => { if (this.audio && this.audio.playUIClick) this.audio.playUIClick(); if (this.onJoinEvent) this.onJoinEvent(); };
+    } else {
+      el.innerHTML = '<div style="background:#241a08;border:1px solid #6b5630;border-radius:12px;padding:10px;text-align:center;"><div style="font:800 13px system-ui;color:#ffd766;">Next Mega Hunt</div><div style="font:900 18px system-ui;color:#fff;margin-top:2px;">' + this._eventFmt(info.start - Date.now()) + '</div><div style="font:500 11px system-ui;color:#cbb98f;">Everyone hunts at once &middot; MVP wins the pot</div></div>';
+    }
+  }
+
+  _startEventBanner() {
+    this._updateEventBanner();
+    if (this._eventBannerTimer) return;
+    this._eventBannerTimer = setInterval(() => { const t = document.getElementById('screen-title'); if (t && !t.classList.contains('hidden')) this._updateEventBanner(); }, 1000);
+  }
+
+  showEventCountdown(cb) {
+    const back = document.createElement('div');
+    back.style.cssText = 'position:fixed;inset:0;background:rgba(10,6,0,.86);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10050;';
+    back.innerHTML = '<div style="font:800 20px system-ui;color:#ffd766;margin-bottom:10px;letter-spacing:1px;">MEGA HUNT STARTS IN</div><div id="evt-c" style="font:900 96px system-ui;color:#fff;text-shadow:0 0 36px rgba(255,200,80,.7);">5</div>';
+    document.body.appendChild(back);
+    let n = 5; const elc = back.querySelector('#evt-c');
+    const iv = setInterval(() => { n--; if (n <= 0) { clearInterval(iv); if (back.parentNode) back.parentNode.removeChild(back); if (cb) { try { cb(); } catch (e) {} } } else { elc.textContent = n; } }, 1000);
+  }
+
+  showEventWaiting() {
+    if (this._evtWaitClose) { this._evtWaitClose(); this._evtWaitClose = null; }
+    const o = this._coopOverlay('<div style="font:900 20px system-ui;color:#ffd766;text-align:center;">Mega Hunt Over!</div><div style="font:600 14px system-ui;color:#cbb98f;margin-top:8px;text-align:center;">Tallying the pot and finding the MVP...</div>');
+    this._evtWaitClose = o.close;
+  }
+
+  showEventResults(r) {
+    if (this._evtWaitClose) { this._evtWaitClose(); this._evtWaitClose = null; }
+    const o = this._coopOverlay(
+      '<div style="font:900 24px system-ui;color:#ffd766;text-align:center;">Mega Hunt Results</div>' +
+      '<div style="background:linear-gradient(180deg,#5a4416,#3a2c0e);border:2px solid #ffd766;border-radius:12px;padding:14px;text-align:center;margin:12px 0;"><div style="font:700 12px system-ui;color:#ffe9b0;">THE POT</div><div style="font:900 30px system-ui;color:#ffd766;">$' + (r.pool || 0).toLocaleString() + '</div><div style="font:600 11px system-ui;color:#cbb98f;">' + (r.players || 0) + ' hunters joined</div></div>' +
+      '<div style="font:800 16px system-ui;color:#fff;text-align:center;">' + (r.iAmMvp ? 'You are the MVP &mdash; you won the whole pot!' : ('MVP: ' + (r.mvpName || '?') + ' with ' + (r.mvpKills || 0) + ' kills')) + '</div>' +
+      '<div style="font:600 13px system-ui;color:#cbb98f;text-align:center;margin-top:4px;">You killed ' + (r.myKills || 0) + ' birds.</div>' +
+      '<button id="evt-done" style="width:100%;margin-top:16px;padding:11px;border:none;border-radius:10px;background:linear-gradient(180deg,#5bbf5b,#2e9d3a);color:#fff;font:900 15px system-ui;cursor:pointer;">Nice!</button>'
+    );
+    const b = o.box.querySelector('#evt-done'); if (b) b.addEventListener('click', o.close);
   }
 
   showStats() {
