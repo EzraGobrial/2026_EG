@@ -1684,11 +1684,13 @@ export class Economy {
     const CAP = 20;
     if ((this.minigamePlaysToday || 0) >= CAP) { this.save(); return { reward: 'Daily reward limit reached \u2014 keep playing for fun!' }; }
     this.minigamePlaysToday = (this.minigamePlaysToday || 0) + 1;
-    let cash = 0, tickets = 0;
-    if (gameId === 'Skeet Shooting') cash = score * 120;
-    else if (gameId === 'Quick Draw') cash = Math.round(score / 8);
-    else cash = score * 100;
-    cash = Math.max(0, Math.round(cash));
+    let cash = 0, tickets = 0, base = 0, q = 0;
+    if (gameId === 'Skeet Shooting') { base = score * 120; q = Math.min(1, score / 1600); }
+    else if (gameId === 'Quick Draw') { base = Math.round(score / 8); q = Math.min(1, score / 4500); }
+    else { base = score * 100; q = Math.min(1, score / 25); }
+    const lifeEarned = this.totalMoneyEarned || 0;
+    const scaled = Math.round(lifeEarned * (0.003 + q * 0.012));
+    cash = Math.max(0, Math.round(Math.max(base, scaled)));
     if (score > 0 && Math.random() < 0.15) tickets = 1;
     this.money += cash; this.totalMoneyEarned += cash;
     if (tickets) this.tickets = (this.tickets || 0) + tickets;
