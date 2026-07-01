@@ -701,7 +701,7 @@ class Game {
       const effects = this._getActivePotionEffects();
       const birdKey = this.economy.spawnRandomBird(effects.luckMult, effects.legendaryBoost);
       const _sb = this.birds.spawn(birdKey);
-      if (_sb && !this._paradise && this.birds.isBoss(_sb) && Math.random() < 0.12) { this.birds.makeRideable(_sb); (this._rideables || (this._rideables = [])).push(_sb); }
+      if (_sb && !this._paradise && this.birds.isBoss(_sb) && Math.random() < 0.04) { this.birds.makeRideable(_sb); (this._rideables || (this._rideables = [])).push(_sb); }
     }
 
     // Rebuild weapon slot bar on the next frame too — pointer-lock can
