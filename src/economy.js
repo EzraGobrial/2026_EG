@@ -1664,7 +1664,7 @@ export class Economy {
   submitMinigameScore() {
     if (!this.uid) return;
     const b = this.minigameBest || {};
-    const data = { name: this.displayName || 'Player', skeet: b['Skeet Shooting'] || 0, quickdraw: b['Quick Draw'] || 0, dodge: b['Dodge the Dookie'] || 0, updatedAt: Date.now() };
+    const data = { name: this.displayName || 'Player', skeet: b['Skeet Shooting'] || 0, quickdraw: b['Quick Draw'] || 0, dodge: b['Dodge the Dookie'] || 0, target: b['Target Range'] || 0, updatedAt: Date.now() };
     setDoc(doc(db, 'minigameScores', this.uid), data, { merge: true }).catch((e) => console.warn('Minigame score submit failed:', e));
   }
 
@@ -1672,7 +1672,7 @@ export class Economy {
     try {
       const snap = await getDocs(collection(db, 'minigameScores'));
       const rows = [];
-      snap.forEach((d) => { const x = d.data(); rows.push({ uid: d.id, name: x.name || 'Unknown', skeet: x.skeet || 0, quickdraw: x.quickdraw || 0, dodge: x.dodge || 0 }); });
+      snap.forEach((d) => { const x = d.data(); rows.push({ uid: d.id, name: x.name || 'Unknown', skeet: x.skeet || 0, quickdraw: x.quickdraw || 0, dodge: x.dodge || 0, target: x.target || 0 }); });
       return rows;
     } catch (e) { console.warn('Minigame leaderboard fetch failed:', e); return []; }
   }
@@ -1687,6 +1687,7 @@ export class Economy {
     let cash = 0, tickets = 0, base = 0, q = 0;
     if (gameId === 'Skeet Shooting') { base = score * 120; q = Math.min(1, score / 1600); }
     else if (gameId === 'Quick Draw') { base = Math.round(score / 8); q = Math.min(1, score / 4500); }
+    else if (gameId === 'Target Range') { base = score * 90; q = Math.min(1, score / 700); }
     else { base = score * 100; q = Math.min(1, score / 25); }
     const lifeEarned = this.totalMoneyEarned || 0;
     const scaled = Math.round(lifeEarned * (0.003 + q * 0.012));
