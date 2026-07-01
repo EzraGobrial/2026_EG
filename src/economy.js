@@ -1082,6 +1082,7 @@ export class Economy {
     this.achievementsClaimed = [];
     this.minigameDay = null;
     this.minigamePlaysToday = 0;
+    this.minigameBest = {};
     this.coopSessionId = null;
     this.coopRole = null;
     this.eventId = null;
@@ -1151,6 +1152,7 @@ export class Economy {
       achievementsClaimed: this.achievementsClaimed || [],
       minigameDay: this.minigameDay || null,
       minigamePlaysToday: this.minigamePlaysToday || 0,
+      minigameBest: this.minigameBest || {},
       bpPremiumLedger: this.bpPremiumLedger || [],
       weaponOwned: {},
       locationUnlocked: {}
@@ -1234,7 +1236,7 @@ export class Economy {
     if (data.dailyStreak !== undefined) this.dailyStreak = data.dailyStreak;
     if (data.bpSeason !== undefined) this.bpSeason = data.bpSeason;
     if (data.achievementsClaimed) this.achievementsClaimed = data.achievementsClaimed;
-    if (data.minigameDay !== undefined) this.minigameDay = data.minigameDay;
+    if (data.minigameDay !== undefined) this.minigameDay = data.minigameDay; this.minigameBest = data.minigameBest || {};
     if (data.minigamePlaysToday !== undefined) this.minigamePlaysToday = data.minigamePlaysToday;
       if (data.bpPremiumLedger) this.bpPremiumLedger = data.bpPremiumLedger;
 
@@ -1659,7 +1661,24 @@ export class Economy {
     return 0;
   }
 
+  submitMinigameScore() {
+    if (!this.uid) return;
+    const b = this.minigameBest || {};
+    const data = { name: this.displayName || 'Player', skeet: b['Skeet Shooting'] || 0, quickdraw: b['Quick Draw'] || 0, dodge: b['Dodge the Dookie'] || 0, updatedAt: Date.now() };
+    setDoc(doc(db, 'minigameScores', this.uid), data, { merge: true }).catch((e) => console.warn('Minigame score submit failed:', e));
+  }
+
+  static async getMinigameLeaderboard() {
+    try {
+      const snap = await getDocs(collection(db, 'minigameScores'));
+      const rows = [];
+      snap.forEach((d) => { const x = d.data(); rows.push({ uid: d.id, name: x.name || 'Unknown', skeet: x.skeet || 0, quickdraw: x.quickdraw || 0, dodge: x.dodge || 0 }); });
+      return rows;
+    } catch (e) { console.warn('Minigame leaderboard fetch failed:', e); return []; }
+  }
+
   minigameReward(gameId, score) {
+    this.minigameBest = this.minigameBest || {}; if (score > (this.minigameBest[gameId] || 0)) this.minigameBest[gameId] = score; this.submitMinigameScore();
     const today = new Date().toISOString().slice(0, 10);
     if (this.minigameDay !== today) { this.minigameDay = today; this.minigamePlaysToday = 0; }
     const CAP = 20;
