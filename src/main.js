@@ -1614,7 +1614,7 @@ class Game {
     if (this._paradise) {
       let living = 0;
       for (const b of this.birds.birds) { if (b.alive) living++; }
-      if (living < 5) this.birds.spawnParadiseWave(6 - living);
+      if (living < 6) this.birds.spawnParadiseWave(7 - living);
       return;
     }
     const cam = this.camera;
@@ -1813,7 +1813,7 @@ class Game {
 
     // Spawn new birds
     this.spawnTimer += dt;
-    if (this.spawnTimer >= this.spawnInterval && this.birds.getLivingCount() < this.maxActiveBirds) {
+    if (this.spawnTimer >= this.spawnInterval && this.birds.getLivingCount() < this.maxActiveBirds && !this._paradise) {
       this.spawnTimer = 0;
 
       // Boss spawn logic — rarity scales with dimension
@@ -1868,7 +1868,8 @@ class Game {
       } else if (!isBossSpawn && Math.random() < 0.06 && this.birds.getFlockCount() < 2) {
         this.birds.spawnFlock(birdKey);
       } else {
-        this.birds.spawn(birdKey);
+        const _sb = this.birds.spawn(birdKey);
+        if (_sb && !this._paradise && this.birds.isBoss(_sb) && Math.random() < 0.04) { this.birds.makeRideable(_sb); (this._rideables || (this._rideables = [])).push(_sb); }
       }
 
       // 2x Birds potion: occasionally spawn a bonus bird alongside this one
