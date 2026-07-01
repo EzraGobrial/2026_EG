@@ -1673,8 +1673,8 @@ export class UI {
     const cont = document.getElementById('minigames-list');
     if (cont) {
       const tile = (id, name, desc) => '<button class="mini-tile" data-mini="' + id + '" style="display:block;width:100%;text-align:left;margin-bottom:10px;padding:14px 16px;border:1px solid #6b5630;border-radius:12px;background:#16110a;color:#fff;cursor:pointer;"><div style="font:900 17px system-ui;color:#ffd766;">' + name + '</div><div style="font:500 12px system-ui;color:#cbb98f;margin-top:3px;">' + desc + '</div></button>';
-      cont.innerHTML = tile('skeet', 'Skeet Shooting', 'Blast clay targets out of the sky. Accuracy + combos.') + tile('quickdraw', 'Quick Draw', 'Test your reflexes &mdash; shoot the instant the bird appears.') + tile('dodge', 'Dodge the Dookie', 'Grab umbrellas for points and dodge the falling poo from the birds. Two hits and you are out!');
-      cont.querySelectorAll('.mini-tile').forEach((b) => b.addEventListener('click', () => { const g = b.getAttribute('data-mini'); if (g === 'skeet') this._playSkeet(); else if (g === 'quickdraw') this._playQuickDraw(); else this._playDodge(); }));
+      cont.innerHTML = tile('skeet', 'Skeet Shooting', 'Blast clay targets out of the sky. Accuracy + combos.') + tile('quickdraw', 'Quick Draw', 'Test your reflexes &mdash; shoot the instant the bird appears.') + tile('dodge', 'Dodge the Dookie', 'Grab umbrellas for points and dodge the falling poo from the birds. Two hits and you are out!') + tile('target', 'Target Range', 'Pop bullseye targets before they vanish. Hit the center for max points.');
+      cont.querySelectorAll('.mini-tile').forEach((b) => b.addEventListener('click', () => { const g = b.getAttribute('data-mini'); if (g === 'skeet') this._playSkeet(); else if (g === 'quickdraw') this._playQuickDraw(); else if (g === 'dodge') this._playDodge(); else this._playTargetRange(); }));
     }
     this.showScreen('minigames');
   }
@@ -1685,7 +1685,7 @@ showMinigameRanks() {
     if (!cont) return;
     cont.innerHTML = '<div style="color:#cbb98f;font:600 14px system-ui;padding:16px;text-align:center;">Loading ranks...</div>';
     const myUid = this.economy && this.economy.uid;
-    const games = [ { key: 'skeet', label: 'Skeet Shooting' }, { key: 'quickdraw', label: 'Quick Draw' }, { key: 'dodge', label: 'Dodge the Dookie' } ];
+    const games = [ { key: 'skeet', label: 'Skeet Shooting' }, { key: 'quickdraw', label: 'Quick Draw' }, { key: 'dodge', label: 'Dodge the Dookie' }, { key: 'target', label: 'Target Range' } ];
     Economy.getMinigameLeaderboard().then((rows) => {
       const section = (gm) => {
         const ranked = (rows || []).filter((r) => (r[gm.key] || 0) > 0).sort((a, b) => (b[gm.key] || 0) - (a[gm.key] || 0)).slice(0, 10);
@@ -1703,6 +1703,41 @@ showMinigameRanks() {
       };
       cont.innerHTML = games.map(section).join('');
     }).catch(() => { cont.innerHTML = '<div style="color:#c0392b;font:600 14px system-ui;padding:16px;text-align:center;">Could not load ranks. Try again.</div>'; });
+  }
+
+_playTargetRange() {
+    const o = this._miniOverlay(); const ctx = o.canvas.getContext('2d'); const W = o.canvas.width, H = o.canvas.height;
+    let score = 0, combo = 0, timeLeft = 30, last = performance.now(), spawnT = 0, targets = [], parts = [], raf = 0, running = true, phase = 'count', countT = 3, ac = null;
+    const beep = (f, d) => { try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); const osc = ac.createOscillator(), g = ac.createGain(); osc.frequency.value = f; osc.type = 'triangle'; g.gain.value = 0.06; osc.connect(g); g.connect(ac.destination); osc.start(); g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + (d || 0.12)); osc.stop(ac.currentTime + (d || 0.12)); } catch (e) {} };
+    const cleanup = () => { running = false; cancelAnimationFrame(raf); };
+    o.quit.onclick = () => { cleanup(); o.close(); this.showMinigames(); };
+    const spawn = () => { targets.push({ x: 46 + Math.random() * (W - 92), y: 64 + Math.random() * (H - 130), r: 34, life: 1.7, age: 0 }); };
+    o.canvas.onpointerdown = (e) => { if (phase !== 'play') return; const rc = o.canvas.getBoundingClientRect(); const mx = (e.clientX - rc.left) * (W / rc.width), my = (e.clientY - rc.top) * (H / rc.height); let hit = false; for (const t of targets) { if (t.dead) continue; const d = Math.hypot(t.x - mx, t.y - my); if (d < t.r) { t.dead = true; hit = true; combo++; const ringv = d < t.r * 0.33 ? 10 : d < t.r * 0.66 ? 5 : 2; const m = Math.min(5, combo); score += ringv * m; beep(ringv === 10 ? 880 : ringv === 5 ? 620 : 440, 0.1); parts.push({ x: mx, y: my, txt: '+' + (ringv * m), life: 0.7 }); for (let i = 0; i < 8; i++) { const a = Math.random() * 6.28, sp = 60 + Math.random() * 160; parts.push({ x: t.x, y: t.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.4, col: ringv === 10 ? '#ffd24a' : '#e0463b' }); } break; } } if (!hit) { combo = 0; beep(200, 0.08); } };
+    const loop = (now) => { if (!running) return; const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      const sky = ctx.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, '#20242e'); sky.addColorStop(1, '#12151c'); ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+      if (phase === 'count') {
+        countT -= dt; ctx.textAlign = 'center';
+        ctx.fillStyle = '#cbb98f'; ctx.font = '700 18px system-ui'; ctx.fillText('Hit the center of the targets!', W / 2, H * 0.3);
+        ctx.fillStyle = '#ffd766'; ctx.font = '900 90px system-ui'; ctx.fillText(countT > 0 ? Math.ceil(countT) : 'GO!', W / 2, H / 2 + 30);
+        ctx.textAlign = 'start';
+        if (countT <= -0.4) phase = 'play';
+        raf = requestAnimationFrame(loop); return;
+      }
+      timeLeft -= dt; spawnT -= dt; if (spawnT <= 0) { spawn(); spawnT = Math.max(0.42, 0.9 - score * 0.001); }
+      for (const t of targets) { if (t.dead) continue; t.age += dt; if (t.age > t.life) { t.dead = true; combo = 0; continue; }
+        const grow = Math.min(1, t.age / 0.2); const rr = t.r * grow;
+        const rings = [['#e0463b', 1], ['#ffffff', 0.66], ['#e0463b', 0.4], ['#ffd24a', 0.18]];
+        for (const rg of rings) { ctx.fillStyle = rg[0]; ctx.beginPath(); ctx.arc(t.x, t.y, rr * rg[1], 0, 7); ctx.fill(); }
+        ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(t.x, t.y, rr + 4, -1.57, -1.57 + (1 - t.age / t.life) * 6.28); ctx.stroke();
+      }
+      targets = targets.filter((t) => !t.dead);
+      for (const p of parts) { p.life -= dt; if (p.txt) { ctx.fillStyle = '#ffd766'; ctx.font = 'bold 16px system-ui'; ctx.textAlign = 'center'; ctx.globalAlpha = Math.max(0, p.life * 1.4); ctx.fillText(p.txt, p.x, p.y - (0.7 - p.life) * 30); ctx.globalAlpha = 1; ctx.textAlign = 'start'; } else { p.x += p.vx * dt; p.y += p.vy * dt; ctx.globalAlpha = Math.max(0, p.life * 2); ctx.fillStyle = p.col || '#fff'; ctx.beginPath(); ctx.arc(p.x, p.y, 2.5, 0, 7); ctx.fill(); ctx.globalAlpha = 1; } }
+      parts = parts.filter((p) => p.life > 0);
+      o.hud.textContent = 'Target Range  Score ' + score + '  Combo x' + Math.min(5, combo) + '  ' + Math.ceil(Math.max(0, timeLeft)) + 's';
+      if (timeLeft <= 0) { cleanup(); this._miniFinish(o, 'Target Range', score); return; }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
   }
 
   _miniOverlay() {
