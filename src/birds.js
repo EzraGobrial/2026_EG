@@ -730,6 +730,26 @@ export class BirdSystem {
     return birdObj.data && (birdObj.data.hp || 1) > 1;
   }
 
+  makeRideable(bird) {
+    if (!bird || bird._rideable) return;
+    bird._rideable = true;
+    const g = new THREE.Group();
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.35, 1.5), new THREE.MeshStandardMaterial({ color: 0x7a3f18, roughness: 0.9, emissive: 0x3a1e0a, emissiveIntensity: 0.4 }));
+    seat.position.y = 0.55; g.add(seat);
+    const horn = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.45, 0.28), new THREE.MeshStandardMaterial({ color: 0x9a5a2a }));
+    horn.position.set(0, 0.9, 0.6); g.add(horn);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.3, 0.09, 8, 24), new THREE.MeshBasicMaterial({ color: 0xffd24a }));
+    ring.rotation.x = Math.PI / 2; ring.position.y = 0.2; g.add(ring);
+    bird._saddle = g;
+    bird.mesh.add(g);
+  }
+
+  spawnParadiseWave(count) {
+    const bossKeys = Object.keys(BIRDS).filter((k) => (BIRDS[k].hp || 1) > 1);
+    if (!bossKeys.length) return;
+    for (let i = 0; i < count; i++) { this.spawn(bossKeys[Math.floor(Math.random() * bossKeys.length)]); }
+  }
+
   /**
    * Startle nearby birds — they fly away and exit
    */
