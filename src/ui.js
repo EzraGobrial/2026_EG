@@ -1700,44 +1700,44 @@ export class UI {
   _playSkeet() {
     const o = this._miniOverlay(); const ctx = o.canvas.getContext('2d'); const W = o.canvas.width, H = o.canvas.height;
     let score = 0, combo = 0, timeLeft = 30, last = performance.now(), spawnT = 0, clays = [], parts = [], raf = 0, running = true, flash = 0, aimX = W / 2, aimY = H / 2, muzzle = 0;
-    const spawn = () => { const fl = Math.random() < 0.5; clays.push({ x: fl ? 30 : W - 30, y: H - 40, vx: (fl ? 1 : -1) * (180 + Math.random() * 130), vy: -(380 + Math.random() * 170), r: 17, hit: false, ph: Math.random() * 6.28, curMult: 1, ringR: 17, rot: 0, trail: [] }); };
+    const zones = [ { mult: 3, r: 44, col: '#ffd24a', ang: 0, orbit: 150, speed: 0.7 }, { mult: 2, r: 58, col: '#dbe7ff', ang: Math.PI, orbit: 215, speed: -0.45 } ];
+    zones.forEach((z) => { z.cx = W / 2; z.cy = H * 0.4; });
+    const multAt = (x, y) => { let m = 1; for (const z of zones) { if (Math.hypot(x - z.cx, y - z.cy) < z.r) m = Math.max(m, z.mult); } return m; };
+    const spawn = () => { const fl = Math.random() < 0.5; clays.push({ x: fl ? 30 : W - 30, y: H - 40, vx: (fl ? 1 : -1) * (180 + Math.random() * 130), vy: -(380 + Math.random() * 170), r: 17, hit: false, rot: 0, trail: [] }); };
     o.quit.onclick = () => { running = false; cancelAnimationFrame(raf); o.close(); this.showMinigames(); };
     o.canvas.onpointermove = (e) => { const rc = o.canvas.getBoundingClientRect(); aimX = (e.clientX - rc.left) * (W / rc.width); aimY = (e.clientY - rc.top) * (H / rc.height); };
-    o.canvas.onpointerdown = (e) => { const rc = o.canvas.getBoundingClientRect(); const mx = (e.clientX - rc.left) * (W / rc.width), my = (e.clientY - rc.top) * (H / rc.height); aimX = mx; aimY = my; muzzle = 0.07; let hit = false; for (const c of clays) { if (!c.hit && Math.hypot(c.x - mx, c.y - my) < c.r + 16) { c.hit = true; hit = true; combo++; const m = c.curMult || 1; score += 10 * Math.min(5, combo) * m; if (m === 3) flash = 0.25; if (m > 1) parts.push({ x: c.x, y: c.y - 8, vx: 0, vy: -70, life: 1.0, txt: 'x' + m, col: m === 3 ? '#ffd24a' : '#cfe0ff' }); for (let i = 0; i < 14; i++) { const a = Math.random() * 6.28, sp = 80 + Math.random() * 260; parts.push({ x: c.x, y: c.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60, life: 0.5 + Math.random() * 0.4, sz: 2 + Math.random() * 4, rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 12, shard: true }); } break; } } if (!hit) combo = 0; };
+    o.canvas.onpointerdown = (e) => { const rc = o.canvas.getBoundingClientRect(); const mx = (e.clientX - rc.left) * (W / rc.width), my = (e.clientY - rc.top) * (H / rc.height); aimX = mx; aimY = my; muzzle = 0.07; let hit = false; for (const c of clays) { if (!c.hit && Math.hypot(c.x - mx, c.y - my) < c.r + 16) { c.hit = true; hit = true; combo++; const m = multAt(c.x, c.y); score += 10 * Math.min(5, combo) * m; if (m === 3) flash = 0.25; if (m > 1) parts.push({ x: c.x, y: c.y - 8, vx: 0, vy: -70, life: 1.0, txt: 'x' + m, col: m === 3 ? '#ffd24a' : '#cfe0ff' }); for (let i = 0; i < 14; i++) { const a = Math.random() * 6.28, sp = 80 + Math.random() * 260; parts.push({ x: c.x, y: c.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60, life: 0.5 + Math.random() * 0.4, sz: 2 + Math.random() * 4, rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 12, shard: true }); } break; } } if (!hit) combo = 0; };
     const loop = (now) => { if (!running) return; const dt = Math.min(0.05, (now - last) / 1000); last = now; timeLeft -= dt; spawnT -= dt; flash = Math.max(0, flash - dt * 2); muzzle = Math.max(0, muzzle - dt); if (spawnT <= 0) { spawn(); spawnT = 0.62 + Math.random() * 0.55; }
       const sky = ctx.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, '#bfe1ff'); sky.addColorStop(0.7, '#9ec8ff'); sky.addColorStop(1, '#dcecff'); ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
       ctx.fillStyle = 'rgba(255,250,220,0.7)'; ctx.beginPath(); ctx.arc(W * 0.8, H * 0.2, 36, 0, 7); ctx.fill();
       ctx.fillStyle = '#7fa86a'; ctx.beginPath(); ctx.moveTo(0, H - 56); ctx.quadraticCurveTo(W * 0.25, H - 108, W * 0.5, H - 60); ctx.quadraticCurveTo(W * 0.78, H - 118, W, H - 66); ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
       const gr = ctx.createLinearGradient(0, H - 32, 0, H); gr.addColorStop(0, '#6fa23c'); gr.addColorStop(1, '#4e7a28'); ctx.fillStyle = gr; ctx.fillRect(0, H - 28, W, 28);
+      for (const z of zones) { z.ang += z.speed * dt; z.cx = W / 2 + Math.cos(z.ang) * z.orbit; z.cy = H * 0.4 + Math.sin(z.ang) * z.orbit * 0.55;
+        ctx.fillStyle = z.mult === 3 ? 'rgba(255,210,74,0.13)' : 'rgba(200,220,255,0.10)'; ctx.beginPath(); ctx.arc(z.cx, z.cy, z.r, 0, 7); ctx.fill();
+        ctx.strokeStyle = z.col; ctx.lineWidth = z.mult === 3 ? 4 : 3; ctx.setLineDash([11, 8]); ctx.lineDashOffset = -z.ang * 34; ctx.beginPath(); ctx.arc(z.cx, z.cy, z.r, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = z.col; ctx.font = '900 19px system-ui'; ctx.textAlign = 'center'; ctx.fillText('x' + z.mult, z.cx, z.cy + 6); ctx.textAlign = 'start'; }
       for (const c of clays) { if (c.hit) continue; c.vy += 540 * dt; c.x += c.vx * dt; c.y += c.vy * dt; c.rot += dt * 9 * (c.vx > 0 ? 1 : -1);
         c.trail.push({ x: c.x, y: c.y }); if (c.trail.length > 8) c.trail.shift();
         for (let i = 0; i < c.trail.length; i++) { const tt = c.trail[i]; ctx.fillStyle = 'rgba(220,150,100,' + (i / c.trail.length * 0.2) + ')'; ctx.beginPath(); ctx.arc(tt.x, tt.y, c.r * 0.5 * (i / c.trail.length), 0, 7); ctx.fill(); }
-        const pulse = (Math.sin(now / 220 + c.ph) + 1) / 2; c.ringR = c.r * (0.7 + pulse * 1.5); c.curMult = pulse < 0.18 ? 3 : pulse < 0.5 ? 2 : 1;
+        const inZone = multAt(c.x, c.y);
         ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(Math.sin(c.rot) * 0.35);
         const cg = ctx.createRadialGradient(-c.r * 0.3, -c.r * 0.2, 1, 0, 0, c.r); cg.addColorStop(0, '#ff8a52'); cg.addColorStop(0.7, '#d6582b'); cg.addColorStop(1, '#9c3a18');
         ctx.fillStyle = cg; ctx.beginPath(); ctx.ellipse(0, 0, c.r, c.r * 0.5, 0, 0, 7); ctx.fill();
-        ctx.strokeStyle = 'rgba(60,20,10,0.5)'; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.strokeStyle = inZone === 3 ? '#ffd24a' : inZone === 2 ? '#dbe7ff' : 'rgba(60,20,10,0.5)'; ctx.lineWidth = inZone > 1 ? 2.5 : 1.5; ctx.stroke();
         ctx.fillStyle = 'rgba(120,40,20,0.5)'; ctx.beginPath(); ctx.ellipse(0, 0, c.r * 0.5, c.r * 0.26, 0, 0, 7); ctx.fill();
         ctx.restore();
-        ctx.strokeStyle = 'rgba(255,210,74,0.4)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(c.x, c.y, c.r * 0.7, 0, 7); ctx.stroke();
-        const col = c.curMult === 3 ? '#ffd24a' : c.curMult === 2 ? '#dbe7ff' : 'rgba(255,255,255,0.4)'; ctx.strokeStyle = col; ctx.lineWidth = c.curMult >= 2 ? 3 : 2; ctx.beginPath(); ctx.arc(c.x, c.y, c.ringR, 0, 7); ctx.stroke();
-        if (c.curMult === 3) { ctx.strokeStyle = 'rgba(255,210,74,0.22)'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(c.x, c.y, c.ringR, 0, 7); ctx.stroke(); }
       }
       clays = clays.filter((c) => !c.hit && c.y < H + 50 && c.x > -50 && c.x < W + 50);
       for (const p of parts) { p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; if (p.shard) p.vy += 380 * dt; if (p.txt) { ctx.fillStyle = p.col || '#fff'; ctx.font = 'bold 20px system-ui'; ctx.textAlign = 'center'; ctx.globalAlpha = Math.max(0, Math.min(1, p.life * 1.3)); ctx.fillText(p.txt, p.x, p.y); ctx.globalAlpha = 1; ctx.textAlign = 'start'; } else if (p.shard) { ctx.save(); ctx.translate(p.x, p.y); p.rot += p.vr * dt; ctx.rotate(p.rot); ctx.globalAlpha = Math.max(0, Math.min(1, p.life * 2)); ctx.fillStyle = '#c24a22'; ctx.fillRect(-p.sz / 2, -p.sz / 2, p.sz, p.sz); ctx.globalAlpha = 1; ctx.restore(); } }
       parts = parts.filter((p) => p.life > 0);
       const gx = W / 2, gy = H + 8; const ang = Math.atan2(aimY - gy, aimX - gx);
       ctx.save(); ctx.translate(gx, gy); ctx.rotate(ang);
-      ctx.fillStyle = '#3a3f47'; ctx.fillRect(0, -6, 130, 12);
-      ctx.fillStyle = '#2a2e34'; ctx.fillRect(0, -6, 130, 4);
-      ctx.fillStyle = '#1c1f24'; ctx.fillRect(122, -7, 12, 14);
-      ctx.fillStyle = '#4b5159'; ctx.fillRect(-26, -14, 60, 28);
-      ctx.fillStyle = '#23272d'; ctx.fillRect(18, -22, 30, 9);
+      ctx.fillStyle = '#3a3f47'; ctx.fillRect(0, -6, 130, 12); ctx.fillStyle = '#2a2e34'; ctx.fillRect(0, -6, 130, 4); ctx.fillStyle = '#1c1f24'; ctx.fillRect(122, -7, 12, 14); ctx.fillStyle = '#4b5159'; ctx.fillRect(-26, -14, 60, 28); ctx.fillStyle = '#23272d'; ctx.fillRect(18, -22, 30, 9);
       if (muzzle > 0) { ctx.fillStyle = 'rgba(255,220,120,' + (muzzle * 12) + ')'; ctx.beginPath(); ctx.moveTo(134, 0); ctx.lineTo(158, -12); ctx.lineTo(150, 0); ctx.lineTo(158, 12); ctx.closePath(); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,' + (muzzle * 12) + ')'; ctx.beginPath(); ctx.arc(136, 0, 7, 0, 7); ctx.fill(); }
       ctx.restore();
       ctx.fillStyle = '#20242a'; ctx.beginPath(); ctx.arc(gx, gy, 30, Math.PI, 0); ctx.fill();
       if (flash > 0) { ctx.fillStyle = 'rgba(255,225,140,' + (flash * 0.8) + ')'; ctx.fillRect(0, 0, W, H); }
-      o.hud.textContent = 'Skeet  Score ' + score + '  Combo x' + Math.min(5, combo) + '  ' + Math.ceil(Math.max(0, timeLeft)) + 's   (gold ring = x3)';
+      o.hud.textContent = 'Skeet  Score ' + score + '  Combo x' + Math.min(5, combo) + '  ' + Math.ceil(Math.max(0, timeLeft)) + 's   (shoot a clay inside the gold circle = x3)';
       if (timeLeft <= 0) { running = false; this._miniFinish(o, 'Skeet Shooting', score); return; }
       raf = requestAnimationFrame(loop);
     };
