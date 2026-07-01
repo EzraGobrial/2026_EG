@@ -48,6 +48,7 @@ export class UI {
       friends: document.getElementById('screen-friends'),
       stats: document.getElementById('screen-stats'),
       minigames: document.getElementById('screen-minigames'),
+      minigameRanks: document.getElementById('screen-minigame-ranks'),
       tournament: document.getElementById('screen-tournament'),
       clan: document.getElementById('screen-clan'),
       sleep: document.getElementById('screen-sleep'),
@@ -126,6 +127,8 @@ export class UI {
     bind('btn-stats-back', () => { this.audio.playUIClick(); this.showScreen('results'); });
     bind('btn-minigames', () => { this.audio.playUIClick(); this.showMinigames(); });
     bind('btn-minigames-back', () => { this.audio.playUIClick(); this.showScreen('results'); });
+    bind('btn-minigame-ranks', () => { this.audio.playUIClick(); this.showMinigameRanks(); });
+    bind('btn-minigame-ranks-back', () => { this.audio.playUIClick(); this.showScreen('results'); });
     bind('btn-friends-back', () => { this.audio.playUIClick(); this.showScreen('results'); });
     bind('btn-tournament', () => { this.audio.playUIClick(); if (this.onTournament) this.onTournament(); });
     bind('btn-tournament-back', () => { this.audio.playUIClick(); this.showScreen('results'); });
@@ -1676,6 +1679,32 @@ export class UI {
     this.showScreen('minigames');
   }
 
+showMinigameRanks() {
+    this.showScreen('minigameRanks');
+    const cont = document.getElementById('minigame-ranks-list');
+    if (!cont) return;
+    cont.innerHTML = '<div style="color:#cbb98f;font:600 14px system-ui;padding:16px;text-align:center;">Loading ranks...</div>';
+    const myUid = this.economy && this.economy.uid;
+    const games = [ { key: 'skeet', label: 'Skeet Shooting' }, { key: 'quickdraw', label: 'Quick Draw' }, { key: 'dodge', label: 'Dodge the Dookie' } ];
+    Economy.getMinigameLeaderboard().then((rows) => {
+      const section = (gm) => {
+        const ranked = (rows || []).filter((r) => (r[gm.key] || 0) > 0).sort((a, b) => (b[gm.key] || 0) - (a[gm.key] || 0)).slice(0, 10);
+        let inner = '<div style="font:900 16px system-ui;color:#ffd766;margin:14px 0 6px;">' + gm.label + '</div>';
+        if (!ranked.length) { inner += '<div style="color:#8c7a52;font:500 13px system-ui;padding:4px 2px;">No scores yet - be the first!</div>'; return inner; }
+        inner += ranked.map((r, i) => {
+          const me = r.uid === myUid;
+          const medal = i === 0 ? '#ffd24a' : i === 1 ? '#cfd6e0' : i === 2 ? '#cd7f32' : '#6b5630';
+          return '<div style="display:flex;align-items:center;gap:10px;padding:6px 10px;margin-bottom:4px;border-radius:8px;background:' + (me ? 'rgba(255,215,102,0.16)' : '#16110a') + ';border:1px solid ' + (me ? '#ffd766' : '#3a2e18') + ';">' +
+            '<div style="font:900 14px system-ui;color:' + medal + ';width:22px;text-align:center;">' + (i + 1) + '</div>' +
+            '<div style="flex:1;font:700 14px system-ui;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (r.name || 'Unknown') + (me ? ' (you)' : '') + '</div>' +
+            '<div style="font:800 14px system-ui;color:#9fe0a0;">' + (r[gm.key] || 0).toLocaleString() + '</div></div>';
+        }).join('');
+        return inner;
+      };
+      cont.innerHTML = games.map(section).join('');
+    }).catch(() => { cont.innerHTML = '<div style="color:#c0392b;font:600 14px system-ui;padding:16px;text-align:center;">Could not load ranks. Try again.</div>'; });
+  }
+
   _miniOverlay() {
     const back = document.createElement('div');
     back.style.cssText = 'position:fixed;inset:0;background:#0a0e14;z-index:10060;display:flex;flex-direction:column;align-items:center;justify-content:center;';
@@ -1746,21 +1775,26 @@ export class UI {
 
   _playQuickDraw() {
     const o = this._miniOverlay(); const ctx = o.canvas.getContext('2d'); const W = o.canvas.width, H = o.canvas.height;
-    let round = 0, total = 5, score = 0, state = 'wait', showAt = 0, raf = 0, running = true, msg = 'Get ready...', waitT = 1.3 + Math.random() * 2.4, last = performance.now(), flash = 0;
+    let round = 0, total = 5, score = 0, state = 'wait', showAt = 0, raf = 0, running = true, msg = 'Get ready...', waitT = 1.3 + Math.random() * 2.4, last = performance.now(), flash = 0, endWait = 0, lastRt = 0;
     const cleanup = () => { running = false; cancelAnimationFrame(raf); window.removeEventListener('keydown', onKey); };
     o.quit.onclick = () => { cleanup(); o.close(); this.showMinigames(); };
-    const fire = () => { if (!running) return; if (state === 'wait') { msg = 'Too early! Wait for DRAW.'; waitT = 1.0 + Math.random() * 2.0; flash = 0.12; } else if (state === 'go') { const rt = performance.now() - showAt; score += Math.max(0, Math.round(1000 - rt)); round++; flash = 0.18; if (round >= total) { cleanup(); this._miniFinish(o, 'Quick Draw', score); return; } msg = Math.round(rt) + 'ms - nice!'; state = 'wait'; waitT = 1.3 + Math.random() * 2.4; } };
+    const fire = () => { if (!running || state === 'done') return; if (state === 'wait') { msg = 'Too early! Wait for DRAW.'; waitT = 1.0 + Math.random() * 2.0; flash = 0.12; } else if (state === 'go') { const rt = performance.now() - showAt; lastRt = Math.round(rt); score += Math.max(0, Math.round(1000 - rt)); round++; flash = 0.18; if (round >= total) { state = 'done'; endWait = 1.8; } else { msg = lastRt + 'ms - nice!'; state = 'wait'; waitT = 1.3 + Math.random() * 2.4; } } };
     o.canvas.onpointerdown = () => fire();
     const onKey = (e) => { if (e.code === 'Space' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); fire(); } };
     window.addEventListener('keydown', onKey);
     const loop = (now) => { if (!running) return; const dt = (now - last) / 1000; last = now; flash = Math.max(0, flash - dt);
       if (state === 'wait') { waitT -= dt; if (waitT <= 0) { state = 'go'; showAt = performance.now(); } }
+      else if (state === 'done') { endWait -= dt; if (endWait <= 0) { cleanup(); this._miniFinish(o, 'Quick Draw', score); return; } }
       const go = state === 'go';
       const g = ctx.createLinearGradient(0, 0, 0, H); if (go) { g.addColorStop(0, '#37b24d'); g.addColorStop(1, '#1f7a32'); } else { g.addColorStop(0, '#3a2c12'); g.addColorStop(1, '#160f05'); } ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
       ctx.fillStyle = 'rgba(0,0,0,0.16)'; ctx.fillRect(0, H * 0.64, W, 3);
       ctx.textAlign = 'center';
-      ctx.fillStyle = '#ffd766'; ctx.font = '900 22px system-ui'; ctx.fillText('QUICK DRAW   Round ' + Math.min(total, round + 1) + '/' + total + '   Score ' + score, W / 2, 42);
-      if (go) {
+      ctx.fillStyle = '#ffd766'; ctx.font = '900 22px system-ui'; ctx.fillText('QUICK DRAW   Round ' + Math.min(total, round + (state === 'done' ? 0 : 1)) + '/' + total + '   Score ' + score, W / 2, 42);
+      if (state === 'done') {
+        ctx.fillStyle = '#fff'; ctx.font = '900 40px system-ui'; ctx.fillText('Last shot: ' + lastRt + 'ms', W / 2, H / 2 - 18);
+        ctx.fillStyle = '#ffd766'; ctx.font = '900 30px system-ui'; ctx.fillText('Final score: ' + score, W / 2, H / 2 + 28);
+        ctx.fillStyle = '#cbb98f'; ctx.font = '600 15px system-ui'; ctx.fillText('Tallying rewards...', W / 2, H / 2 + 64);
+      } else if (go) {
         ctx.strokeStyle = '#fff'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(W / 2, H / 2, 72, 0, 7); ctx.stroke();
         ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(W / 2, H / 2, 42, 0, 7); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(W / 2 - 96, H / 2); ctx.lineTo(W / 2 - 54, H / 2); ctx.moveTo(W / 2 + 54, H / 2); ctx.lineTo(W / 2 + 96, H / 2); ctx.moveTo(W / 2, H / 2 - 96); ctx.lineTo(W / 2, H / 2 - 54); ctx.moveTo(W / 2, H / 2 + 54); ctx.lineTo(W / 2, H / 2 + 96); ctx.stroke();
