@@ -630,6 +630,10 @@ class Game {
     this.huntBag = [];
     this.spawnTimer = 0;
     this._huntEnded = false;
+    this._paradise = false;
+    this._rideables = [];
+    this._rideTarget = null;
+    this._showRidePrompt(false);
     this.birds.clear();
     this.particles.clear();
     this.hud.clearKillFeed();
@@ -696,7 +700,8 @@ class Game {
     for (let i = 0; i < initialBirdCount; i++) {
       const effects = this._getActivePotionEffects();
       const birdKey = this.economy.spawnRandomBird(effects.luckMult, effects.legendaryBoost);
-      this.birds.spawn(birdKey);
+      const _sb = this.birds.spawn(birdKey);
+      if (_sb && !this._paradise && this.birds.isBoss(_sb) && Math.random() < 0.12) { this.birds.makeRideable(_sb); (this._rideables || (this._rideables = [])).push(_sb); }
     }
 
     // Rebuild weapon slot bar on the next frame too — pointer-lock can
@@ -1604,9 +1609,65 @@ class Game {
     }
   }
 
+  _updateRide() {
+    if (this.state !== STATE.HUNT) return;
+    if (this._paradise) {
+      let living = 0;
+      for (const b of this.birds.birds) { if (b.alive) living++; }
+      if (living < 5) this.birds.spawnParadiseWave(6 - living);
+      return;
+    }
+    const cam = this.camera;
+    const fwd = cam.getWorldDirection(this._rideFwd || (this._rideFwd = new THREE.Vector3()));
+    const to = this._rideTo || (this._rideTo = new THREE.Vector3());
+    let target = null, best = 0.984;
+    const list = this._rideables || (this._rideables = []);
+    for (const b of list) {
+      if (!b || !b.alive) continue;
+      to.copy(b.mesh.position).sub(cam.position);
+      const dist = to.length();
+      if (dist > 60 || dist < 3) continue;
+      to.normalize();
+      const dot = to.dot(fwd);
+      if (dot > best) { best = dot; target = b; }
+    }
+    this._rideTarget = target;
+    this._showRidePrompt(!!target);
+  }
+
+  _showRidePrompt(show) {
+    let el = document.getElementById('ride-prompt');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'ride-prompt';
+      el.style.cssText = 'position:fixed;left:50%;bottom:16%;transform:translateX(-50%);z-index:9000;padding:10px 18px;border-radius:12px;background:rgba(20,14,8,0.86);border:1px solid #ffd766;color:#ffd766;font:800 16px system-ui;pointer-events:none;display:none;box-shadow:0 4px 18px rgba(0,0,0,0.5);';
+      el.textContent = 'Press E to ride this boss to its Paradise';
+      document.body.appendChild(el);
+    }
+    el.style.display = show ? 'block' : 'none';
+  }
+
+  _rideToParadise() {
+    if (this._paradise) return;
+    this._paradise = true;
+    this._rideTarget = null;
+    this._showRidePrompt(false);
+    this.birds.clear();
+    this.birds.spawnParadiseWave(6);
+    const banner = document.createElement('div');
+    banner.style.cssText = 'position:fixed;left:0;right:0;top:38%;z-index:9002;text-align:center;color:#ffd766;font:900 34px system-ui;text-shadow:0 3px 12px rgba(0,0,0,0.8);pointer-events:none;transition:opacity .5s;opacity:0;';
+    banner.textContent = 'BOSS PARADISE';
+    document.body.appendChild(banner);
+    const flash = document.createElement('div');
+    flash.style.cssText = 'position:fixed;inset:0;z-index:9001;background:radial-gradient(circle,rgba(255,150,60,0) 30%,rgba(120,20,70,0.45));pointer-events:none;opacity:0;transition:opacity .4s;';
+    document.body.appendChild(flash);
+    requestAnimationFrame(() => { banner.style.opacity = '1'; flash.style.opacity = '1'; setTimeout(() => { banner.style.opacity = '0'; flash.style.opacity = '0'; setTimeout(() => { banner.remove(); flash.remove(); }, 600); }, 1400); });
+  }
+
   _updateHunt(dt) {
     // Timer
     this.huntTimer -= dt;
+    this._updateRide();
     this.hud.setTimer(this.huntTimer);
 
     if (this.huntTimer <= 0 && !this._huntEnded) {
@@ -2047,6 +2108,8 @@ class Game {
     }
 
     // E key -- hold to interact in market
+    if (e.code === 'KeyE' && this.state === STATE.HUNT && this._rideTarget && !this._paradise && !e.repeat) { this._rideToParadise(); }
+
     if (e.code === 'KeyE' && this.state === STATE.MARKET && !e.repeat) {
       this._eHeld = true;
     }
