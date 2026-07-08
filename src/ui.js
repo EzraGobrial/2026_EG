@@ -931,6 +931,56 @@ export class UI {
     }
   }
 
+  _appendHookSections(summary, total) {
+    const eco = this.economy;
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'margin-top:14px;';
+    let crate = null;
+    try { crate = eco.rollHuntCrate(total); } catch (e) {}
+    if (crate) {
+      const tierCol = crate.tier === 'jackpot' ? '#ffd24a' : crate.tier === 'rare' ? '#c9a0ff' : '#9fe0a0';
+      const box = document.createElement('div');
+      box.style.cssText = 'background:#16110a;border:1px solid #6b5630;border-radius:12px;padding:14px;text-align:center;';
+      box.innerHTML = '<div style="font:800 12px system-ui;color:#cbb98f;letter-spacing:1px;">HUNT REWARD</div>' +
+        '<div id="hook-crate" style="margin:10px auto 4px;width:96px;height:78px;cursor:pointer;position:relative;">' +
+          '<div id="hook-lid" style="position:absolute;top:0;left:8px;right:8px;height:24px;background:#8a5a2a;border:2px solid #5a3a18;border-radius:6px 6px 0 0;transition:transform .35s;transform-origin:bottom;"></div>' +
+          '<div style="position:absolute;bottom:0;left:8px;right:8px;height:52px;background:#7a4d1c;border:2px solid #5a3a18;border-radius:0 0 6px 6px;"></div>' +
+          '<div style="position:absolute;left:0;right:0;top:28px;text-align:center;font:900 22px system-ui;color:#ffd766;">?</div>' +
+        '</div>' +
+        '<div id="hook-label" style="font:900 17px system-ui;color:' + tierCol + ';min-height:20px;">Tap to open!</div>';
+      wrap.appendChild(box);
+    }
+    let nx = null;
+    try { nx = eco.nextUnlock(); } catch (e) {}
+    if (nx) {
+      const bar = document.createElement('div');
+      bar.style.cssText = 'margin-top:12px;background:#16110a;border:1px solid #6b5630;border-radius:12px;padding:12px 14px;';
+      const rem = nx.remaining > 0 ? ('$' + nx.remaining.toLocaleString() + ' to go') : 'Affordable now!';
+      bar.innerHTML = '<div style="display:flex;justify-content:space-between;font:700 13px system-ui;color:#cbb98f;margin-bottom:6px;">' +
+          '<span>Next unlock: <span style="color:#fff;">' + nx.name + '</span></span>' +
+          '<span style="color:#ffd766;">' + rem + '</span>' +
+        '</div>' +
+        '<div style="height:10px;background:#241a08;border-radius:5px;overflow:hidden;">' +
+          '<div style="height:100%;width:' + nx.pct + '%;background:linear-gradient(90deg,#d4a853,#ffd766);border-radius:5px;"></div>' +
+        '</div>';
+      wrap.appendChild(bar);
+    }
+    summary.appendChild(wrap);
+    const crateEl = document.getElementById('hook-crate');
+    if (crateEl && crate) {
+      const self = this;
+      let opened = false;
+      crateEl.onclick = function () {
+        if (opened) return; opened = true;
+        const lid = document.getElementById('hook-lid');
+        if (lid) lid.style.transform = 'rotateX(115deg) translateY(-8px)';
+        const label = document.getElementById('hook-label');
+        if (label) label.textContent = crate.label;
+        try { self.audio.playCashRegister(); } catch (e) {}
+      };
+    }
+  }
+
   showResults(huntBag, displayName, xpEarned = 0) {
     this._setupResultsButtons();
     const summary = document.getElementById('results-summary');
@@ -990,6 +1040,8 @@ export class UI {
       ${xpInfo.needed > 0 ? `<div style="width:120px;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;margin:6px auto 0;overflow:hidden"><div style="height:100%;background:${rank.color};width:${xpInfo.progress * 100}%;border-radius:2px;transition:width 0.3s"></div></div>` : '<div style="font-size:11px;color:var(--accent-gold);margin-top:4px">MAX RANK</div>'}
     `;
     summary.appendChild(xpSection);
+
+    this._appendHookSections(summary, total);
 
     // Update leaderboard
     if (displayName) {
