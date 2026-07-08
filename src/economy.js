@@ -1083,6 +1083,8 @@ export class Economy {
     this.minigameDay = null;
     this.minigamePlaysToday = 0;
     this.minigameBest = {};
+    this.firstHuntDone = false;
+    this.wheelDay = null;
     this.coopSessionId = null;
     this.coopRole = null;
     this.eventId = null;
@@ -1153,6 +1155,8 @@ export class Economy {
       minigameDay: this.minigameDay || null,
       minigamePlaysToday: this.minigamePlaysToday || 0,
       minigameBest: this.minigameBest || {},
+      firstHuntDone: this.firstHuntDone || false,
+      wheelDay: this.wheelDay || null,
       bpPremiumLedger: this.bpPremiumLedger || [],
       weaponOwned: {},
       locationUnlocked: {}
@@ -1236,7 +1240,7 @@ export class Economy {
     if (data.dailyStreak !== undefined) this.dailyStreak = data.dailyStreak;
     if (data.bpSeason !== undefined) this.bpSeason = data.bpSeason;
     if (data.achievementsClaimed) this.achievementsClaimed = data.achievementsClaimed;
-    if (data.minigameDay !== undefined) this.minigameDay = data.minigameDay; this.minigameBest = data.minigameBest || {};
+    if (data.minigameDay !== undefined) this.minigameDay = data.minigameDay; this.minigameBest = data.minigameBest || {}; this.firstHuntDone = data.firstHuntDone || false; this.wheelDay = data.wheelDay || null;
     if (data.minigamePlaysToday !== undefined) this.minigamePlaysToday = data.minigamePlaysToday;
       if (data.bpPremiumLedger) this.bpPremiumLedger = data.bpPremiumLedger;
 
@@ -1682,22 +1686,61 @@ export class Economy {
     const life = this.totalMoneyEarned || 0;
     const r = Math.random();
     let result;
-    if (r < 0.04) {
+    if (r < 0.03) {
       const amt = Math.round(Math.max(base * 5, life * 0.05, 5000));
       this.money += amt; this.totalMoneyEarned += amt;
-      result = { tier: 'jackpot', label: 'JACKPOT  +$' + amt.toLocaleString(), amount: amt };
-    } else if (r < 0.20) {
+      result = { tier: 'jackpot', label: 'JACKPOT  +$' + amt.toLocaleString() };
+    } else if (r < 0.11) {
+      const c = this.grantRandomCosmetic();
+      if (c) { result = { tier: 'cosmetic', label: c.label }; }
+      else { this.tickets = (this.tickets || 0) + 2; result = { tier: 'rare', label: '+2 Tickets' }; }
+    } else if (r < 0.26) {
       const t = 1 + Math.floor(Math.random() * 2);
       this.tickets = (this.tickets || 0) + t;
-      result = { tier: 'rare', label: '+' + t + ' Ticket' + (t > 1 ? 's' : ''), amount: t };
+      result = { tier: 'rare', label: '+' + t + ' Ticket' + (t > 1 ? 's' : '') };
     } else {
       const amt = Math.round(base * (0.3 + Math.random() * 0.7));
       this.money += amt; this.totalMoneyEarned += amt;
-      result = { tier: 'common', label: '+$' + amt.toLocaleString(), amount: amt };
+      result = { tier: 'common', label: '+$' + amt.toLocaleString() };
     }
     if (this.displayName) { try { this.updateLeaderboard(this.displayName); } catch (e) {} }
     this.save();
     return result;
+  }
+
+  grantRandomCosmetic() {
+    if (!this.ownedSkins) this.ownedSkins = ['default'];
+    if (!this.ownedBanners) this.ownedBanners = [];
+    if (!this.ownedTags) this.ownedTags = [];
+    const pools = [ { map: WEAPON_SKINS, owned: this.ownedSkins, kind: 'Skin' }, { map: BANNERS, owned: this.ownedBanners, kind: 'Banner' }, { map: TAGS, owned: this.ownedTags, kind: 'Tag' } ];
+    const opts = [];
+    for (const p of pools) { for (const id in p.map) { const it = p.map[id]; if (it && !it.devCode && p.owned.indexOf(id) === -1) opts.push({ p: p, id: id, name: it.name || id }); } }
+    if (!opts.length) return null;
+    const pick = opts[Math.floor(Math.random() * opts.length)];
+    pick.p.owned.push(pick.id);
+    return { kind: pick.p.kind, id: pick.id, name: pick.name, label: pick.name + ' ' + pick.p.kind + '!' };
+  }
+
+  dailyWheelReady() {
+    const today = new Date().toISOString().slice(0, 10);
+    return this.wheelDay !== today;
+  }
+
+  spinDailyWheel() {
+    const today = new Date().toISOString().slice(0, 10);
+    if (this.wheelDay === today) return null;
+    const life = this.totalMoneyEarned || 0;
+    const cash = (m) => Math.max(500, Math.round(life * m));
+    const r = Math.random();
+    let label;
+    if (r < 0.10) { const a = cash(0.12); this.money += a; this.totalMoneyEarned += a; label = 'JACKPOT  +$' + a.toLocaleString(); }
+    else if (r < 0.22) { const c = this.grantRandomCosmetic(); if (c) { label = c.label; } else { const a = cash(0.02); this.money += a; this.totalMoneyEarned += a; label = '+$' + a.toLocaleString(); } }
+    else if (r < 0.42) { const t = 1 + Math.floor(Math.random() * 3); this.tickets = (this.tickets || 0) + t; label = '+' + t + ' Ticket' + (t > 1 ? 's' : ''); }
+    else { const a = cash(0.006 + Math.random() * 0.03); this.money += a; this.totalMoneyEarned += a; label = '+$' + a.toLocaleString(); }
+    this.wheelDay = today;
+    if (this.displayName) { try { this.updateLeaderboard(this.displayName); } catch (e) {} }
+    this.save();
+    return { label: label };
   }
 
   nextUnlock() {
