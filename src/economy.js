@@ -1677,7 +1677,55 @@ export class Economy {
     } catch (e) { console.warn('Minigame leaderboard fetch failed:', e); return []; }
   }
 
-  minigameReward(gameId, score) {
+  rollHuntCrate(huntEarned) {
+    const base = Math.max(Number(huntEarned) || 0, 1000);
+    const life = this.totalMoneyEarned || 0;
+    const r = Math.random();
+    let result;
+    if (r < 0.04) {
+      const amt = Math.round(Math.max(base * 5, life * 0.05, 5000));
+      this.money += amt; this.totalMoneyEarned += amt;
+      result = { tier: 'jackpot', label: 'JACKPOT  +$' + amt.toLocaleString(), amount: amt };
+    } else if (r < 0.20) {
+      const t = 1 + Math.floor(Math.random() * 2);
+      this.tickets = (this.tickets || 0) + t;
+      result = { tier: 'rare', label: '+' + t + ' Ticket' + (t > 1 ? 's' : ''), amount: t };
+    } else {
+      const amt = Math.round(base * (0.3 + Math.random() * 0.7));
+      this.money += amt; this.totalMoneyEarned += amt;
+      result = { tier: 'common', label: '+$' + amt.toLocaleString(), amount: amt };
+    }
+    if (this.displayName) { try { this.updateLeaderboard(this.displayName); } catch (e) {} }
+    this.save();
+    return result;
+  }
+
+  nextUnlock() {
+    let best = null;
+    if (this.weapons) {
+      for (const key in this.weapons) {
+        const w = this.weapons[key];
+        if (w && !w.owned && typeof w.cost === 'number' && w.cost > 0) {
+          if (!best || w.cost < best.cost) best = { name: w.name || key, cost: w.cost };
+        }
+      }
+    }
+    if (this.locations) {
+      for (const key in this.locations) {
+        const l = this.locations[key];
+        if (l && !l.unlocked && !l.isBoss && typeof l.cost === 'number' && l.cost > 0) {
+          if (!best || l.cost < best.cost) best = { name: l.name || key, cost: l.cost };
+        }
+      }
+    }
+    if (!best) return null;
+    const have = this.money || 0;
+    best.remaining = Math.max(0, best.cost - have);
+    best.pct = Math.max(0, Math.min(100, Math.round(have / best.cost * 100)));
+    return best;
+  }
+
+    minigameReward(gameId, score) {
     this.minigameBest = this.minigameBest || {}; if (score > (this.minigameBest[gameId] || 0)) this.minigameBest[gameId] = score; this.submitMinigameScore();
     const today = new Date().toISOString().slice(0, 10);
     if (this.minigameDay !== today) { this.minigameDay = today; this.minigamePlaysToday = 0; }
