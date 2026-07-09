@@ -1754,23 +1754,27 @@ showMinigameRanks() {
     if (!cont) return;
     cont.innerHTML = '<div style="color:#cbb98f;font:600 14px system-ui;padding:16px;text-align:center;">Loading ranks...</div>';
     const myUid = this.economy && this.economy.uid;
-    const games = [ { key: 'skeet', label: 'Skeet Shooting' }, { key: 'quickdraw', label: 'Quick Draw' }, { key: 'dodge', label: 'Dodge the Dookie' }, { key: 'target', label: 'Target Range' } ];
+    const games = [ { key: 'skeet', label: 'Skeet' }, { key: 'quickdraw', label: 'Quick Draw' }, { key: 'dodge', label: 'Dodge' }, { key: 'target', label: 'Target' } ];
     Economy.getMinigameLeaderboard().then((rows) => {
-      const section = (gm) => {
+      const col = (gm) => {
         const ranked = (rows || []).filter((r) => (r[gm.key] || 0) > 0).sort((a, b) => (b[gm.key] || 0) - (a[gm.key] || 0)).slice(0, 10);
-        let inner = '<div style="font:900 16px system-ui;color:#ffd766;margin:14px 0 6px;">' + gm.label + '</div>';
-        if (!ranked.length) { inner += '<div style="color:#8c7a52;font:500 13px system-ui;padding:4px 2px;">No scores yet - be the first!</div>'; return inner; }
-        inner += ranked.map((r, i) => {
-          const me = r.uid === myUid;
-          const medal = i === 0 ? '#ffd24a' : i === 1 ? '#cfd6e0' : i === 2 ? '#cd7f32' : '#6b5630';
-          return '<div style="display:flex;align-items:center;gap:10px;padding:6px 10px;margin-bottom:4px;border-radius:8px;background:' + (me ? 'rgba(255,215,102,0.16)' : '#16110a') + ';border:1px solid ' + (me ? '#ffd766' : '#3a2e18') + ';">' +
-            '<div style="font:900 14px system-ui;color:' + medal + ';width:22px;text-align:center;">' + (i + 1) + '</div>' +
-            '<div style="flex:1;font:700 14px system-ui;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (r.name || 'Unknown') + (me ? ' (you)' : '') + '</div>' +
-            '<div style="font:800 14px system-ui;color:#9fe0a0;">' + (r[gm.key] || 0).toLocaleString() + '</div></div>';
-        }).join('');
+        let inner = '<div style="flex:1 1 0;min-width:118px;">';
+        inner += '<div style="font:900 14px system-ui;color:#ffd766;text-align:center;margin-bottom:8px;border-bottom:1px solid #3a2e18;padding-bottom:5px;">' + gm.label + '</div>';
+        if (!ranked.length) { inner += '<div style="color:#8c7a52;font:500 11px system-ui;text-align:center;padding:6px 2px;">No scores yet</div>'; }
+        else {
+          inner += ranked.map((r, i) => {
+            const me = r.uid === myUid;
+            const medal = i === 0 ? '#ffd24a' : i === 1 ? '#cfd6e0' : i === 2 ? '#cd7f32' : '#6b5630';
+            return '<div style="display:flex;align-items:center;gap:5px;padding:5px 6px;margin-bottom:4px;border-radius:7px;background:' + (me ? 'rgba(255,215,102,0.16)' : '#16110a') + ';border:1px solid ' + (me ? '#ffd766' : '#3a2e18') + ';">' +
+              '<div style="font:900 12px system-ui;color:' + medal + ';width:14px;flex:0 0 auto;">' + (i + 1) + '</div>' +
+              '<div style="flex:1;font:700 12px system-ui;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (r.name || 'Unknown') + (me ? ' (you)' : '') + '</div>' +
+              '<div style="font:800 12px system-ui;color:#9fe0a0;flex:0 0 auto;">' + (r[gm.key] || 0).toLocaleString() + '</div></div>';
+          }).join('');
+        }
+        inner += '</div>';
         return inner;
       };
-      cont.innerHTML = games.map(section).join('');
+      cont.innerHTML = '<div style="display:flex;gap:8px;align-items:flex-start;overflow-x:auto;">' + games.map(col).join('') + '</div>';
     }).catch(() => { cont.innerHTML = '<div style="color:#c0392b;font:600 14px system-ui;padding:16px;text-align:center;">Could not load ranks. Try again.</div>'; });
   }
 
