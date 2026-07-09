@@ -931,67 +931,69 @@ export class UI {
     }
   }
 
-  _appendHookSections(summary, total) {
+  _showRewardSequence(total) {
     const eco = this.economy;
-    const wrap = document.createElement('div');
-    wrap.style.cssText = 'margin-top:14px;';
+    const steps = [];
     let wheelReady = false;
     try { wheelReady = eco.dailyWheelReady(); } catch (e) {}
-    if (wheelReady) {
-      const wb = document.createElement('div');
-      wb.style.cssText = 'background:#16110a;border:1px solid #6b5630;border-radius:12px;padding:14px;text-align:center;margin-bottom:12px;';
-      wb.innerHTML = '<div style="font:800 12px system-ui;color:#cbb98f;letter-spacing:1px;">DAILY SPIN</div>' +
-        '<div style="position:relative;width:150px;height:150px;margin:8px auto 0;">' +
-          '<div style="position:absolute;top:-4px;left:50%;transform:translateX(-50%);border-left:9px solid transparent;border-right:9px solid transparent;border-top:16px solid #ffd766;z-index:2;"></div>' +
-          '<div id="daily-wheel" style="width:150px;height:150px;border-radius:50%;border:4px solid #6b5630;background:conic-gradient(#d4a853 0 45deg,#3a2c12 45deg 90deg,#c9a0ff 90deg 135deg,#3a2c12 135deg 180deg,#9fe0a0 180deg 225deg,#3a2c12 225deg 270deg,#ffd24a 270deg 315deg,#3a2c12 315deg 360deg);transition:transform 1.4s cubic-bezier(.15,.9,.25,1);"></div>' +
-        '</div>' +
-        '<button id="daily-spin-btn" style="margin-top:10px;padding:8px 22px;border:none;border-radius:8px;background:linear-gradient(180deg,#ffd766,#d4a853);color:#3a2410;font:900 14px system-ui;cursor:pointer;">SPIN</button>' +
-        '<div id="daily-result" style="font:900 16px system-ui;color:#ffd766;min-height:20px;margin-top:8px;"></div>';
-      wrap.appendChild(wb);
-    }
+    if (wheelReady) steps.push('wheel');
     let crate = null;
     try { crate = eco.rollHuntCrate(total); } catch (e) {}
-    if (crate) {
-      const tierCol = crate.tier === 'jackpot' ? '#ffd24a' : crate.tier === 'cosmetic' ? '#7ad0ff' : crate.tier === 'rare' ? '#c9a0ff' : '#9fe0a0';
-      const box = document.createElement('div');
-      box.style.cssText = 'background:#16110a;border:1px solid #6b5630;border-radius:12px;padding:14px;text-align:center;';
-      box.innerHTML = '<div style="font:800 12px system-ui;color:#cbb98f;letter-spacing:1px;">HUNT REWARD</div>' +
-        '<div id="hook-crate" style="margin:10px auto 4px;width:96px;height:78px;cursor:pointer;position:relative;">' +
-          '<div id="hook-lid" style="position:absolute;top:0;left:8px;right:8px;height:24px;background:#8a5a2a;border:2px solid #5a3a18;border-radius:6px 6px 0 0;transition:transform .35s;transform-origin:bottom;"></div>' +
-          '<div style="position:absolute;bottom:0;left:8px;right:8px;height:52px;background:#7a4d1c;border:2px solid #5a3a18;border-radius:0 0 6px 6px;"></div>' +
-          '<div style="position:absolute;left:0;right:0;top:28px;text-align:center;font:900 22px system-ui;color:#ffd766;">?</div>' +
+    if (crate) steps.push('crate');
+    if (!steps.length) return;
+    const self = this;
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:10080;background:rgba(10,8,4,0.95);display:flex;align-items:center;justify-content:center;';
+    const card = document.createElement('div');
+    card.style.cssText = 'width:340px;max-width:92vw;background:#16110a;border:1px solid #6b5630;border-radius:16px;padding:24px 22px;text-align:center;';
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+    let idx = 0;
+    const render = () => { if (idx >= steps.length) { overlay.remove(); return; } if (steps[idx] === 'wheel') renderWheel(); else renderCrate(); };
+    const next = () => { idx++; render(); };
+    function renderWheel() {
+      card.innerHTML = '<div style="font:900 20px system-ui;color:#ffd766;">Daily Spin</div>' +
+        '<div style="font:600 12px system-ui;color:#cbb98f;margin:4px 0 16px;">Once a day - good luck!</div>' +
+        '<div style="position:relative;width:190px;height:190px;margin:0 auto;">' +
+          '<div style="position:absolute;top:-4px;left:50%;transform:translateX(-50%);border-left:11px solid transparent;border-right:11px solid transparent;border-top:20px solid #ffd766;z-index:2;"></div>' +
+          '<div id="ov-wheel" style="width:190px;height:190px;border-radius:50%;border:5px solid #6b5630;background:conic-gradient(#d4a853 0 45deg,#3a2c12 45deg 90deg,#c9a0ff 90deg 135deg,#3a2c12 135deg 180deg,#9fe0a0 180deg 225deg,#3a2c12 225deg 270deg,#ffd24a 270deg 315deg,#3a2c12 315deg 360deg);transition:transform 1.6s cubic-bezier(.15,.9,.25,1);"></div>' +
         '</div>' +
-        '<div id="hook-label" style="font:900 17px system-ui;color:' + tierCol + ';min-height:20px;">Tap to open!</div>';
-      wrap.appendChild(box);
-    }
-    summary.appendChild(wrap);
-    const spinBtn = document.getElementById('daily-spin-btn');
-    if (spinBtn) {
-      const self = this;
-      let spun = false;
-      spinBtn.onclick = function () {
-        if (spun) return; spun = true;
-        spinBtn.disabled = true; spinBtn.style.opacity = '0.5';
-        let res = null;
-        try { res = self.economy.spinDailyWheel(); } catch (e) {}
-        const wheel = document.getElementById('daily-wheel');
-        if (wheel) wheel.style.transform = 'rotate(' + (360 * 5 + Math.floor(Math.random() * 360)) + 'deg)';
-        setTimeout(function () { const rd = document.getElementById('daily-result'); if (rd && res) rd.textContent = res.label; try { self.audio.playCashRegister(); } catch (e) {} }, 1500);
+        '<div id="ov-wheel-result" style="font:900 18px system-ui;color:#ffd766;min-height:22px;margin-top:12px;"></div>' +
+        '<button id="ov-spin" style="margin-top:6px;padding:11px 28px;border:none;border-radius:10px;background:linear-gradient(180deg,#ffd766,#d4a853);color:#3a2410;font:900 15px system-ui;cursor:pointer;">SPIN</button>' +
+        '<button id="ov-wheel-next" style="display:none;margin-top:10px;width:100%;padding:11px;border:none;border-radius:10px;background:linear-gradient(180deg,#5bbf5b,#2e9d3a);color:#fff;font:900 15px system-ui;cursor:pointer;">Continue</button>';
+      const spin = card.querySelector('#ov-spin');
+      spin.onclick = function () {
+        spin.disabled = true; spin.style.display = 'none';
+        let res = null; try { res = self.economy.spinDailyWheel(); } catch (e) {}
+        const w = card.querySelector('#ov-wheel');
+        if (w) w.style.transform = 'rotate(' + (360 * 6 + Math.floor(Math.random() * 360)) + 'deg)';
+        setTimeout(function () { const rd = card.querySelector('#ov-wheel-result'); if (rd && res) rd.textContent = res.label; const nb = card.querySelector('#ov-wheel-next'); if (nb) nb.style.display = 'block'; try { self.audio.playCashRegister(); } catch (e) {} }, 1650);
       };
+      card.querySelector('#ov-wheel-next').onclick = next;
     }
-    const crateEl = document.getElementById('hook-crate');
-    if (crateEl && crate) {
-      const self2 = this;
+    function renderCrate() {
+      const tierCol = crate.tier === 'jackpot' ? '#ffd24a' : crate.tier === 'cosmetic' ? '#7ad0ff' : crate.tier === 'rare' ? '#c9a0ff' : '#9fe0a0';
+      card.innerHTML = '<div style="font:900 20px system-ui;color:#ffd766;">Hunt Reward</div>' +
+        '<div style="font:600 12px system-ui;color:#cbb98f;margin:4px 0 14px;">Tap the crate to open</div>' +
+        '<div id="ov-crate" style="margin:0 auto;width:120px;height:98px;cursor:pointer;position:relative;">' +
+          '<div id="ov-lid" style="position:absolute;top:0;left:10px;right:10px;height:30px;background:#8a5a2a;border:2px solid #5a3a18;border-radius:8px 8px 0 0;transition:transform .4s;transform-origin:bottom;"></div>' +
+          '<div style="position:absolute;bottom:0;left:10px;right:10px;height:64px;background:#7a4d1c;border:2px solid #5a3a18;border-radius:0 0 8px 8px;"></div>' +
+          '<div style="position:absolute;left:0;right:0;top:36px;text-align:center;font:900 26px system-ui;color:#ffd766;">?</div>' +
+        '</div>' +
+        '<div id="ov-crate-label" style="font:900 19px system-ui;color:' + tierCol + ';min-height:24px;margin-top:12px;"></div>' +
+        '<button id="ov-crate-next" style="display:none;margin-top:6px;width:100%;padding:11px;border:none;border-radius:10px;background:linear-gradient(180deg,#5bbf5b,#2e9d3a);color:#fff;font:900 15px system-ui;cursor:pointer;">Continue</button>';
+      const cr = card.querySelector('#ov-crate');
       let opened = false;
-      crateEl.onclick = function () {
+      cr.onclick = function () {
         if (opened) return; opened = true;
-        const lid = document.getElementById('hook-lid');
-        if (lid) lid.style.transform = 'rotateX(115deg) translateY(-8px)';
-        const label = document.getElementById('hook-label');
-        if (label) label.textContent = crate.label;
-        try { self2.audio.playCashRegister(); } catch (e) {}
+        const lid = card.querySelector('#ov-lid'); if (lid) lid.style.transform = 'rotateX(115deg) translateY(-10px)';
+        const lbl = card.querySelector('#ov-crate-label'); if (lbl) lbl.textContent = crate.label;
+        const nb = card.querySelector('#ov-crate-next'); if (nb) nb.style.display = 'block';
+        try { self.audio.playCashRegister(); } catch (e) {}
       };
+      card.querySelector('#ov-crate-next').onclick = next;
     }
+    render();
   }
 
     showResults(huntBag, displayName, xpEarned = 0) {
@@ -1054,8 +1056,6 @@ export class UI {
     `;
     summary.appendChild(xpSection);
 
-    this._appendHookSections(summary, total);
-
     // Update leaderboard
     if (displayName) {
       this.economy.updateLeaderboard(displayName);
@@ -1065,6 +1065,7 @@ export class UI {
     this._renderLeaderboard(displayName);
 
     this.showScreen('results');
+    this._showRewardSequence(total);
     this.economy.qualifyReferral();
     this.economy.refreshReferrals().then(() => this.renderBattlePass());
     this.renderBattlePass();
