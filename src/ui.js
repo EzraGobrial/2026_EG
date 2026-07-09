@@ -935,10 +935,24 @@ export class UI {
     const eco = this.economy;
     const wrap = document.createElement('div');
     wrap.style.cssText = 'margin-top:14px;';
+    let wheelReady = false;
+    try { wheelReady = eco.dailyWheelReady(); } catch (e) {}
+    if (wheelReady) {
+      const wb = document.createElement('div');
+      wb.style.cssText = 'background:#16110a;border:1px solid #6b5630;border-radius:12px;padding:14px;text-align:center;margin-bottom:12px;';
+      wb.innerHTML = '<div style="font:800 12px system-ui;color:#cbb98f;letter-spacing:1px;">DAILY SPIN</div>' +
+        '<div style="position:relative;width:150px;height:150px;margin:8px auto 0;">' +
+          '<div style="position:absolute;top:-4px;left:50%;transform:translateX(-50%);border-left:9px solid transparent;border-right:9px solid transparent;border-top:16px solid #ffd766;z-index:2;"></div>' +
+          '<div id="daily-wheel" style="width:150px;height:150px;border-radius:50%;border:4px solid #6b5630;background:conic-gradient(#d4a853 0 45deg,#3a2c12 45deg 90deg,#c9a0ff 90deg 135deg,#3a2c12 135deg 180deg,#9fe0a0 180deg 225deg,#3a2c12 225deg 270deg,#ffd24a 270deg 315deg,#3a2c12 315deg 360deg);transition:transform 1.4s cubic-bezier(.15,.9,.25,1);"></div>' +
+        '</div>' +
+        '<button id="daily-spin-btn" style="margin-top:10px;padding:8px 22px;border:none;border-radius:8px;background:linear-gradient(180deg,#ffd766,#d4a853);color:#3a2410;font:900 14px system-ui;cursor:pointer;">SPIN</button>' +
+        '<div id="daily-result" style="font:900 16px system-ui;color:#ffd766;min-height:20px;margin-top:8px;"></div>';
+      wrap.appendChild(wb);
+    }
     let crate = null;
     try { crate = eco.rollHuntCrate(total); } catch (e) {}
     if (crate) {
-      const tierCol = crate.tier === 'jackpot' ? '#ffd24a' : crate.tier === 'rare' ? '#c9a0ff' : '#9fe0a0';
+      const tierCol = crate.tier === 'jackpot' ? '#ffd24a' : crate.tier === 'cosmetic' ? '#7ad0ff' : crate.tier === 'rare' ? '#c9a0ff' : '#9fe0a0';
       const box = document.createElement('div');
       box.style.cssText = 'background:#16110a;border:1px solid #6b5630;border-radius:12px;padding:14px;text-align:center;';
       box.innerHTML = '<div style="font:800 12px system-ui;color:#cbb98f;letter-spacing:1px;">HUNT REWARD</div>' +
@@ -950,25 +964,24 @@ export class UI {
         '<div id="hook-label" style="font:900 17px system-ui;color:' + tierCol + ';min-height:20px;">Tap to open!</div>';
       wrap.appendChild(box);
     }
-    let nx = null;
-    try { nx = eco.nextUnlock(); } catch (e) {}
-    if (nx) {
-      const bar = document.createElement('div');
-      bar.style.cssText = 'margin-top:12px;background:#16110a;border:1px solid #6b5630;border-radius:12px;padding:12px 14px;';
-      const rem = nx.remaining > 0 ? ('$' + nx.remaining.toLocaleString() + ' to go') : 'Affordable now!';
-      bar.innerHTML = '<div style="display:flex;justify-content:space-between;font:700 13px system-ui;color:#cbb98f;margin-bottom:6px;">' +
-          '<span>Next unlock: <span style="color:#fff;">' + nx.name + '</span></span>' +
-          '<span style="color:#ffd766;">' + rem + '</span>' +
-        '</div>' +
-        '<div style="height:10px;background:#241a08;border-radius:5px;overflow:hidden;">' +
-          '<div style="height:100%;width:' + nx.pct + '%;background:linear-gradient(90deg,#d4a853,#ffd766);border-radius:5px;"></div>' +
-        '</div>';
-      wrap.appendChild(bar);
-    }
     summary.appendChild(wrap);
+    const spinBtn = document.getElementById('daily-spin-btn');
+    if (spinBtn) {
+      const self = this;
+      let spun = false;
+      spinBtn.onclick = function () {
+        if (spun) return; spun = true;
+        spinBtn.disabled = true; spinBtn.style.opacity = '0.5';
+        let res = null;
+        try { res = self.economy.spinDailyWheel(); } catch (e) {}
+        const wheel = document.getElementById('daily-wheel');
+        if (wheel) wheel.style.transform = 'rotate(' + (360 * 5 + Math.floor(Math.random() * 360)) + 'deg)';
+        setTimeout(function () { const rd = document.getElementById('daily-result'); if (rd && res) rd.textContent = res.label; try { self.audio.playCashRegister(); } catch (e) {} }, 1500);
+      };
+    }
     const crateEl = document.getElementById('hook-crate');
     if (crateEl && crate) {
-      const self = this;
+      const self2 = this;
       let opened = false;
       crateEl.onclick = function () {
         if (opened) return; opened = true;
@@ -976,12 +989,12 @@ export class UI {
         if (lid) lid.style.transform = 'rotateX(115deg) translateY(-8px)';
         const label = document.getElementById('hook-label');
         if (label) label.textContent = crate.label;
-        try { self.audio.playCashRegister(); } catch (e) {}
+        try { self2.audio.playCashRegister(); } catch (e) {}
       };
     }
   }
 
-  showResults(huntBag, displayName, xpEarned = 0) {
+    showResults(huntBag, displayName, xpEarned = 0) {
     this._setupResultsButtons();
     const summary = document.getElementById('results-summary');
     summary.innerHTML = '';
