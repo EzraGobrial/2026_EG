@@ -1085,6 +1085,7 @@ export class Economy {
     this.minigameBest = {};
     this.firstHuntDone = false;
     this.wheelDay = null;
+    this.firstCrateDone = false;
     this.coopSessionId = null;
     this.coopRole = null;
     this.eventId = null;
@@ -1157,6 +1158,7 @@ export class Economy {
       minigameBest: this.minigameBest || {},
       firstHuntDone: this.firstHuntDone || false,
       wheelDay: this.wheelDay || null,
+      firstCrateDone: this.firstCrateDone || false,
       bpPremiumLedger: this.bpPremiumLedger || [],
       weaponOwned: {},
       locationUnlocked: {}
@@ -1240,7 +1242,7 @@ export class Economy {
     if (data.dailyStreak !== undefined) this.dailyStreak = data.dailyStreak;
     if (data.bpSeason !== undefined) this.bpSeason = data.bpSeason;
     if (data.achievementsClaimed) this.achievementsClaimed = data.achievementsClaimed;
-    if (data.minigameDay !== undefined) this.minigameDay = data.minigameDay; this.minigameBest = data.minigameBest || {}; this.firstHuntDone = data.firstHuntDone || false; this.wheelDay = data.wheelDay || null;
+    if (data.minigameDay !== undefined) this.minigameDay = data.minigameDay; this.minigameBest = data.minigameBest || {}; this.firstHuntDone = data.firstHuntDone || false; this.wheelDay = data.wheelDay || null; this.firstCrateDone = data.firstCrateDone || false;
     if (data.minigamePlaysToday !== undefined) this.minigamePlaysToday = data.minigamePlaysToday;
       if (data.bpPremiumLedger) this.bpPremiumLedger = data.bpPremiumLedger;
 
@@ -1686,6 +1688,11 @@ export class Economy {
     const life = this.totalMoneyEarned || 0;
     const r = Math.random();
     let result;
+    if (!this.firstCrateDone) {
+      this.firstCrateDone = true;
+      const fc = this.grantRandomCosmetic(true);
+      if (fc) { if (this.displayName) { try { this.updateLeaderboard(this.displayName); } catch (e) {} } this.save(); return { tier: 'cosmetic', label: fc.label }; }
+    }
     if (r < 0.03) {
       const amt = Math.round(Math.max(base * 5, life * 0.05, 5000));
       this.money += amt; this.totalMoneyEarned += amt;
@@ -1708,7 +1715,7 @@ export class Economy {
     return result;
   }
 
-  grantRandomCosmetic() {
+  grantRandomCosmetic(preferBannerTag) {
     if (!this.ownedSkins) this.ownedSkins = ['default'];
     if (!this.ownedBanners) this.ownedBanners = [];
     if (!this.ownedTags) this.ownedTags = [];
@@ -1716,7 +1723,9 @@ export class Economy {
     const opts = [];
     for (const p of pools) { for (const id in p.map) { const it = p.map[id]; if (it && !it.devCode && p.owned.indexOf(id) === -1) opts.push({ p: p, id: id, name: it.name || id }); } }
     if (!opts.length) return null;
-    const pick = opts[Math.floor(Math.random() * opts.length)];
+    let pool = opts;
+    if (preferBannerTag) { const bt = opts.filter((o) => o.p.kind !== 'Skin'); if (bt.length) pool = bt; }
+    const pick = pool[Math.floor(Math.random() * pool.length)];
     pick.p.owned.push(pick.id);
     return { kind: pick.p.kind, id: pick.id, name: pick.name, label: pick.name + ' ' + pick.p.kind + '!' };
   }
