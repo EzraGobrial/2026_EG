@@ -1118,9 +1118,11 @@ export class UI {
         }
 
         div.style.cssText += bannerStyle;
+        const _bc = (entry.banner && BANNERS[entry.banner]) ? BANNERS[entry.banner].color : '';
+        const _nameBg = _bc ? ' style="background:linear-gradient(90deg,' + _bc + 'cc,' + _bc + '22 55%,transparent);border-radius:6px;padding:2px 10px;"' : '';
         div.innerHTML = `
           <span class="lb-rank">${i + 1}</span>
-          <span class="lb-name">${rankBadge}${entry.name}${entry.tag ? ` <span style="display:inline-block;padding:1px 7px;margin-left:5px;border-radius:6px;font-size:10px;font-weight:800;letter-spacing:0.5px;vertical-align:middle;${TAGS[entry.tag] ? `color:${TAGS[entry.tag].textColor || TAGS[entry.tag].color};border:1px solid ${TAGS[entry.tag].color};background:${TAGS[entry.tag].color}22` : `color:var(--accent-gold);border:1px solid var(--accent-gold)`}">${TAGS[entry.tag] ? TAGS[entry.tag].name : 'OG'}</span>` : ''}${isYou ? ' (you)' : ''}</span>
+          <span class="lb-name"${_nameBg}>${rankBadge}${entry.name}${entry.tag ? ` <span style="display:inline-block;padding:1px 7px;margin-left:5px;border-radius:6px;font-size:10px;font-weight:800;letter-spacing:0.5px;vertical-align:middle;${TAGS[entry.tag] ? `color:${TAGS[entry.tag].textColor || TAGS[entry.tag].color};border:1px solid ${TAGS[entry.tag].color};background:${TAGS[entry.tag].color}22` : `color:var(--accent-gold);border:1px solid var(--accent-gold)`}">${TAGS[entry.tag] ? TAGS[entry.tag].name : 'OG'}</span>` : ''}${isYou ? ' (you)' : ''}</span>
           <span class="lb-money">${fmtVal(entry[valueKey])}</span>
         `;
         container.appendChild(div);
