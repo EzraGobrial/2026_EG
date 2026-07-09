@@ -1433,6 +1433,7 @@ export class Economy {
           day: data.day || 1,
           dimension: data.dimension || 1,
           tag: data.tag || null,
+          banner: data.banner || null,
           rank: data.rank || 1
         });
       });
