@@ -1066,6 +1066,7 @@ export class UI {
 
     this.showScreen('results');
     this._showRewardSequence(total);
+    this._updateStatsDot();
     this.economy.qualifyReferral();
     this.economy.refreshReferrals().then(() => this.renderBattlePass());
     this.renderBattlePass();
@@ -1115,7 +1116,7 @@ export class UI {
         // Banner accent
         let bannerStyle = '';
         if (entry.banner && BANNERS[entry.banner]) {
-          bannerStyle = `border-left:3px solid ${BANNERS[entry.banner].color};padding-left:10px;`;
+          bannerStyle = `border-left:3px solid ${BANNERS[entry.banner].color};padding-left:10px;background:linear-gradient(90deg, ${BANNERS[entry.banner].color}bb, ${BANNERS[entry.banner].color}55);`;
         }
 
         div.style.cssText += bannerStyle;
@@ -1123,7 +1124,7 @@ export class UI {
         const _nameBg = _bc ? ' style="background:linear-gradient(90deg,' + _bc + 'cc,' + _bc + '22 55%,transparent);border-radius:6px;padding:2px 10px;"' : '';
         div.innerHTML = `
           <span class="lb-rank">${i + 1}</span>
-          <span class="lb-name"${_nameBg}>${rankBadge}${entry.name}${entry.tag ? ` <span style="display:inline-block;padding:1px 7px;margin-left:5px;border-radius:6px;font-size:10px;font-weight:800;letter-spacing:0.5px;vertical-align:middle;${TAGS[entry.tag] ? `color:${TAGS[entry.tag].textColor || TAGS[entry.tag].color};border:1px solid ${TAGS[entry.tag].color};background:${TAGS[entry.tag].color}22` : `color:var(--accent-gold);border:1px solid var(--accent-gold)`}">${TAGS[entry.tag] ? TAGS[entry.tag].name : 'OG'}</span>` : ''}${isYou ? ' (you)' : ''}</span>
+          <span class="lb-name">${rankBadge}${entry.name}${entry.tag ? ` <span style="display:inline-block;padding:1px 7px;margin-left:5px;border-radius:6px;font-size:10px;font-weight:800;letter-spacing:0.5px;vertical-align:middle;${TAGS[entry.tag] ? `color:${TAGS[entry.tag].textColor || TAGS[entry.tag].color};border:1px solid ${TAGS[entry.tag].color};background:${TAGS[entry.tag].color}22` : `color:var(--accent-gold);border:1px solid var(--accent-gold)`}">${TAGS[entry.tag] ? TAGS[entry.tag].name : 'OG'}</span>` : ''}${isYou ? ' (you)' : ''}</span>
           <span class="lb-money">${fmtVal(entry[valueKey])}</span>
         `;
         container.appendChild(div);
@@ -1951,6 +1952,14 @@ _playTargetRange() {
     raf = requestAnimationFrame(loop);
   }
 
+  _updateStatsDot() {
+    const dot = document.getElementById('stats-dot');
+    if (!dot) return;
+    let has = false;
+    try { has = this.economy.achievementList().some((a) => a.claimable); } catch (e) {}
+    dot.style.display = has ? 'block' : 'none';
+  }
+
   showStats() {
     const eco = this.economy;
     const ss = document.getElementById('stats-summary');
@@ -1990,6 +1999,7 @@ _playTargetRange() {
         this.showStats();
       }));
     }
+    this._updateStatsDot();
     this.showScreen('stats');
   }
 
