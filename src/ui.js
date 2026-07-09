@@ -1933,10 +1933,10 @@ _playTargetRange() {
       const spd = 300; px += keyx * spd * dt; px = Math.max(PW, Math.min(W - PW, px)); if (keyx !== 0) { walk += dt * 12; face = keyx; }
       const diff = 1 + t / 25;
       spawnU -= dt; if (spawnU <= 0 && umbs.length < 4) { umbs.push({ x: 40 + Math.random() * (W - 80), ph: Math.random() * 6.28, gold: Math.random() < 0.14, born: t }); spawnU = 1.3 + Math.random() * 1.2; }
-      spawnB -= dt; if (spawnB <= 0) { const d = Math.random() < 0.5 ? 1 : -1; birds.push({ x: d > 0 ? -30 : W + 30, y: 24 + Math.random() * 40, vx: d * (90 + Math.random() * 70), dir: d, drop: 0.3 + Math.random() * 0.8, dropped: false }); spawnB = Math.max(0.7, 1.3 / diff) + Math.random() * 0.6; }
+      spawnB -= dt; if (spawnB <= 0) { const d = Math.random() < 0.5 ? 1 : -1; birds.push({ x: d > 0 ? -30 : W + 30, y: 24 + Math.random() * 40, vx: d * (90 + Math.random() * 70), dir: d, dropT: 0.2 + Math.random() * 0.5 }); spawnB = Math.max(0.7, 1.3 / diff) + Math.random() * 0.6; }
       const sky = ctx.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, '#afd6ff'); sky.addColorStop(1, '#e6f2ff'); ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
       const gr = ctx.createLinearGradient(0, H - 32, 0, H); gr.addColorStop(0, '#7bb33f'); gr.addColorStop(1, '#4e7a28'); ctx.fillStyle = gr; ctx.fillRect(0, H - 30, W, 30);
-      for (const b of birds) { b.x += b.vx * dt; b.drop -= dt; if (!b.dropped && b.drop <= 0 && b.x > 30 && b.x < W - 30) { b.dropped = true; poos.push({ x: b.x, y: b.y + 12, vy: 150 + t * 6, rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 4 }); } drawBird(b.x, b.y, b.dir); }
+      for (const b of birds) { b.x += b.vx * dt; b.dropT -= dt; if (b.dropT <= 0 && b.x > 40 && b.x < W - 40) { b.dropT = 0.45 + Math.random() * 0.55; poos.push({ x: b.x, y: b.y + 12, vy: 150 + t * 6, rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 4 }); } drawBird(b.x, b.y, b.dir); }
       birds = birds.filter((b) => b.x > -60 && b.x < W + 60);
       for (const u of umbs) { if (u.got) continue; drawUmb(u); if (Math.abs(u.x - px) < PW + 12) { u.got = true; score += u.gold ? 3 : 1; for (let i = 0; i < 8; i++) puffs.push({ x: u.x, y: groundY - 18, vx: (Math.random() - 0.5) * 160, vy: -Math.random() * 150, life: 0.5, col: u.gold ? '#ffd24a' : '#e0463b' }); } }
       umbs = umbs.filter((u) => !u.got && t - u.born < 8);
