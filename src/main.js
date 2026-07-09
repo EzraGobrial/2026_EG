@@ -704,6 +704,15 @@ class Game {
       if (_sb && !this._paradise && this.birds.isBoss(_sb) && Math.random() < 0.04) { this.birds.makeRideable(_sb); (this._rideables || (this._rideables = [])).push(_sb); }
     }
 
+    if (this.economy && !this.economy.firstHuntDone) {
+      try {
+        this.birds.spawnGolden(this.economy.spawnRandomBird(1, 0));
+        for (let _i = 0; _i < 4; _i++) { this.birds.spawn(this.economy.spawnRandomBird(1, 0)); }
+      } catch (e) {}
+      this.economy.firstHuntDone = true;
+      this.economy.save();
+    }
+
     // Rebuild weapon slot bar on the next frame too — pointer-lock can
     // suppress the initial paint of newly-added HUD elements in some
     // browsers, so this ensures it's visible immediately rather than
@@ -1224,7 +1233,53 @@ class Game {
    * shots and the rail-gun beam): boss flags, story XP, combo + killstreak,
    * money (with double-money + pet earn bonus), hunt stats and HUD feedback.
    */
-  _awardKill(bird, hitPoint) {
+  _screenShake(px, ms) {
+    const c = this.renderer && this.renderer.domElement;
+    if (!c) return;
+    const start = performance.now();
+    const dur = ms || 240;
+    const mag = px || 6;
+    const step = (now) => {
+      const t = (now - start) / dur;
+      if (t >= 1) { c.style.transform = ''; return; }
+      const d = (1 - t) * mag;
+      c.style.transform = 'translate(' + ((Math.random() * 2 - 1) * d).toFixed(1) + 'px,' + ((Math.random() * 2 - 1) * d).toFixed(1) + 'px)';
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  _muzzleFlash() {
+    let el = document.getElementById('muzzle-flash');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'muzzle-flash';
+      el.style.cssText = 'position:fixed;left:50%;bottom:6%;width:170px;height:170px;transform:translate(-50%,50%);border-radius:50%;background:radial-gradient(circle,rgba(255,236,150,0.9),rgba(255,180,60,0.25) 45%,rgba(255,180,60,0) 70%);pointer-events:none;z-index:8500;opacity:0;transition:opacity .05s;';
+      document.body.appendChild(el);
+    }
+    el.style.opacity = '1';
+    clearTimeout(this._mflT);
+    this._mflT = setTimeout(() => { el.style.opacity = '0'; }, 55);
+    if (this._quality !== 'low') this._screenShake(2.4, 100);
+  }
+
+  _killJuice() {
+    if (this._quality === 'low') return;
+    this._screenShake(6, 250);
+    let el = document.getElementById('kill-flash');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'kill-flash';
+      el.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:8400;opacity:0;transition:opacity .16s;background:radial-gradient(circle,rgba(255,215,120,0) 45%,rgba(255,180,70,0.28));';
+      document.body.appendChild(el);
+    }
+    el.style.opacity = '1';
+    clearTimeout(this._kfT);
+    this._kfT = setTimeout(() => { el.style.opacity = '0'; }, 90);
+  }
+
+    _awardKill(bird, hitPoint) {
+    this._killJuice();
     const birdData = bird.data;
 
     if (this.birds.isBoss(bird)) {
@@ -1427,7 +1482,8 @@ class Game {
       this._scoping = true;
       return;
     }
-    if (e.button !== 0) return; // left click only
+    if (e.button !== 0) return;
+    this._muzzleFlash(); // left click only
 
     if (!this.player.isLocked) {
       this.player.lock();
@@ -2045,6 +2101,7 @@ class Game {
   }
 
   _applyGraphicsQuality(quality) {
+    this._quality = quality;
     switch (quality) {
       case 'low':
         this.renderer.shadowMap.enabled = false;   // no shadows at all
