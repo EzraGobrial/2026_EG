@@ -26,7 +26,7 @@ import { TrailWorld } from './trail_world.js';
 import { ShedInterior } from './shed.js';
 import { MarketWorld } from './market.js';
 import { BikeController } from './bike.js';
-import { Settings } from './settings.js';
+import { Settings } from './settings.js'; import { DailyWheel } from './wheel.js'; import { Ads } from './ads.js';
 
 // ─── Game States ─────────────────────────────
 const STATE = {
@@ -113,7 +113,7 @@ class Game {
     this.hud = new HUD();
     this.ui = new UI(this.economy, this.audio);
     this.ui._storyRef = this.story;
-    this.ui._settings = this.settings; // give UI access to story for quest shop
+    this.ui._settings = this.settings; this.ads = new Ads(); this.dailyWheel = new DailyWheel(this.economy, this.ads, () => { this.hud.setMoney(this.economy.money); if (this.state === STATE.MORNING) this.ui.showMorning(); }); // give UI access to story for quest shop
 
     // Story-specific active systems (null when inactive)
     this.trailWorld = null;
@@ -359,7 +359,7 @@ class Game {
     this.state = STATE.MORNING;
     this.player.unlock();
     this.hud.hide();
-    this.ui.showMorning();
+    this.ui.showMorning(); if (this.dailyWheel) { this.dailyWheel.economy = this.economy; this.dailyWheel.setLauncherVisible(true); }
 
     // Load world preview
     const locKey = this.economy.currentLocation;
@@ -378,7 +378,7 @@ class Game {
 
   // ─── Story: Trail Walk ─────────────────────────
 
-  _startTrailWalk() {
+  _startTrailWalk() { if (this.dailyWheel) this.dailyWheel.setLauncherVisible(false);
     this.story.startWalking();
     this.state = STATE.TRAIL_WALK;
     this.ui.hideAll();
@@ -588,7 +588,7 @@ class Game {
     return { luckMult, legendaryBoost, birdSwarm };
   }
 
-  _startHunt() {
+  _startHunt() { if (this.dailyWheel) this.dailyWheel.setLauncherVisible(false);
     this._disposeMarket();
     this.state = STATE.HUNTING;
     this.ui.hideAll();
@@ -1068,7 +1068,7 @@ class Game {
     this._startMarket();
   }
 
-  _startMarket() {
+  _startMarket() { if (this.dailyWheel) this.dailyWheel.setLauncherVisible(false);
     this.state = STATE.MARKET;
     this._preMarketLocation = this.economy.currentLocation;
     this.ui.hideAll();
