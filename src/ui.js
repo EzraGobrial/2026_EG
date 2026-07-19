@@ -72,7 +72,7 @@ export class UI {
     this.onRestart = null;
     this.onLogin = null;
     this.onSignup = null;
-    this.onLogout = null;
+    this.onLogout = null; this.onOpenLogin = null; this._isGuest = false;
     this.onTrade = null;
     this.onFriends = null;
     this.onTournament = null;
@@ -381,7 +381,7 @@ export class UI {
 
     // Logout
     document.getElementById('btn-logout').addEventListener('click', () => {
-      if (this.onLogout) this.onLogout();
+      if (this._isGuest) { if (this.onOpenLogin) this.onOpenLogin(); } else if (this.onLogout) { this.onLogout(); }
     });
   }
 
@@ -402,9 +402,9 @@ export class UI {
     document.getElementById('signup-error').classList.add('hidden');
   }
 
-  showTitle(displayName) {
+  setAuthMode(isGuest) { this._isGuest = isGuest; const b = document.getElementById('btn-logout'); if (b) b.textContent = isGuest ? 'Log In / Sign Up' : 'Log Out'; } showTitle(displayName) {
     const welcome = document.getElementById('title-welcome');
-    welcome.textContent = `Welcome back, ${displayName}!`;
+    welcome.textContent = this._isGuest ? 'Playing as a guest' : `Welcome back, ${displayName}!`;
     this.showScreen('title');
     this._updateSettingsDot();
   }
