@@ -197,7 +197,7 @@ class Game {
     // ─── Auth Callbacks ────────────────────
     this.ui.onLogin = (u, p) => this._handleLogin(u, p);
     this.ui.onSignup = (u, p, c) => this._handleSignup(u, p, c);
-    this.ui.onLogout = () => this._handleLogout();
+    this.ui.onLogout = () => this._handleLogout(); this.ui.onOpenLogin = () => { this.ui.showScreen('login'); this.state = STATE.AUTH; };
 
     // ─── UI Callbacks ──────────────────────
     this.ui.onStartGame = () => this._startGame();
@@ -287,8 +287,8 @@ class Game {
 
     // ─── Initial state ─────────────────────
     this.sky.setPreset('backyard');
-    this.ui.showScreen('login');
-    this.state = STATE.AUTH;
+    this._startGuest();
+
 
     // Start render loop
     this._animate();
@@ -307,7 +307,7 @@ class Game {
       if (this.economy.story) this.story.deserialize(this.economy.story);
 
       this.economy.updateLeaderboard(this.auth.getDisplayName());
-      this.ui.showTitle(this.auth.getDisplayName());
+      this.ui.setAuthMode(false); this.ui.showTitle(this.auth.getDisplayName());
       this.state = STATE.TITLE;
     } else {
       this.ui.showLoginError(result.error);
@@ -321,7 +321,7 @@ class Game {
       this.economy.setDisplayName(this.auth.getDisplayName());
 
       this.economy.updateLeaderboard(this.auth.getDisplayName());
-      this.ui.showTitle(this.auth.getDisplayName());
+      this.ui.setAuthMode(false); this.ui.showTitle(this.auth.getDisplayName());
       this.state = STATE.TITLE;
     } else {
       this.ui.showSignupError(result.error);
@@ -330,13 +330,13 @@ class Game {
 
 
 
-  async _handleLogout() {
+  _startGuest() { this.economy.setDisplayName('Guest'); this.ui.setAuthMode(true); this.ui.showTitle('Guest'); this.state = STATE.TITLE; } async _handleLogout() {
     await this.auth.logout();
     this.economy = new Economy();
     this.ui.economy = this.economy;
     this.winShown = false;
-    this.ui.showScreen('login');
-    this.state = STATE.AUTH;
+    this._startGuest();
+
   }
 
   // ─── State Transitions ───────────────────────
