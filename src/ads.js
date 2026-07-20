@@ -1,13 +1,63 @@
 // ═══════════════════════════════════════════════
-// Gary's Life — Rewarded Ads (pluggable)
+// Gary's Life — Rewarded Ads + CrazyGames SDK bridge
 //
-// A tiny wrapper around "rewarded video" ads. Right now it
-// plays a short PLACEHOLDER ad overlay and then grants the
-// reward. To serve real, paid ads later, replace the body of
-// _playAd() with your ad network's rewarded-ad call
-// (CrazyGames, GameDistribution, Google Ad Manager, AdinPlay…)
-// — nothing else in the game needs to change.
+// On CrazyGames, ads are served by the CrazyGames SDK (real,
+// paid rewarded + midgame ads). Everywhere else — including the
+// standalone web game on your own site — the SDK is never loaded
+// and every ad call is a no-op, so the web game is unaffected.
+// A short placeholder overlay is used as the rewarded fallback
+// off-platform so the wheel's "double it" still works there.
 // ═══════════════════════════════════════════════
+
+// ─── CrazyGames SDK bridge (portal-only) ─────────────
+// Sets window.CG = { available, env, showAd(type, cb), gameplay(on) }.
+// The SDK script is loaded ONLY when a portal (CrazyGames) hosts the
+// game — never on github.io / localhost — so your site stays pristine.
+(function () {
+  if (window.CG) return;
+  var api = { available: false, env: 'disabled' };
+  var own = /(?:^|\.)github\.io$|^localhost$|^127\.0\.0\.1$/i;
+  var standalone = (window.self === window.top) && own.test(location.hostname);
+
+  api.showAd = function (type, cb) {
+    try {
+      if (api.available && window.CrazyGames && window.CrazyGames.SDK && api.env !== 'disabled') {
+        window.CrazyGames.SDK.ad.requestAd(type, {
+          adStarted: function () {},
+          adFinished: function () { if (cb) cb(true); },
+          adError: function () { if (cb) cb(false); },
+        });
+        return;
+      }
+    } catch (e) { /* ignore */ }
+    if (cb) cb(false); // not on a portal → caller falls back
+  };
+
+  api.gameplay = function (on) {
+    try {
+      if (api.available && window.CrazyGames && window.CrazyGames.SDK && api.env !== 'disabled') {
+        on ? window.CrazyGames.SDK.game.gameplayStart()
+           : window.CrazyGames.SDK.game.gameplayStop();
+      }
+    } catch (e) { /* ignore */ }
+  };
+
+  window.CG = api;
+
+  if (!standalone) {
+    var s = document.createElement('script');
+    s.src = 'https://sdk.crazygames.com/crazygames-sdk-v3.js';
+    s.onload = function () {
+      try {
+        window.CrazyGames.SDK.init().then(function () {
+          api.available = true;
+          api.env = window.CrazyGames.SDK.environment;
+        }).catch(function () {});
+      } catch (e) { /* ignore */ }
+    };
+    document.head.appendChild(s);
+  }
+})();
 
 export class Ads {
   constructor() {
@@ -17,18 +67,21 @@ export class Ads {
   /**
    * Show a rewarded ad. Resolves TRUE if the ad was watched to
    * completion (grant the reward), FALSE if the player bailed.
-   * @param {string} [label] short text shown under the ad ("Doubling your reward…")
+   * @param {string} [label] short text shown under the placeholder ad
    * @returns {Promise<boolean>}
    */
   showRewardedAd(label = 'Your reward is on the way…') {
     return this._playAd(label);
   }
 
-  // ─── Replace THIS method with a real SDK call for live ads ───
-  // Real example (CrazyGames):
-  //   return window.CrazyGames.SDK.ad.requestAd('rewarded')
-  //     .then(() => true).catch(() => false);
   _playAd(label) {
+    // On CrazyGames: real rewarded ad via the SDK.
+    if (window.CG && window.CG.available && window.CG.env !== 'disabled') {
+      return new Promise(function (resolve) {
+        window.CG.showAd('rewarded', function (ok) { resolve(!!ok); });
+      });
+    }
+    // Off-platform (your site): short placeholder so "double it" still works.
     return new Promise((resolve) => {
       this._build();
       const { overlay, bar, count, skip } = this._overlay;
@@ -39,7 +92,6 @@ export class Ads {
       let t = 0;
       bar.style.transition = 'none';
       bar.style.width = '0%';
-      // force reflow so the transition restarts cleanly
       void bar.offsetWidth;
       bar.style.transition = `width ${DURATION}s linear`;
       bar.style.width = '100%';
@@ -59,7 +111,7 @@ export class Ads {
       }, 1000);
       count.textContent = DURATION;
 
-      skip.onclick = () => finish(true); // "Claim reward"
+      skip.onclick = () => finish(true);
     });
   }
 
