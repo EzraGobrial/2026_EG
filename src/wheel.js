@@ -259,7 +259,7 @@ export class DailyWheel {
     const s = document.createElement('style');
     s.id = 'wheel-styles';
     s.textContent = `
-      #wheel-launcher{position:fixed;left:20px;bottom:20px;z-index:70;display:none;align-items:center;gap:8px;
+      #wheel-launcher{position:fixed;left:20px;bottom:20px;z-index:400;display:none;align-items:center;gap:8px;
         padding:10px 16px;border:none;border-radius:12px;cursor:pointer;font-family:Outfit,sans-serif;font-weight:700;
         font-size:14px;color:#1a1410;background:linear-gradient(135deg,#d4a853,#b8892e);box-shadow:0 6px 18px rgba(0,0,0,0.4)}
       #wheel-launcher .wl-icon{font-size:18px}
