@@ -588,7 +588,7 @@ class Game {
     return { luckMult, legendaryBoost, birdSwarm };
   }
 
-  _startHunt() { if (this.dailyWheel) this.dailyWheel.setLauncherVisible(false);
+  _startHunt() { if (this.dailyWheel) this.dailyWheel.setLauncherVisible(false); if (window.CG) window.CG.gameplay(true);
     this._disposeMarket();
     this.state = STATE.HUNTING;
     this.ui.hideAll();
@@ -989,7 +989,7 @@ class Game {
       this.audio.stopAmbience();
 
       // Clear active consumables after hunt
-      this.economy.clearActiveConsumables();
+      this.economy.clearActiveConsumables(); if (window.CG) { window.CG.gameplay(false); window.CG.showAd('midgame'); }
 
       // Record the longest killstreak of this hunt for the leaderboard
       if (this.huntStats.maxKillstreak > (this.economy.bestKillstreak || 0)) {
